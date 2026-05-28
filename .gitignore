@@ -1,0 +1,10 @@
+# Copyrighted art ripped from the Tabletop Simulator mod — NOT redistributed.
+# The board currently renders by terrain color; the code does not use these yet.
+# To regenerate locally, re-run the TTS extraction (see project notes).
+assets/
+
+# Editor / OS / runtime
+.DS_Store
+Thumbs.db
+*.log
+node_modules/

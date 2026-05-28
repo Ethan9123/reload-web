@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RELOAD — Web 版</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="app">
+  <section id="setup-screen" class="screen">
+    <h1>RELOAD</h1>
+    <p class="subtitle">大逃杀战术骰子桌游 · 网页单机版（开发中）</p>
+    <div class="setup-box">
+      <label>玩家数量：
+        <select id="player-count">
+          <option value="2">2 人</option>
+          <option value="3">3 人</option>
+          <option value="4" selected>4 人</option>
+        </select>
+      </label>
+      <label>地图：<select id="map-select"><option value="arcadia" selected>Arcadia</option></select></label>
+      <label><input type="checkbox" id="all-ai"> 全部 AI（观战）</label>
+      <button id="btn-start">开始游戏</button>
+    </div>
+  </section>
+
+  <section id="game-screen" class="screen hidden">
+    <header id="topbar">
+      <div id="game-info"></div>
+      <button id="btn-heal" class="small">治疗</button>
+      <button id="btn-barrier" class="small">屏障</button>
+      <button id="btn-hideout" class="small">藏身处</button>
+      <button id="btn-trap" class="small">陷阱</button>
+      <button id="btn-end" class="small">结束回合</button>
+      <button id="btn-restart" class="small">重开</button>
+    </header>
+    <div id="board-wrap"><svg id="board" xmlns="http://www.w3.org/2000/svg"></svg></div>
+    <aside id="side">
+      <div id="players-area"></div>
+      <div id="log-panel"><h4>事件日志</h4><div id="log"></div></div>
+    </aside>
+  </section>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/ai.js"></script>
+<script src="js/ui.js"></script>
+</body>
+</html>
