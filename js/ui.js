@@ -102,8 +102,10 @@
       const d = document.createElement("div");
       d.className = "pcard"; d.style.borderLeft = `4px solid ${p.color}`;
       if (p.idx === G.activePlayer) d.style.background = "#222a38";
+      const assigned = p.assignedDice && p.assignedDice.length ? ` · 已用 ${p.assignedDice.join("/")}` : "";
+      const combat = p.combatLine && p.combatLine.length ? ` · 战斗列 ${p.combatLine.join("/")}` : "";
       d.innerHTML = `<div class="pname">${p.name}${p.human ? " (你)" : ""}${p.idx === G.activePlayer ? " ◀" : ""}</div>` +
-        `<div class="pstat">名望 ${E.totalFame(p)} · 行动骰 ${p.defensePool}/${p.actionDice} · 背包 ${p.backpack.length}` +
+        `<div class="pstat">名望 ${E.totalFame(p)} · 伤害 ${p.injuries} · 防御区 ${p.defensePool}/${p.actionDice}${assigned}${combat} · 背包 ${p.backpack.length}` +
         (p.carryingBeacons ? ` · 携带信标 ${p.carryingBeacons}` : "") +
         ` · ${p.pos ? "在场" : "待跳伞"}</div>`;
       box.appendChild(d);

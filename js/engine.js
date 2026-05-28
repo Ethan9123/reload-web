@@ -63,11 +63,12 @@
   function newPlayer(idx, character, human) {
     return {
       idx, character: character.id, name: character.name, color: character.color, human,
-      // dice: counts only for unassigned action dice (rolled per-combat); injury zone holds dice.
+      // dice: still count-based, with assignedDice preserving values spent this turn.
       actionDice: START_ACTION_DICE,   // action dice currently owned (5 minus injuries)
       defensePool: START_ACTION_DICE,  // unassigned, available this turn
       assigned: 0,                     // dice spent on actions this turn
-      combatLine: [],                  // numeric dice, high->low (transient during combat)
+      assignedDice: [],                // action die faces assigned this turn; numeric faces move to combatLine in End Phase
+      combatLine: [],                  // numeric dice, high->low
       injuries: 0,                     // dice in injury zone; INJURY_ZONE => RELOAD
       boost: false,
       fame: { injury: 0, beacon: 0, teamSpirit: 0, reload: 0, trap: 0 },
@@ -190,7 +191,7 @@
   function beginTurn(state) {
     const p = curP(state);
     p.actionDice = START_ACTION_DICE - p.injuries;       // injuries reduce available dice
-    p.defensePool = p.actionDice; p.assigned = 0; p.boost = false; p.combatLine = [];
+    p.defensePool = p.actionDice; p.assigned = 0; p.assignedDice = []; p.boost = false; p.combatLine = [];
     p._closeEndedTurn = false; p._noMove = false;
     autoEquip(p);                                        // MVP: auto-equip best weapon/armor (no equip UI yet)
     // NOTE: carried beacons are NOT auto-scored. Per rules they stay in temp storage
@@ -203,7 +204,7 @@
   function parachute(state, key) {
     if (!state.needsParachute || !legalParachute(state).includes(key)) return false;
     const p = curP(state), c = state.board[key];
-    p.pos = { q: c.q, r: c.r }; state.needsParachute = false; state.phase = "action";
+    p.pos = { q: c.q, r: c.r }; p.reloadZone = false; state.needsParachute = false; state.phase = "action";
     log(state, `${p.name} 跳伞降落到 ${c.terrain}`);
     return true;
   }
@@ -235,13 +236,42 @@
       for (const k in state.board) if (k !== cur && state.board[k].portal) out.push(k);
     return out;
   }
-  function spendDice(state, p, n) { p.defensePool -= n; p.assigned += n; }
+  const isNumericDie = (v) => typeof v === "number" && v >= 1 && v <= 5;
+  function sortCombatLine(line) { return line.filter(isNumericDie).sort((a, b) => b - a); }
+  function spendDice(state, p, n, face) {
+    p.defensePool -= n; p.assigned += n;
+    const f = face == null ? 1 : face;
+    for (let i = 0; i < n; i++) p.assignedDice.push(f);
+  }
+  function moveAssignedDiceToCombatLine(p) {
+    p.combatLine = sortCombatLine([...(p.combatLine || []), ...(p.assignedDice || [])]);
+    p.assignedDice = []; p.assigned = 0;
+    p.actionDice = START_ACTION_DICE - p.injuries;
+    p.defensePool = Math.max(0, p.actionDice - p.combatLine.length);
+  }
+  function hasFriendlyHideout(state, p) {
+    if (!p.pos) return false;
+    const cell = state.board[hexKey(p.pos.q, p.pos.r)];
+    return !!cell.dome || cell.hideouts.includes(p.idx);
+  }
+  function resolveHideoutBenefit(state, p) {
+    if (!hasFriendlyHideout(state, p) || !p.combatLine.length) return false;
+    p.combatLine = sortCombatLine(p.combatLine);
+    p.combatLine.pop();
+    p.defensePool = Math.min(p.actionDice, p.defensePool + 1);
+    return true;
+  }
+  function syncDiceCounts(p) {
+    p.actionDice = START_ACTION_DICE - p.injuries;
+    p.defensePool = Math.max(0, Math.min(p.defensePool, p.actionDice));
+    p.assigned = p.assignedDice ? p.assignedDice.length : 0;
+  }
   function doRun(state, toKey) {
     const p = curP(state);
     if (!legalRuns(state, p).includes(toKey)) return false;
     const cur = hexKey(p.pos.q, p.pos.r);
     const portalJump = state.board[cur].portal && state.board[toKey].portal && dirIndex(p.pos, state.board[toKey]) < 0;
-    spendDice(state, p, portalJump ? 1 : runCost(state, toKey));
+    spendDice(state, p, portalJump ? 1 : runCost(state, toKey), 1);
     const c = state.board[toKey]; p.pos = { q: c.q, r: c.r };
     log(state, `${p.name} ${portalJump ? "穿越传送门到" : "移动到"} ${c.terrain}`);
     if (c.trap != null && c.trap !== p.idx) resolveTrap(state, p, c.trap, toKey); // step on enemy trap
@@ -257,7 +287,7 @@
     if (p.defensePool < 1) return false;
     const cell = state.board[hexKey(p.pos.q, p.pos.r)], tok = cell.tokens[tokenIdx];
     if (!tok) return false;
-    spendDice(state, p, 1); cell.tokens.splice(tokenIdx, 1);
+    spendDice(state, p, 1, 1); cell.tokens.splice(tokenIdx, 1);
     if (tok.kind === "beacon") { p.carryingBeacons += 1; log(state, `${p.name} 拾取信标（需带到中央塔上缴）`); }
     else if (tok.kind === "supply") {
       const dk = "equip" + (tok.star || 2), xk = "discard" + (tok.star || 2);
@@ -275,7 +305,7 @@
   function doActivate(state) {
     const p = curP(state);
     if (!canUpload(state, p)) return false;
-    spendDice(state, p, 1);
+    spendDice(state, p, 1, 1);
     const n = p.carryingBeacons;
     log(state, `${p.name} 在中央塔上传 ${n} 个信标 → +${n} 名望`);
     gainFame(state, p, "beacon", n); p.carryingBeacons = 0;
@@ -307,8 +337,8 @@
   }
   function doHeal(state) {
     const p = curP(state); if (!canHeal(state, p)) return false;
-    spendDice(state, p, 1);
     const die = rollDie(state.rnd), heal = Math.min(p.injuries, die === "skull" ? 2 : 1);
+    spendDice(state, p, 1, die);
     p.injuries -= heal; p.actionDice = START_ACTION_DICE - p.injuries; p.defensePool += heal; // recovered dice usable this turn
     log(state, `${p.name} 治疗：掷${die === "skull" ? "骷髅(+2)" : die}，恢复 ${heal} 点伤`);
     return true;
@@ -330,7 +360,7 @@
   function doBuildBarrier(state, edge) {
     const p = curP(state);
     if (!canBuild(state, p) || p.barriersUsed >= SETUP_WALLS || !emptyEdges(state, p).includes(edge)) return false;
-    spendDice(state, p, 1);
+    spendDice(state, p, 1, 1);
     state.board[hexKey(p.pos.q, p.pos.r)].walls[edge] = p.idx; p.barriersUsed++;
     log(state, `${p.name} 建造屏障`); return true;
   }
@@ -340,20 +370,31 @@
     if (cell.walls[edge] == null) return false;
     const owner = cell.walls[edge]; delete cell.walls[edge];
     if (typeof owner === "number" && state.players[owner]) state.players[owner].barriersUsed = Math.max(0, state.players[owner].barriersUsed - 1);
-    spendDice(state, p, 1); log(state, `${p.name} 拆除屏障`); return true;
+    spendDice(state, p, 1, 1); log(state, `${p.name} 拆除屏障`); return true;
   }
   function doBuildHideout(state) {
     const p = curP(state); if (!canBuild(state, p)) return false;
-    if (p.hideout && state.board[p.hideout]) state.board[p.hideout].hideouts = state.board[p.hideout].hideouts.filter(h => h !== p.idx);
     const k = hexKey(p.pos.q, p.pos.r);
-    spendDice(state, p, 1); state.board[k].hideouts.push(p.idx); p.hideout = k;
+    if (state.board[k].hideouts.length) return false;
+    if (p.hideout && state.board[p.hideout]) state.board[p.hideout].hideouts = state.board[p.hideout].hideouts.filter(h => h !== p.idx);
+    spendDice(state, p, 1, 1); state.board[k].hideouts.push(p.idx); p.hideout = k;
     log(state, `${p.name} 设置藏身处`); return true;
+  }
+  function doDemolishHideout(state, ownerIdx) {
+    const p = curP(state); if (!canBuild(state, p)) return false;
+    const cell = state.board[hexKey(p.pos.q, p.pos.r)];
+    if (!cell.hideouts.length) return false;
+    const idx = ownerIdx != null ? cell.hideouts.indexOf(ownerIdx) : 0;
+    if (idx < 0) return false;
+    const owner = cell.hideouts.splice(idx, 1)[0];
+    if (state.players[owner]) state.players[owner].hideout = null;
+    spendDice(state, p, 1, 1); log(state, `${p.name} 拆除藏身处`); return true;
   }
   function doBuildTrap(state) {
     const p = curP(state); if (!canBuild(state, p) || p.trapsUsed >= SETUP_TRAPS) return false;
     const cell = state.board[hexKey(p.pos.q, p.pos.r)];
     if (cell.trap != null) return false;
-    spendDice(state, p, 1); cell.trap = p.idx; p.trapsUsed++;
+    spendDice(state, p, 1, 1); cell.trap = p.idx; p.trapsUsed++;
     log(state, `${p.name} 埋设陷阱`); return true;
   }
   function resolveTrap(state, walker, ownerIdx, key) {
@@ -379,18 +420,19 @@
   function endTurn(state) {
     if (state.gameOver) return state;
     const p = curP(state);
-    p.assigned = 0; // (combat-line population handled in combat task)
+    moveAssignedDiceToCombatLine(p);
+    resolveHideoutBenefit(state, p);
     // End phase (Auto-Heal board side, Battle Royale): every OTHER player with >=2
     // injuries heals 1. (TODO: skip those standing in a toxin hex once toxin exists.)
     for (const o of state.players) { if (o !== p && o.injuries >= 2) o.injuries -= 1; }
     // End phase toxin (inert until events add toxin tokens): toxin hex & not safe -> 1 injury
     if (p.pos) {
-      const cell = state.board[hexKey(p.pos.q, p.pos.r)], safe = cell.hideouts.length > 0 || cell.dome;
-      if (cell.toxin && !safe) { log(state, `${p.name} 处于毒气区，受到 1 点伤害`); if (takeInjuries(state, p, 1)) reloadPlayer(state, p, null); }
+      const cell = state.board[hexKey(p.pos.q, p.pos.r)], safe = hasFriendlyHideout(state, p);
+      if ((cell.toxin || cell.toxinIcon) && !safe) { log(state, `${p.name} 处于毒气区，受到 1 点伤害`); if (takeInjuries(state, p, 1)) reloadPlayer(state, p, null); }
     }
     state._turnsTaken++;
     const isLastInRound = state.activePlayer === (state.firstPlayer + state.numPlayers - 1) % state.numPlayers;
-    if (state._turnsTaken > state.numPlayers && !state._eventsDone) { // events start after first full round
+    if (state._turnsTaken >= state.numPlayers && !state._eventsDone) { // events start after first full round
       if (state.decks.event.length > 0) {
         state.decks.event.pop(); state.eventsResolved++;
         if (state.decks.event.length === 0) state._eventsDone = true;
@@ -477,11 +519,32 @@
     return state.players.filter(t => t !== A && t.pos && !t.reloadZone && t.pos.q === A.pos.q && t.pos.r === A.pos.r).map(t => t.idx);
   }
 
-  function takeInjuries(state, p, n) { if (n <= 0) return false; p.injuries = Math.min(INJURY_ZONE, p.injuries + n); return p.injuries >= INJURY_ZONE; }
+  function takeInjuryDieByHierarchy(p) {
+    p.combatLine = sortCombatLine(p.combatLine || []);
+    if (p.combatLine.length) { p.combatLine.pop(); return "combatLine"; }
+    if (p.defensePool > 0) { p.defensePool -= 1; return "defensePool"; }
+    if (p.assignedDice && p.assignedDice.length) { p.assignedDice.pop(); p.assigned = p.assignedDice.length; return "assigned"; }
+    return "none";
+  }
+  function takeInjuries(state, p, n, opts) {
+    if (n <= 0) return false;
+    const useHierarchy = !opts || opts.hierarchy !== false;
+    if (useHierarchy) for (let i = 0; i < n; i++) takeInjuryDieByHierarchy(p);
+    p.injuries = Math.min(INJURY_ZONE, p.injuries + n);
+    syncDiceCounts(p);
+    return p.injuries >= INJURY_ZONE;
+  }
   function applySmallInjuries(line, n) { // mutate line; return # dice reduced below 1 (-> injuries)
     let conv = 0; const idx = line.map((v, i) => i).filter(i => line[i] != null).sort((a, b) => line[a] - line[b]);
     let k = 0;
     while (n > 0 && k < idx.length) { line[idx[k]] -= 1; if (line[idx[k]] < 1) { line[idx[k]] = null; conv++; k++; } n--; }
+    return conv;
+  }
+  function applySmallInjuriesToPlayer(state, p, n) {
+    if (n <= 0 || !p.combatLine.length) return 0;
+    const conv = applySmallInjuries(p.combatLine, n);
+    p.combatLine = sortCombatLine(p.combatLine);
+    if (conv) takeInjuries(state, p, conv, { hierarchy: false });
     return conv;
   }
   function reloadPlayer(state, p, attacker) {
@@ -494,7 +557,8 @@
     p.equipped = { head: null, torso: null, hand: [] }; p.backpack = [];
     const a = state.decks.equip2.pop(), b = state.decks.equip2.pop();
     if (a) p.backpack.push(a); if (b) state.decks.discard2.push(b);
-    p.injuries = 0; p.pos = null; p.reloadZone = true; p.combatLine = [];
+    p.injuries = 0; p.actionDice = START_ACTION_DICE; p.defensePool = 0; p.assigned = 0; p.assignedDice = [];
+    p.pos = null; p.reloadZone = true; p.combatLine = [];
     log(state, `💥 ${p.name} 被迫 RELOAD！丢弃装备，回到跳伞区`);
     if (attacker) { gainFame(state, attacker, "reload", 1); log(state, `${attacker.name} +1 RELOAD 名望`); }
   }
@@ -503,28 +567,28 @@
     const A = curP(state), T = state.players[targetIdx];
     if (!rangedTargets(state, A).includes(targetIdx)) return false;
     const w = equippedRanged(A); assignValue = assignValue || 3;
-    spendDice(state, A, 1);
+    spendDice(state, A, 1, assignValue);
     const shooterDice = rollDice(state.rnd, w.dice || 2);
     const sh = splitRoll(shooterDice), def = splitRoll(rollDice(state.rnd, ownedDice(T)));
     const aArm = armorOf(A), tArm = armorOf(T);
     const aSk = Math.max(0, sh.skulls - tArm.skullReduce), tSk = Math.max(0, def.skulls - aArm.skullReduce);
     let dealt = 0, reload = false;
-    if (aSk > tSk) { dealt += aSk - tSk; reload = takeInjuries(state, T, aSk - tSk); }
+    if (aSk > tSk) { dealt += aSk - tSk; reload = takeInjuries(state, T, aSk - tSk, { hierarchy: false }); }
     else if (tSk > aSk) sh.line.splice(Math.max(0, sh.line.length - (tSk - aSk)), tSk - aSk);
     if (!reload) {
       let smalls = 0;
       const n = Math.max(sh.line.length, def.line.length);
       for (let i = 0; i < n && !reload; i++) {
         const s = sh.line[i], d = def.line[i];
-        if (s != null && d != null) { if (s > d) { def.line[i] = null; dealt++; reload = takeInjuries(state, T, 1); } }
+        if (s != null && d != null) { if (s > d) { def.line[i] = null; dealt++; reload = takeInjuries(state, T, 1, { hierarchy: false }); } }
         else if (s != null && d == null) smalls++;
       }
-      if (!reload) { const conv = applySmallInjuries(def.line, Math.max(0, smalls - tArm.smallInjuryReduce)); if (conv) { dealt += conv; reload = takeInjuries(state, T, conv); } }
+      if (!reload) { const conv = applySmallInjuries(def.line, Math.max(0, smalls - tArm.smallInjuryReduce)); if (conv) { dealt += conv; reload = takeInjuries(state, T, conv, { hierarchy: false }); } }
       if (!reload && w.bonus) {
         const m = shooterDice.filter(d => d === assignValue).length;
         if (m > 0) {
-          if (w.bonus.type === "injury") { dealt += m * w.bonus.amount; reload = takeInjuries(state, T, m * w.bonus.amount); }
-          else { const c = applySmallInjuries(def.line, m * w.bonus.amount); if (c) { dealt += c; reload = takeInjuries(state, T, c); } }
+          if (w.bonus.type === "injury") { dealt += m * w.bonus.amount; reload = takeInjuries(state, T, m * w.bonus.amount, { hierarchy: false }); }
+          else { const c = applySmallInjuries(def.line, m * w.bonus.amount); if (c) { dealt += c; reload = takeInjuries(state, T, c, { hierarchy: false }); } }
         }
       }
     }
@@ -538,25 +602,25 @@
   function doClose(state, targetIdx) {
     const A = curP(state), T = state.players[targetIdx];
     if (!closeTargets(state, A).includes(targetIdx)) return false;
-    spendDice(state, A, 1);
+    spendDice(state, A, 1, 1);
     const aR = splitRoll(rollDice(state.rnd, ownedDice(A))), tR = splitRoll(rollDice(state.rnd, ownedDice(T)));
     const aArm = armorOf(A), tArm = armorOf(T);
     const aSk = Math.max(0, aR.skulls - tArm.skullReduce), tSk = Math.max(0, tR.skulls - aArm.skullReduce);
     let aDealt = 0, tDealt = 0, aReload = false, tReload = false;
-    if (aSk > tSk) { aDealt += aSk - tSk; tReload = takeInjuries(state, T, aSk - tSk); }
-    else if (tSk > aSk) { tDealt += tSk - aSk; aReload = takeInjuries(state, A, tSk - aSk); }
+    if (aSk > tSk) { aDealt += aSk - tSk; tReload = takeInjuries(state, T, aSk - tSk, { hierarchy: false }); }
+    else if (tSk > aSk) { tDealt += tSk - aSk; aReload = takeInjuries(state, A, tSk - aSk, { hierarchy: false }); }
     let aSmall = 0, tSmall = 0;
     const n = Math.max(aR.line.length, tR.line.length);
     for (let i = 0; i < n; i++) {
       const a = aR.line[i], t = tR.line[i];
       if (a != null && t != null) {
-        if (a > t) { tR.line[i] = null; aDealt++; if (takeInjuries(state, T, 1)) tReload = true; }
-        else if (t > a) { aR.line[i] = null; tDealt++; if (takeInjuries(state, A, 1)) aReload = true; }
+        if (a > t) { tR.line[i] = null; aDealt++; if (takeInjuries(state, T, 1, { hierarchy: false })) tReload = true; }
+        else if (t > a) { aR.line[i] = null; tDealt++; if (takeInjuries(state, A, 1, { hierarchy: false })) aReload = true; }
       } else if (a != null && t == null) tSmall++;       // unopposed: player WITHOUT a die takes small injury
       else if (t != null && a == null) aSmall++;
     }
-    const tc = applySmallInjuries(tR.line, Math.max(0, tSmall - tArm.smallInjuryReduce)); if (tc) { aDealt += tc; if (takeInjuries(state, T, tc)) tReload = true; }
-    const ac = applySmallInjuries(aR.line, Math.max(0, aSmall - aArm.smallInjuryReduce)); if (ac) { tDealt += ac; if (takeInjuries(state, A, ac)) aReload = true; }
+    const tc = applySmallInjuries(tR.line, Math.max(0, tSmall - tArm.smallInjuryReduce)); if (tc) { aDealt += tc; if (takeInjuries(state, T, tc, { hierarchy: false })) tReload = true; }
+    const ac = applySmallInjuries(aR.line, Math.max(0, aSmall - aArm.smallInjuryReduce)); if (ac) { tDealt += ac; if (takeInjuries(state, A, ac, { hierarchy: false })) aReload = true; }
     if (tReload) reloadPlayer(state, T, A); else if (aDealt > 0) { gainFame(state, A, "injury", 1); }
     if (aReload) reloadPlayer(state, A, T); else if (tDealt > 0) { gainFame(state, T, "injury", 1); }
     log(state, `🗡 近战 ${A.name} vs ${T.name}：造成 ${aDealt} / 受到 ${tDealt}`);
@@ -572,9 +636,11 @@
     legalRuns, doRun, lootOptions, doLoot, endTurn, beginTurn, towerKey,
     canUpload, doActivate, bfsStep,
     // build/heal API
-    canHeal, doHeal, canBuild, emptyEdges, doBuildBarrier, doDemolish, doBuildHideout, doBuildTrap,
+    canHeal, doHeal, canBuild, emptyEdges, doBuildBarrier, doDemolish, doBuildHideout, doDemolishHideout, doBuildTrap,
     // combat API
     INJURY_ZONE, ownedDice, autoEquip, equippedRanged, armorOf, hasLOS,
+    moveAssignedDiceToCombatLine, resolveHideoutBenefit, hasFriendlyHideout,
+    takeInjuries, applySmallInjuries, applySmallInjuriesToPlayer,
     rangedTargets, closeTargets, doRanged, doClose, reloadPlayer,
   };
   if (typeof module !== "undefined" && module.exports) module.exports = ENGINE;

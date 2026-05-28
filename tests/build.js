@@ -56,5 +56,13 @@ g.players[1].pos = { q: 0, r: -1 };
 A(E.doBuildHideout(g), "build hideout");
 A(hp.hideout === E.hexKey(1, 0) && g.board[E.hexKey(1, 0)].hideouts.includes(hp.idx), "hideout recorded on hex + player");
 
+// ---- Hideout occupancy and demolition ----
+g = E.newGame({ numPlayers: 2, seed: 12, allAI: true });
+const bp = E.curP(g); bp.pos = { q: 1, r: 0 }; g.needsParachute = false; g.phase = "action"; bp.defensePool = 3;
+g.board[E.hexKey(1, 0)].hideouts.push(1); g.players[1].hideout = E.hexKey(1, 0);
+A(!E.doBuildHideout(g), "cannot build hideout on a hex that already has one");
+A(E.doDemolishHideout(g, 1), "demolish hideout on current hex");
+A(!g.board[E.hexKey(1, 0)].hideouts.length && g.players[1].hideout === null, "demolished hideout is removed from board and owner");
+
 console.log(fails ? `BUILD TEST FAILED (${fails})` : "BUILD TEST PASSED");
 process.exitCode = fails ? 1 : 0;

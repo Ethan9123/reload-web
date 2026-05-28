@@ -66,5 +66,20 @@ A(g.players[0].defensePool === 0 && g.players[0]._closeEndedTurn, "close combat 
 g = scenario(4, "bow_arrow", { q: 2, r: 0 }, { q: 1, r: 0 }); // bow range [0,0]; dist 1 illegal
 A(!E.rangedTargets(g, g.players[0]).includes(1), "out-of-range target rejected (bow range 0, dist 1)");
 
+// 7) after RELOAD, parachuting back onto the map makes the player targetable again
+g = scenario(5, "combat_shotgun", { q: 1, r: 0 }, { q: 0, r: 0 });
+const reloadedTarget = g.players[1];
+E.reloadPlayer(g, reloadedTarget, g.players[0]);
+g.activePlayer = 1;
+E.beginTurn(g);
+A(g.needsParachute && reloadedTarget.reloadZone, "reloaded player starts next turn in parachute/reload zone");
+E.parachute(g, E.legalParachute(g)[0]);
+A(!reloadedTarget.reloadZone && !!reloadedTarget.pos, "parachuting clears reload zone status");
+g.activePlayer = 0;
+g.phase = "action";
+g.players[0].defensePool = 5;
+g.players[0].pos = { q: reloadedTarget.pos.q, r: reloadedTarget.pos.r };
+A(E.closeTargets(g, g.players[0]).includes(1), "returned player can be targeted after parachuting");
+
 console.log(fails ? `COMBAT TEST FAILED (${fails})` : "COMBAT TEST PASSED");
 process.exitCode = fails ? 1 : 0;
