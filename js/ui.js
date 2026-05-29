@@ -295,17 +295,19 @@
   // ---- character board overlay (real character card + dice + equipment cards) ----
   const STAR_COLOR = { 1: "#3aa84b", 2: "#3b82c4", 3: "#b06bd6" };
   const SLOT_CN = { head: "头部", torso: "躯干", hand: "手持", special: "道具" };
-  function equipCardHTML(e) {
+  function equipCardHTML(e, action) {
     if (!e) return "";
     const sc = STAR_COLOR[e.star] || "#888";
     let stats = "";
-    if (e.combat === "ranged") stats = `远程 · 射程${e.range[0]}-${e.range[1]} · ${e.dice}白骰` + (e.bonus ? ` · 命中bonus:${e.bonus.amount}${e.bonus.type === "injury" ? "伤" : "轻伤"}` : "");
-    else if (e.combat === "close") stats = "近战";
+    if (e.combat === "ranged") stats = `远程 · 射程${e.range[0]}-${e.range[1]} · ${e.dice}白骰` + (e.hands === 2 ? " · 双手" : "") + (e.bonus ? ` · 命中bonus:${e.bonus.amount}${e.bonus.type === "injury" ? "伤" : "轻伤"}` : "");
+    else if (e.combat === "close") stats = "近战" + (e.hands === 2 ? " · 双手" : "");
     else if (e.armor) stats = "护甲" + (e.armor.skullReduce ? ` 骷髅-${e.armor.skullReduce}` : "") + (e.armor.smallInjuryReduce ? ` 轻伤-${e.armor.smallInjuryReduce}` : "");
-    return `<div class="ecard" style="border-top-color:${sc}">
+    const clk = action ? ` ecard-clk" data-eq="${e.id}" data-act="${action}` : "";
+    const tag = action === "equip" ? `<span class="ecard-act eq">＋装备</span>` : action === "unequip" ? `<span class="ecard-act un">－卸下</span>` : "";
+    return `<div class="ecard${clk}" style="border-top-color:${sc}">
       <div class="ecard-h"><span class="ecard-name">${e.name}</span><span class="ecard-star" style="color:${sc}">${"★".repeat(e.star)}</span></div>
       <div class="ecard-meta">${SLOT_CN[e.slot] || e.slot}${stats ? " · " + stats : ""}</div>
-      <div class="ecard-eff">${e.effect || ""}</div></div>`;
+      <div class="ecard-eff">${e.effect || ""}</div>${tag}</div>`;
   }
   function dieSpan(v, cls) { return `<span class="die ${cls}">${v == null ? "" : v}</span>`; }
   function diceRowsHTML(p) {
@@ -343,11 +345,12 @@
     const p = G.players[idx], ch = CHAR[p.character];
     let ov = $("char-overlay");
     if (!ov) { ov = document.createElement("div"); ov.id = "char-overlay"; ov.addEventListener("click", (e) => { if (e.target === ov) closeCharBoard(); }); document.body.appendChild(ov); }
+    const editable = p.human && E.curP(G) === p && !G.gameOver && E.canEquip(G, p);   // adjust equipment before assigning any die
     const equippedIds = [p.equipped.head, p.equipped.torso, ...(p.equipped.hand || [])].filter(Boolean);
-    const eqHTML = equippedIds.map(id => equipCardHTML(EQ[id])).join("") || '<span class="muted">无</span>';
+    const eqHTML = equippedIds.map(id => equipCardHTML(EQ[id], editable ? "unequip" : null)).join("") || '<span class="muted">无</span>';
     const packLeft = (p.backpack || []).slice();                 // backpack minus currently-equipped instances
     for (const id of equippedIds) { const i = packLeft.indexOf(id); if (i >= 0) packLeft.splice(i, 1); }
-    const packHTML = packLeft.map(id => equipCardHTML(EQ[id])).join("") || '<span class="muted">空</span>';
+    const packHTML = packLeft.map(id => equipCardHTML(EQ[id], (editable && EQ[id] && EQ[id].slot !== "special") ? "equip" : null)).join("") || '<span class="muted">空</span>';
     const f = p.fame;
     ov.innerHTML = `<div class="cb-panel" style="border-color:${p.color}">
       <button class="cb-close" title="关闭">✕</button>
@@ -361,11 +364,16 @@
           ${diceRowsHTML(p)}
         </div>
       </div>
-      <div class="cb-sec"><h3>已装备（${SLOT_CN.head}1 / ${SLOT_CN.torso}1 / ${SLOT_CN.hand}2）</h3><div class="ecards">${eqHTML}</div></div>
+      <div class="cb-sec"><h3>已装备（${SLOT_CN.head}1 / ${SLOT_CN.torso}1 / ${SLOT_CN.hand}2）${editable ? '<span class="cb-equiphint">分配骰子前可点击调整</span>' : ""}</h3><div class="ecards">${eqHTML}</div></div>
       ${specialUseHTML(p)}
       <div class="cb-sec"><h3>背包（${p.backpack.length}）</h3><div class="ecards">${packHTML}</div></div>
     </div>`;
     ov.querySelector(".cb-close").addEventListener("click", closeCharBoard);
+    ov.querySelectorAll("[data-eq]").forEach(el => el.addEventListener("click", () => {
+      if (aiRunning || G.gameOver || !E.isHumanTurn(G) || E.curP(G) !== p) return;
+      const id = el.dataset.eq, ok = el.dataset.act === "equip" ? E.equipItem(G, p, id) : E.unequipItem(G, p, id);
+      if (ok) { render(); openCharBoard(idx); }   // refresh weapons/armor + panel
+    }));
     ov.querySelectorAll(".cb-use").forEach(btn => btn.addEventListener("click", async () => {
       if (aiRunning || G.gameOver || !E.isHumanTurn(G) || E.curP(G) !== p) return;
       const itemId = btn.dataset.item;

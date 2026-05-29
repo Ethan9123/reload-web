@@ -154,6 +154,22 @@ A(!E.useSpecialItem(g10c, "tactical_explosive", { key: farKey, kind: "trap" }),
 A(g10c.board[farKey].trap === 1 && p10c.backpack.includes("tactical_explosive"),
   "out-of-range explosive did not destroy the trap nor consume the item");
 
+// 10d) Manual equip: choose at turn start, locked once an action die is assigned (rules 04:00)
+const geq = E.newGame({ numPlayers: 2, seed: 21, allAI: true });
+const peq = geq.players[0]; geq.activePlayer = 0; geq.phase = "action";
+peq.assigned = 0; peq.combatLine = []; peq._closeEndedTurn = false;
+peq.backpack = ["light_helmet", "survival_knife", "combat_shotgun", "bow_arrow"];
+peq.equipped = { head: null, torso: null, hand: [] };
+A(E.canEquip(geq, peq), "can equip at turn start (no die assigned)");
+A(E.equipItem(geq, peq, "light_helmet") && peq.equipped.head === "light_helmet", "equip a head item from the backpack");
+A(E.equipItem(geq, peq, "combat_shotgun") && peq.equipped.hand.includes("combat_shotgun"), "equip a two-handed weapon");
+A(!E.equipItem(geq, peq, "survival_knife"), "two-handed weapon fills both hands — second hand item rejected");
+A(E.unequipItem(geq, peq, "combat_shotgun") && peq.equipped.hand.length === 0, "unequip frees the hand slots");
+A(E.equipItem(geq, peq, "bow_arrow") && E.equipItem(geq, peq, "survival_knife") && peq.equipped.hand.length === 2, "two single-hand weapons fit");
+peq.assigned = 1;  // a die has now been assigned this turn
+A(!E.canEquip(geq, peq), "equipment locks once an action die is assigned");
+A(!E.equipItem(geq, peq, "light_helmet"), "equip rejected after a die is assigned");
+
 // 11) regression — all-AI games with the new combat/parachute rules still complete
 let crashed = 0;
 for (let s = 0; s < 25; s++) {
