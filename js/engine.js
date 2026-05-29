@@ -455,9 +455,13 @@
     const rps = (d) => d <= 2 ? 0 : d <= 4 ? 1 : 2;     // d6: rock(1-2)/paper(3-4)/scissor(5-6)
     const wins = (a, b) => (a + 2) % 3 === b;            // a beats b: rock>scissor, paper>rock, scissor>paper
     const w = rps(Math.floor(state.rnd() * 6) + 1), t = rps(Math.floor(state.rnd() * 6) + 1);
-    if (w === t) { gainFame(state, owner, "trap", 1); walker._noMove = true; log(state, `陷阱：${walker.name} 与 ${owner.name} 的陷阱平手（${owner.name} +1陷阱名望，停止移动）`); }
-    else if (wins(w, t)) { gainFame(state, walker, "trap", 1); log(state, `陷阱：${walker.name} 闪过 ${owner.name} 的陷阱（+1陷阱名望）`); }
-    else { gainFame(state, owner, "trap", 1); const rl = takeInjuries(state, walker, 1); if (rl) reloadPlayer(state, walker, owner); else gainFame(state, owner, "injury", 1); log(state, `陷阱：${walker.name} 踩中 ${owner.name} 的陷阱受伤`); }
+    let outcome;
+    if (w === t) { outcome = "tie"; gainFame(state, owner, "trap", 1); walker._noMove = true; log(state, `陷阱：${walker.name} 与 ${owner.name} 的陷阱平手（${owner.name} +1陷阱名望，停止移动）`); }
+    else if (wins(w, t)) { outcome = "dodge"; gainFame(state, walker, "trap", 1); log(state, `陷阱：${walker.name} 闪过 ${owner.name} 的陷阱（+1陷阱名望）`); }
+    else { outcome = "hit"; gainFame(state, owner, "trap", 1); const rl = takeInjuries(state, walker, 1); if (rl) reloadPlayer(state, walker, owner); else gainFame(state, owner, "injury", 1); log(state, `陷阱：${walker.name} 踩中 ${owner.name} 的陷阱受伤`); }
+    // expose the RPS reveal for the UI mine close-up (w/t: 0=rock,1=paper,2=scissor)
+    state.lastTrap = { walker: walker.idx, owner: ownerIdx, w, t, outcome, key };
+    state._trapSeq = (state._trapSeq || 0) + 1;
   }
 
   // ---- Special (free-action) items: Pain Killer / Energy Drink / Tactical Explosive (rules ~03:30) ----

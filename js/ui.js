@@ -99,8 +99,12 @@
       const cs = corners(x, y);
       for (const e in c.walls) {
         const o = c.walls[e], p1 = cs[+e], p2 = cs[(+e + 1) % 6];
+        // translucent light-blue glow band so it's obvious a barrier sits on this edge
         svg.appendChild(svgEl("line", { x1: p1[0], y1: p1[1], x2: p2[0], y2: p2[1],
-          stroke: o === "n" ? "#9aa0ac" : (G.players[o] ? G.players[o].color : "#9aa0ac"), "stroke-width": 5, "stroke-linecap": "round" }));
+          stroke: "#7fd0ff", "stroke-width": 12, "stroke-linecap": "round", opacity: 0.35, "pointer-events": "none" }));
+        // solid core keeps the owner color (neutral gray / player color)
+        svg.appendChild(svgEl("line", { x1: p1[0], y1: p1[1], x2: p2[0], y2: p2[1],
+          stroke: o === "n" ? "#cfd6e0" : (G.players[o] ? G.players[o].color : "#cfd6e0"), "stroke-width": 5, "stroke-linecap": "round", "pointer-events": "none" }));
       }
       if (c.trap != null) svg.appendChild(Object.assign(svgEl("text", { x: x - 18, y: y + 20, "font-size": "14", fill: "#e3424b" }), { textContent: "⚠" }));
       c.hideouts.forEach((ownerIdx, hi) => { const op = G.players[ownerIdx], art = op && D.HIDEOUT_ART[op.character]; if (art) svg.appendChild(svgImg(art, x + 2 + hi * 5, y - 4, 22, 22)); });
@@ -141,7 +145,7 @@
       const portrait = ch && ch.mini ? `<img class="pportrait" src="${ch.mini}" alt="${p.name}" onerror="this.style.display='none'">` : "";
       d.innerHTML = `<div class="prow">${portrait}<div class="pinfo">` +
         `<div class="pname">${p.name}${p.human ? " (你)" : ""}${p.idx === G.activePlayer ? " ◀" : ""}</div>` +
-        `<div class="pstat">名望 ${E.totalFame(p)} · 伤害 ${p.injuries} · 防御区 ${p.defensePool}/${p.actionDice}${assigned}${combat} · 背包 ${p.backpack.length}` +
+        `<div class="pstat">名望 ${E.totalFame(p)} · 伤害 ${p.injuries} · 防御区 ${p.defensePool}/${p.actionDice}${p.boostDice ? ` <span style="color:#5fd06f">+${p.boostDice}⚡</span>` : ""}${assigned}${combat} · 背包 ${p.backpack.length}` +
         (p.carryingBeacons ? ` · 携带信标 ${p.carryingBeacons}` : "") +
         ` · ${p.pos ? "在场" : "待跳伞"}</div></div></div>`;
       d.style.cursor = "pointer";
@@ -185,12 +189,20 @@
     if (enemies.length) {
       const tgt = enemies[0].idx;
       if (E.closeTargets(G, p).includes(tgt)) { E.doClose(G, tgt); render(); await animateCombat(G.lastCombat); await endTurn(); return; } // close ends turn
-      if (E.rangedTargets(G, p).includes(tgt)) { E.doRanged(G, tgt, 3); render(); await animateCombat(G.lastCombat); return; }
+      if (E.rangedTargets(G, p).includes(tgt)) {
+        const aKey = E.hexKey(p.pos.q, p.pos.r), tKey = key;     // capture hexes before resolution (target may RELOAD)
+        E.doRanged(G, tgt, 3); render(); await vfxGunshot(aKey, tKey); await animateCombat(G.lastCombat); return;
+      }
     }
     const curKey = E.hexKey(p.pos.q, p.pos.r);
     if (key === curKey && E.canUpload(G, p)) { E.doActivate(G); render(); placeDieAnim(curKey); return; } // upload beacons at tower
     if (key === curKey && E.lootOptions(G, p).length) { E.doLoot(G, 0); render(); placeDieAnim(curKey); return; }
-    if (E.legalRuns(G, p).includes(key)) { E.doRun(G, key); render(); placeDieAnim(key); return; }
+    if (E.legalRuns(G, p).includes(key)) {
+      const seq = G._trapSeq || 0;
+      E.doRun(G, key); render(); placeDieAnim(key);
+      if ((G._trapSeq || 0) > seq && G.lastTrap && (G.players[G.lastTrap.walker].human || G.players[G.lastTrap.owner].human)) await animateTrap(G.lastTrap);
+      return;
+    }
   }
 
   async function runAI() {
@@ -198,8 +210,10 @@
     aiRunning = true;
     while (!G.gameOver && !E.curP(G).human) {
       if (G.needsParachute || E.curP(G).pos == null) { /* let AI handle in takeTurn */ }
+      const seq = G._trapSeq || 0;
       RL.ai.takeTurn(G);
       render();
+      if ((G._trapSeq || 0) > seq && G.lastTrap && G.players[G.lastTrap.owner].human) await animateTrap(G.lastTrap); // your mine triggered
       await sleep(450);
     }
     aiRunning = false;
@@ -254,11 +268,15 @@
   }
   function dieSpan(v, cls) { return `<span class="die ${cls}">${v == null ? "" : v}</span>`; }
   function diceRowsHTML(p) {
-    const def = Array.from({ length: p.defensePool }, () => dieSpan("", "def")).join("");
+    const boost = p.boostDice || 0, real = Math.max(0, p.defensePool - boost);
+    // black/white action dice + (Energy Drink) GREEN boost dice the player may freely allocate to non-combat actions
+    const def = Array.from({ length: real }, () => dieSpan("", "def")).join("") +
+                Array.from({ length: boost }, () => dieSpan("⚡", "boost")).join("");
     const line = (p.combatLine || []).map(v => dieSpan(v, "line")).join("");
     const inj = Array.from({ length: p.injuries }, () => dieSpan("✕", "inj")).join("");
     const row = (label, html) => `<div class="cb-dice"><span class="cb-dl">${label}</span>${html || '<i class="muted">—</i>'}</div>`;
-    return row(`防御区(${p.defensePool})`, def) + row(`战斗列`, line) + row(`伤害区(${p.injuries}/${E.INJURY_ZONE})`, inj);
+    const defLabel = boost ? `防御区(${real}+${boost}⚡)` : `防御区(${p.defensePool})`;
+    return row(defLabel, def) + row(`战斗列`, line) + row(`伤害区(${p.injuries}/${E.INJURY_ZONE})`, inj);
   }
   const SP_ICON = { pain_killer: "💊", energy_drink: "🥤", tactical_explosive: "💣" };
   // Free-action special items usable right now (only on the active human's own board, to match engine's curP).
@@ -306,12 +324,15 @@
       <div class="cb-sec"><h3>背包（${p.backpack.length}）</h3><div class="ecards">${packHTML}</div></div>
     </div>`;
     ov.querySelector(".cb-close").addEventListener("click", closeCharBoard);
-    ov.querySelectorAll(".cb-use").forEach(btn => btn.addEventListener("click", () => {
+    ov.querySelectorAll(".cb-use").forEach(btn => btn.addEventListener("click", async () => {
       if (aiRunning || G.gameOver || !E.isHumanTurn(G) || E.curP(G) !== p) return;
       const itemId = btn.dataset.item;
       let target = null;
       if (itemId === "tactical_explosive") target = E.explosiveTargets(G, p)[+btn.dataset.ti];
-      if (E.useSpecialItem(G, itemId, target)) { render(); openCharBoard(idx); }   // refresh panel
+      if (!E.useSpecialItem(G, itemId, target)) return;
+      if (itemId === "tactical_explosive" && target) {                 // show the blast on the board
+        closeCharBoard(); render(); await vfxExplosion(target.key); openCharBoard(idx);
+      } else { render(); openCharBoard(idx); }                          // pain killer / energy drink: refresh panel in place
     }));
     ov.style.display = "flex";
   }
@@ -419,6 +440,84 @@
       g.setAttribute("opacity", (k < 0.65 ? 1 : 1 - (k - 0.65) / 0.35).toFixed(2));
       if (k < 1) requestAnimationFrame(step); else g.remove();
     })(performance.now());
+  }
+
+  // ---- board VFX: gunshot tracer/sparks + explosions (procedural — no sprite art) ----
+  // VFX append transient SVG nodes to #board; the next render() clears them, and they only run
+  // during awaited animation gaps, so they never collide with a redraw.
+  function pxOf(key) { const c = key && G.board[key]; return c ? hexToPixel(c.q, c.r) : null; }
+  function vfxGroup() { const svg = $("board"); if (!svg) return null; const g = svgEl("g", { "pointer-events": "none" }); svg.appendChild(g); return g; }
+  function animateRAF(dur, step) {
+    return new Promise(res => { const t0 = performance.now();
+      (function loop(t) { const k = Math.min(1, (t - t0) / dur); step(k); if (k < 1) requestAnimationFrame(loop); else res(); })(performance.now());
+    });
+  }
+  function vfxGunshot(fromKey, toKey) {
+    const a = pxOf(fromKey), b = pxOf(toKey), g = vfxGroup(); if (!a || !b || !g) return Promise.resolve();
+    const tracer = svgEl("line", { x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: "#ffd86b", "stroke-width": 3, "stroke-linecap": "round", opacity: 0.95 });
+    const flash = svgEl("circle", { cx: a.x, cy: a.y, r: 7, fill: "#fff3b0" });
+    g.appendChild(tracer); g.appendChild(flash);
+    const sparks = []; const N = 10;
+    for (let i = 0; i < N; i++) { const ang = Math.PI * 2 * i / N + Math.random() * 0.6, len = 11 + Math.random() * 15;
+      const s = svgEl("line", { x1: b.x, y1: b.y, x2: b.x, y2: b.y, stroke: i % 2 ? "#ff8a3c" : "#ffe08a", "stroke-width": 2.5, "stroke-linecap": "round" });
+      g.appendChild(s); sparks.push({ s, dx: Math.cos(ang) * len, dy: Math.sin(ang) * len });
+    }
+    return animateRAF(440, k => {
+      tracer.setAttribute("opacity", (k < 0.25 ? 0.95 : Math.max(0, 0.95 - (k - 0.25) / 0.4)).toFixed(2));
+      flash.setAttribute("r", (7 + k * 5).toFixed(1)); flash.setAttribute("opacity", (1 - k).toFixed(2));
+      sparks.forEach(o => { o.s.setAttribute("x1", (b.x + o.dx * k * 0.55).toFixed(1)); o.s.setAttribute("y1", (b.y + o.dy * k * 0.55).toFixed(1));
+        o.s.setAttribute("x2", (b.x + o.dx * k).toFixed(1)); o.s.setAttribute("y2", (b.y + o.dy * k).toFixed(1)); o.s.setAttribute("opacity", (1 - k).toFixed(2)); });
+    }).then(() => g.remove());
+  }
+  function vfxExplosion(key) {
+    const c = pxOf(key), g = vfxGroup(); if (!c || !g) return Promise.resolve();
+    const ring = svgEl("circle", { cx: c.x, cy: c.y, r: 4, fill: "none", stroke: "#ff7a2c", "stroke-width": 4 });
+    const core = svgEl("circle", { cx: c.x, cy: c.y, r: 6, fill: "#ffe07a" });
+    g.appendChild(ring); g.appendChild(core);
+    const deb = []; const N = 13;
+    for (let i = 0; i < N; i++) { const ang = Math.PI * 2 * i / N + Math.random() * 0.5, len = 24 + Math.random() * 18;
+      const d = svgEl("circle", { cx: c.x, cy: c.y, r: 2.5 + Math.random() * 2, fill: i % 3 ? "#ff7a2c" : "#ffd05a" });
+      g.appendChild(d); deb.push({ d, dx: Math.cos(ang) * len, dy: Math.sin(ang) * len });
+    }
+    return animateRAF(680, k => {
+      ring.setAttribute("r", (4 + k * 46).toFixed(1)); ring.setAttribute("opacity", (1 - k).toFixed(2)); ring.setAttribute("stroke-width", (4 * (1 - k) + 1).toFixed(1));
+      core.setAttribute("r", (6 + (k < 0.3 ? k * 30 : (1 - k) * 12)).toFixed(1)); core.setAttribute("opacity", (1 - k).toFixed(2));
+      const e = 1 - (1 - k) * (1 - k);
+      deb.forEach(o => { o.d.setAttribute("cx", (c.x + o.dx * e).toFixed(1)); o.d.setAttribute("cy", (c.y + o.dy * e + k * k * 10).toFixed(1)); o.d.setAttribute("opacity", (1 - k).toFixed(2)); });
+    }).then(() => g.remove());
+  }
+
+  // ---- mine/trap reveal close-up: the enemy mine flips ?→symbol, the walker's RPS choice shows, then the verdict ----
+  const RPS_SYM = ["✊", "✋", "✌"], RPS_CN = ["石头", "布", "剪刀"];   // 0 rock / 1 paper / 2 scissor
+  async function animateTrap(rep) {
+    if (!rep) return;
+    const walker = G.players[rep.walker], owner = G.players[rep.owner];
+    let ov = $("trap-overlay");
+    if (!ov) { ov = document.createElement("div"); ov.id = "trap-overlay"; document.body.appendChild(ov); }
+    ov.innerHTML = `<div class="tz-panel">
+      <div class="tz-title">💣 ${walker.name} 踩上了 ${owner.name} 的地雷…</div>
+      <div class="tz-body">
+        <div class="tz-side"><div class="tz-who" style="color:${owner.color}">${owner.name} 的地雷</div><div class="tz-sym" id="tzMine">？</div></div>
+        <div class="tz-vs">VS</div>
+        <div class="tz-side"><div class="tz-who" style="color:${walker.color}">${walker.name} 的应对</div><div class="tz-sym" id="tzWalk">？</div></div>
+      </div>
+      <div class="tz-result" id="tzRes"></div></div>`;
+    ov.style.display = "flex";
+    const mine = ov.querySelector("#tzMine"), walk = ov.querySelector("#tzWalk"), res = ov.querySelector("#tzRes");
+    mine.classList.add("shake");                                   // tension: the unknown mine rattles
+    await sleep(750);
+    walk.textContent = RPS_SYM[rep.w]; walk.classList.add("pop");  // walker reveals their choice
+    await sleep(560);
+    mine.classList.remove("shake"); mine.classList.add("flip");    // the mine flips from ? to its symbol
+    await sleep(170); mine.textContent = RPS_SYM[rep.t]; mine.classList.add("pop");
+    await sleep(680);
+    res.className = "tz-result " + (rep.outcome === "hit" ? "bad" : rep.outcome === "dodge" ? "good" : "");
+    res.textContent = rep.outcome === "tie" ? `平手！${owner.name} +1 陷阱名望，${walker.name} 停止移动`
+      : rep.outcome === "dodge" ? `${walker.name} 闪过地雷！+1 陷阱名望`
+      : `💥 ${walker.name} 踩中地雷！受到 1 点伤`;
+    await sleep(rep.outcome === "hit" ? 420 : 950);
+    ov.style.display = "none";
+    if (rep.outcome === "hit") await vfxExplosion(rep.key);        // detonate on the board
   }
 
   // ---- hover tooltips (semi-transparent floating help) ----

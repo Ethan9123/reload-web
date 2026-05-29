@@ -77,6 +77,7 @@ button.small { padding: 4px 10px; font-size: 13px; cursor: pointer; }
 .die.def { background: #3a4150; color: #cdd2db; }
 .die.line { background: #e8eef6; color: #11141a; }
 .die.inj { background: #7a2230; color: #ffb3bd; }
+.die.boost { background: #3aa84b; color: #eafff0; box-shadow: inset 0 0 0 1px #2c7d39, 0 0 6px rgba(58,168,75,0.5); }
 .cb-sec { margin-top: 14px; }
 .cb-sec h3 { margin: 0 0 8px; font-size: 14px; color: #cdd2db; }
 .cb-uses { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -115,6 +116,28 @@ button.small { padding: 4px 10px; font-size: 13px; cursor: pointer; }
 .dz-result { margin-top: 14px; font-weight: 700; min-height: 20px; }
 .dz-result.hit { color: #7CFC7C; }
 .dz-result.big { color: #ff6b6b; font-size: 18px; }
+
+/* ---- mine / trap reveal close-up ---- */
+#trap-overlay { display: none; position: fixed; inset: 0; z-index: 65; align-items: center; justify-content: center;
+  background: radial-gradient(ellipse at center, rgba(40,16,8,0.6), rgba(8,10,14,0.86)); }
+.tz-panel { background: #1a1410; border: 2px solid #6b3a1e; border-radius: 16px; padding: 22px 30px; min-width: 360px;
+  text-align: center; box-shadow: 0 18px 60px rgba(0,0,0,0.6), 0 0 40px rgba(255,120,44,0.15); }
+.tz-title { font-weight: 700; color: #ffcf99; margin-bottom: 18px; font-size: 15px; }
+.tz-body { display: flex; align-items: center; justify-content: center; gap: 26px; }
+.tz-side { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.tz-who { font-size: 12px; font-weight: 700; }
+.tz-sym { width: 92px; height: 92px; border-radius: 14px; background: #11141a; border: 2px solid #3a4150;
+  display: flex; align-items: center; justify-content: center; font-size: 50px; }
+.tz-vs { color: #c98a5a; font-weight: 800; font-size: 18px; }
+.tz-sym.shake { animation: tz-shake 0.12s infinite; border-color: #e3424b; box-shadow: 0 0 16px rgba(227,66,75,0.5); }
+.tz-sym.flip { animation: tz-flip 0.34s ease; }
+.tz-sym.pop { animation: tz-pop 0.3s ease; border-color: #f4d03f; }
+@keyframes tz-shake { 0% { transform: translate(-2px,1px) rotate(-3deg); } 50% { transform: translate(2px,-1px) rotate(3deg); } 100% { transform: translate(-2px,1px) rotate(-3deg); } }
+@keyframes tz-flip { 0% { transform: rotateY(0); } 50% { transform: rotateY(90deg) scale(1.1); } 100% { transform: rotateY(0); } }
+@keyframes tz-pop { 0% { transform: scale(0.6); } 60% { transform: scale(1.18); } 100% { transform: scale(1); } }
+.tz-result { margin-top: 18px; min-height: 22px; font-weight: 800; font-size: 16px; color: #e6e8ec; }
+.tz-result.good { color: #7CFC7C; }
+.tz-result.bad { color: #ff6b6b; font-size: 18px; }
 
 /* ---- hover tooltip (semi-transparent floating help) ---- */
 #tooltip { position: fixed; z-index: 80; display: none; max-width: 290px; pointer-events: none;
