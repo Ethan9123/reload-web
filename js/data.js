@@ -91,10 +91,11 @@
       mini: "assets/characters/Dax_2.png",   card: "assets/characters/Dax_card.png" },
     { id: "blitz", name: "Blitz", color: "#e0c93a",
       // Card: a character-action Run space (die value 3) — an EXTRA Run action only Blitz has.
-      // Our engine has no per-action-space caps (Run is unlimited), so we model the bonus reach as:
-      // Blitz's first Run each turn costs no action die (and can be taken even with 0 dice).
+      // Our engine has no per-action-space caps, so we model the extra Run as bonus REACH (not a free
+      // die): Blitz's first die-paid Run each turn unlocks one extra follow-up hex (a free bonus step).
+      // The Run still costs an action die and can't be taken from 0 dice — it just goes one hex further.
       ability: { id: "fastest_there_is", name: "Fastest There Is", impl: true,
-                 text: "His extra Run action — Blitz's first Run each turn is free (no action die spent)." },
+                 text: "His extra Run action — after a Run, Blitz may move one more hex (once per turn)." },
       mini: "assets/characters/Blitz_2.png", card: "assets/characters/Blitz_card.png" },
   ];
 

@@ -143,8 +143,8 @@
     const p = E.curP(state);
     if (state.needsParachute) doParachute(E, state, p);
     let guard = 0;
-    // keep acting while dice remain — or while Blitz still has his free Run available (Fastest There Is)
-    const canAct = () => p.defensePool > 0 || (p.character === "blitz" && !p._freeRunUsed);
+    // keep acting while dice remain — or while Blitz has an unspent bonus follow-up step (Fastest There Is)
+    const canAct = () => p.defensePool > 0 || (p.character === "blitz" && p._runBonus && !p._runBonusUsed);
     while (!state.gameOver && E.curP(state) === p && canAct() && guard++ < 40) {
       const r = chooseAction(E, state, p);
       if (r === "stop" || r === "idle") break;     // close combat ended the turn, or nothing useful left

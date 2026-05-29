@@ -181,28 +181,28 @@ E.takeInjuries(gel, pel, 1);                                 // injury pops the 
 A(pel.assigned === 0, "precondition: injury reset assigned to 0");
 A(!E.canEquip(gel, pel), "equipment stays locked after a spent die is removed by injury");
 
-// 10f) Blitz — Fastest There Is: the first Run each turn is free (no action die)
+// 10f) Blitz — Fastest There Is: a paid Run unlocks one free bonus follow-up step (extra reach, not a free die)
 const gbl = E.newGame({ numPlayers: 2, seed: 30, allAI: true });
 const bl = gbl.players[0]; bl.character = "blitz";
 gbl.activePlayer = 0; gbl.phase = "action"; gbl.needsParachute = false;
-const tkb = E.towerKey(gbl), tcb = gbl.board[tkb];
-bl.pos = { q: tcb.q, r: tcb.r }; bl.actionDice = 5; bl.defensePool = 5; bl._freeRunUsed = false; bl._noMove = false;
-A(E.doRun(gbl, E.legalRuns(gbl, bl)[0]), "Blitz takes a Run");
-A(bl.defensePool === 5 && bl._freeRunUsed === true, "Blitz's first Run is free (no die spent)");
-const dp2 = bl.defensePool;
-A(E.doRun(gbl, E.legalRuns(gbl, bl)[0]) && bl.defensePool < dp2, "Blitz's second Run costs a die");
-// free run is available even with 0 action dice
+const tcb = gbl.board[E.towerKey(gbl)];
+bl.pos = { q: tcb.q, r: tcb.r }; bl.actionDice = 5; bl.defensePool = 5; bl._runBonus = false; bl._runBonusUsed = false; bl._noMove = false;
+const dp0 = bl.defensePool; A(E.doRun(gbl, E.legalRuns(gbl, bl)[0]) && bl.defensePool < dp0, "Blitz's first Run costs a die (not free)");
+A(bl._runBonus === true, "the paid Run unlocked Blitz's bonus step");
+const dp1 = bl.defensePool; A(E.doRun(gbl, E.legalRuns(gbl, bl)[0]) && bl.defensePool === dp1 && bl._runBonusUsed === true, "the bonus follow-up step is free (extra hex, no die)");
+const dp2 = bl.defensePool; A(E.doRun(gbl, E.legalRuns(gbl, bl)[0]) && bl.defensePool < dp2, "subsequent Runs cost a die again");
+// Blitz cannot run from 0 dice cold (the bonus requires a prior paid Run)
 const gbz = E.newGame({ numPlayers: 2, seed: 31, allAI: true });
 const bz = gbz.players[0]; bz.character = "blitz";
 gbz.activePlayer = 0; gbz.phase = "action"; gbz.needsParachute = false;
-const tkz = E.towerKey(gbz), tcz = gbz.board[tkz];
-bz.pos = { q: tcz.q, r: tcz.r }; bz.actionDice = 0; bz.defensePool = 0; bz._freeRunUsed = false; bz._noMove = false;
-A(E.legalRuns(gbz, bz).length > 0 && E.doRun(gbz, E.legalRuns(gbz, bz)[0]), "Blitz can free-run with 0 dice");
+const tcz = gbz.board[E.towerKey(gbz)];
+bz.pos = { q: tcz.q, r: tcz.r }; bz.actionDice = 0; bz.defensePool = 0; bz._runBonus = false; bz._runBonusUsed = false; bz._noMove = false;
+A(E.legalRuns(gbz, bz).length === 0, "Blitz cannot Run at 0 dice without a paid Run first");
 // a non-Blitz Run always costs a die
 const gnb = E.newGame({ numPlayers: 2, seed: 32, allAI: true });
 const nb = gnb.players[0]; nb.character = "korat";
 gnb.activePlayer = 0; gnb.phase = "action"; gnb.needsParachute = false;
-const tkn = E.towerKey(gnb), tcn = gnb.board[tkn];
+const tcn = gnb.board[E.towerKey(gnb)];
 nb.pos = { q: tcn.q, r: tcn.r }; nb.actionDice = 5; nb.defensePool = 5; nb._noMove = false;
 A(E.doRun(gnb, E.legalRuns(gnb, nb)[0]) && nb.defensePool < 5, "non-Blitz Run costs a die");
 
