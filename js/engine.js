@@ -921,7 +921,7 @@
     const a = state.decks.equip2.pop(), b = state.decks.equip2.pop();
     if (a) p.backpack.push(a); if (b) state.decks.discard2.push(b);
     p.injuries = 0; p.actionDice = START_ACTION_DICE; p.defensePool = 0; p.assigned = 0; p.assignedDice = [];
-    p.pos = null; p.reloadZone = true; p.combatLine = [];
+    p.pos = null; p.reloadZone = true; p.combatLine = []; p._runBonus = false; p._runBonusUsed = true; p._noMove = false;
     log(state, `💥 ${p.name} 被迫 RELOAD！丢弃装备，回到跳伞区`);
     if (attacker) {
       gainFame(state, attacker, "reload", 1); log(state, `${attacker.name} +1 RELOAD 名望`);
