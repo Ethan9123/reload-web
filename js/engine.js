@@ -254,11 +254,11 @@
   function proposeFocus(state, from, target) {
     if (from === target) return { ok: false };
     dipSay(state, from, "proposeFocus");
-    state.diplomacy.focus = target;                      // a soft, shared "attack this one first" suggestion
     let agree = 0, voicer = -1;
-    for (const p of state.players) if (!p.human && p.idx !== from && aiAcceptFocus(state, p.idx, target, from)) { agree++; if (voicer < 0) voicer = p.idx; }
-    if (voicer >= 0) dipSay(state, voicer, "acceptFocus");
-    return { ok: true, focus: target, agree };
+    for (const p of state.players) if (!p.human && p.idx !== from && p.idx !== target && aiAcceptFocus(state, p.idx, target, from)) { agree++; if (voicer < 0) voicer = p.idx; }
+    if (agree) { state.diplomacy.focus = target; dipSay(state, voicer, "acceptFocus"); }   // only an AGREED pact steers AI fire
+    else dipSay(state, from, "declineFocus");                                               // nobody bit — no focus set
+    return { ok: true, focus: agree ? target : null, agree };
   }
   function respondToOffer(state, offerId, accept) {
     const i = state.diplomacy.offers.findIndex(o => o.id === offerId); if (i < 0) return false;

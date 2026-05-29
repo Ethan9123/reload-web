@@ -61,13 +61,21 @@ const A = (c, m) => { if (!c) { console.error("  FAIL:", m); fails++; } else con
   A(E.respondToOffer(g, g.diplomacy.offers[0].id, true) && E.hasTruce(g, ai, human), "accepting the offer forms the truce");
 }
 
-// 6) focus pact records the agreed target
+// 6) focus pact only forms with AI agreement (no unilateral steering)
 {
-  const g = E.newGame({ numPlayers: 3, seed: 5, allAI: true });
-  g.players[2].fame.beacon = 6;                        // make player 2 the leader
+  const g = E.newGame({ numPlayers: 3, seed: 5 });     // player 0 human
+  g.players[2].fame.beacon = 6;                         // player 2 is the clear leader
   g.rnd = () => 0.1;
-  const r = E.proposeFocus(g, 0, 2);
-  A(r.ok && g.diplomacy.focus === 2, "focus pact sets the agreed 'attack first' target");
+  const human = g.players.findIndex(p => p.human);
+  const r = E.proposeFocus(g, human, 2);               // focus the leader -> an AI should agree
+  A(r.ok && r.agree >= 1 && g.diplomacy.focus === 2, "focus pact forms when an AI agrees (target = leader)");
+  // proposing focus on a non-leader (a weak target) wins no agreement -> no focus set
+  const g2 = E.newGame({ numPlayers: 3, seed: 15 });
+  g2.players[2].fame.beacon = 6;                        // leader is player 2
+  const weak = g2.players.findIndex(p => !p.human && p.idx !== 2);
+  g2.rnd = () => 0.1;
+  const r2 = E.proposeFocus(g2, g2.players.findIndex(p => p.human), weak);
+  A(r2.ok && r2.agree === 0 && g2.diplomacy.focus == null, "no AI agrees to focus a non-leader -> focus is not set unilaterally");
 }
 
 // 7) chatter feed records lines
