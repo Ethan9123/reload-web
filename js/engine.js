@@ -79,6 +79,8 @@
       combatLine: [],                  // numeric dice, high->low
       injuries: 0,                     // dice in injury zone; INJURY_ZONE => RELOAD
       boost: false,
+      boostDice: 0,                    // Energy Drink green boost dice this turn: spendable on actions, but NOT usable in combat or as injury
+
       fame: { injury: 0, beacon: 0, teamSpirit: 0, reload: 0, trap: 0 },
       fameTrackPos: 0,
       pos: null,                       // axial {q,r}; null = off-map (parachute)
@@ -149,6 +151,7 @@
       firstPlayer: 0, activePlayer: 0, round: 1,
       decks, fameSupply,
       eventsResolved: 0, eventTotal: eventCount,
+      superstarFame: superstarThreshold(mode, numPlayers),   // win threshold = fame-track length for this mode/player-count
       phase: "start", needsParachute: false,
       gameOver: false, winner: null, superstar: false,
       _turnsTaken: 0, _eventsDone: false,
@@ -174,7 +177,21 @@
   // ============================================================
   // turn / action engine (task #4)
   // ============================================================
-  const SUPERSTAR_FAME = 16;     // MVP win threshold (refine to real fame-track length later)
+  // Win = your Fame tokens overlap the Superstar zone at the END of your Fame Track (rulebook p.4).
+  // Track length is fixed by its physical pieces, which differ by game mode:
+  //   Battle Royale (Standard) = 1 Start + 2 middle + 1 End piece.
+  //   Team Royale / 2-player    = 1 Start + 4 middle + 1 End piece (longer).
+  // Modelling each piece's fame-token spaces as Start≈2, middle≈6, End≈2 gives:
+  //   Battle Royale = 2 + 2*6 + 2 = 16 ;  Team = 2 + 4*6 + 2 = 28.
+  const TRACK_PIECE_SPACES = { start: 2, middle: 6, end: 2 };
+  function superstarThreshold(mode, numPlayers) {
+    // Team Royale uses the longer track; the rulebook also recommends the longer 2-player Team track
+    // for any 2-player game ("If playing with 2 players it is recommended ... use the 2 player Team Royale variant").
+    const longTrack = mode === "team" || mode === "team2v2v2" || mode === "twoPlayer" || numPlayers === 2;
+    const mids = longTrack ? 4 : 2;
+    return TRACK_PIECE_SPACES.start + mids * TRACK_PIECE_SPACES.middle + TRACK_PIECE_SPACES.end;
+  }
+  const SUPERSTAR_FAME = superstarThreshold("battleRoyale");  // 16 — Battle Royale standard track (3-4 players)
   const MOUNTAIN_RUN_COST = 2;
 
   function log(state, msg) { state.log.unshift(msg); if (state.log.length > 120) state.log.pop(); }
@@ -190,7 +207,7 @@
   function gainFame(state, p, kind, n) {
     const got = Math.min(n, state.fameSupply[kind]);
     p.fame[kind] += got; state.fameSupply[kind] -= got;
-    if (totalFame(p) >= SUPERSTAR_FAME && !state.gameOver) {
+    if (totalFame(p) >= (state.superstarFame || SUPERSTAR_FAME) && !state.gameOver) {
       state.gameOver = true; state.winner = p.idx; state.superstar = true;
       log(state, `★ ${p.name} 达到 Superstar，立即获胜！`);
     }
@@ -199,7 +216,7 @@
   function beginTurn(state) {
     const p = curP(state);
     p.actionDice = START_ACTION_DICE - p.injuries;       // injuries reduce available dice
-    p.defensePool = p.actionDice; p.assigned = 0; p.assignedDice = []; p.boost = false; p.combatLine = [];
+    p.defensePool = p.actionDice; p.assigned = 0; p.assignedDice = []; p.boost = false; p.boostDice = 0; p.combatLine = [];
     p._closeEndedTurn = false; p._noMove = false;
     autoEquip(p);                                        // MVP: auto-equip best weapon/armor (no equip UI yet)
     // NOTE: carried beacons are NOT auto-scored. Per rules they stay in temp storage
@@ -258,15 +275,27 @@
   }
   const isNumericDie = (v) => typeof v === "number" && v >= 1 && v <= 5;
   function sortCombatLine(line) { return line.filter(isNumericDie).sort((a, b) => b - a); }
+  // dice available for COMBAT/injury = pool minus the Energy Drink boost dice (which can't be used in combat / as injury)
+  function combatDice(p) { return p.defensePool - (p.boostDice || 0); }
   function spendDice(state, p, n, face) {
-    p.defensePool -= n; p.assigned += n;
     const f = face == null ? 1 : face;
-    for (let i = 0; i < n; i++) p.assignedDice.push(f);
+    for (let i = 0; i < n; i++) {
+      if (p.defensePool <= 0) break;
+      const realAvail = p.defensePool - (p.boostDice || 0);   // real action dice remaining before this spend
+      p.defensePool -= 1;
+      if (realAvail > 0) p.assignedDice.push(f);              // a real action die -> becomes a combat-line die in End Phase
+      else p.boostDice = Math.max(0, (p.boostDice || 0) - 1); // the Energy Drink boost die: spent now, never enters the combat line / injury zone
+    }
+    p.assigned = p.assignedDice.length;
   }
   function moveAssignedDiceToCombatLine(p) {
-    p.combatLine = sortCombatLine([...(p.combatLine || []), ...(p.assignedDice || [])]);
-    p.assignedDice = []; p.assigned = 0;
     p.actionDice = START_ACTION_DICE - p.injuries;
+    // assignedDice holds only real action dice (boost dice are dropped at spend-time in spendDice and
+    // never reach here). Cap to real owned dice as a defensive safety net.
+    let line = sortCombatLine([...(p.combatLine || []), ...(p.assignedDice || [])]);
+    if (line.length > p.actionDice) line = line.slice(0, p.actionDice);
+    p.combatLine = line;
+    p.assignedDice = []; p.assigned = 0; p.boostDice = 0;
     p.defensePool = Math.max(0, p.actionDice - p.combatLine.length);
   }
   function hasFriendlyHideout(state, p) {
@@ -284,6 +313,7 @@
   function syncDiceCounts(p) {
     p.actionDice = START_ACTION_DICE - p.injuries;
     p.defensePool = Math.max(0, Math.min(p.defensePool, p.actionDice));
+    p.boostDice = Math.min(p.boostDice || 0, p.defensePool);
     p.assigned = p.assignedDice ? p.assignedDice.length : 0;
   }
   function doRun(state, toKey) {
@@ -430,6 +460,70 @@
     else { gainFame(state, owner, "trap", 1); const rl = takeInjuries(state, walker, 1); if (rl) reloadPlayer(state, walker, owner); else gainFame(state, owner, "injury", 1); log(state, `陷阱：${walker.name} 踩中 ${owner.name} 的陷阱受伤`); }
   }
 
+  // ---- Special (free-action) items: Pain Killer / Energy Drink / Tactical Explosive (rules ~03:30) ----
+  function specialItems(p) { return p.backpack.map(byId).filter(e => e && e.slot === "special"); }
+  function hasSpecial(p, id) { return p.backpack.includes(id); }
+  function discardItem(state, p, id) {
+    const i = p.backpack.indexOf(id); if (i < 0) return false;
+    p.backpack.splice(i, 1);
+    const e = byId(id); if (e && state.decks["discard" + e.star]) state.decks["discard" + e.star].push(id);
+    return true;
+  }
+  // enumerate demolish targets for Tactical Explosive: own hex + adjacent (over walls); any trap/wall/hideout
+  function explosiveTargets(state, p) {
+    if (!p.pos) return [];
+    const out = [], here = hexKey(p.pos.q, p.pos.r), cells = [here];
+    for (const d of HEX_DIRS) { const k = hexKey(p.pos.q + d.q, p.pos.r + d.r); if (state.board[k]) cells.push(k); }
+    for (const k of cells) {
+      const c = state.board[k];
+      if (c.trap != null) out.push({ key: k, kind: "trap" });
+      for (let e = 0; e < 6; e++) if (c.walls[e] != null) out.push({ key: k, kind: "wall", edge: e });
+      for (const h of c.hideouts) out.push({ key: k, kind: "hideout", owner: h });
+    }
+    return out;
+  }
+  // usable special items right now (for UI list). Pain Killer: anytime if injured; others: own action phase.
+  function usableSpecials(state, p) {
+    const onTurn = state.phase === "action" && curP(state) === p;
+    return specialItems(p).filter(e => {
+      if (e.id === "pain_killer") return p.injuries > 0;
+      if (e.id === "energy_drink") return onTurn;
+      if (e.id === "tactical_explosive") return onTurn && explosiveTargets(state, p).length > 0;
+      return false;
+    });
+  }
+  function useSpecialItem(state, itemId, target) {
+    const p = curP(state), e = byId(itemId);
+    if (!e || !hasSpecial(p, itemId)) return false;
+    if (itemId === "pain_killer") {
+      if (p.injuries <= 0) return false;
+      p.injuries -= 1; p.actionDice = START_ACTION_DICE - p.injuries; p.defensePool += 1;
+      log(state, `💊 ${p.name} 使用止痛药，恢复 1 点伤`);
+    } else if (itemId === "energy_drink") {
+      if (state.phase !== "action") return false;
+      p.defensePool += 1; p.boostDice = (p.boostDice || 0) + 1;   // boost die: spendable on actions, not combat / injury
+      p.actionDice = Math.max(p.actionDice, p.defensePool);       // allow the extra die to exist beyond the injury-reduced base
+      log(state, `🥤 ${p.name} 喝下能量饮料，本回合 +1 行动骰（不可用于战斗/承伤）`);
+    } else if (itemId === "tactical_explosive") {
+      if (state.phase !== "action" || !target) return false;
+      // enforce the same/adjacent range rule in the engine itself (don't trust the caller's target)
+      const inRange = explosiveTargets(state, p).some(t =>
+        t.key === target.key && t.kind === target.kind &&
+        (t.kind !== "wall" || t.edge === target.edge) &&
+        (t.kind !== "hideout" || t.owner === target.owner));
+      if (!inRange) return false;
+      const c = state.board[target.key]; if (!c) return false;
+      if (target.kind === "trap") { if (c.trap == null) return false; const o = state.players[c.trap]; c.trap = null; if (o) o.trapsUsed = Math.max(0, o.trapsUsed - 1); }
+      else if (target.kind === "wall") { if (c.walls[target.edge] == null) return false; const o = c.walls[target.edge]; delete c.walls[target.edge]; if (typeof o === "number" && state.players[o]) state.players[o].barriersUsed = Math.max(0, state.players[o].barriersUsed - 1); }
+      else if (target.kind === "hideout") { const i = c.hideouts.indexOf(target.owner); if (i < 0) return false; const o = c.hideouts.splice(i, 1)[0]; if (state.players[o]) state.players[o].hideout = null; }
+      else return false;
+      const what = target.kind === "trap" ? "陷阱" : target.kind === "wall" ? "屏障" : "藏身处";
+      log(state, `💣 ${p.name} 使用战术炸药，摧毁了${what}`);
+    } else return false;
+    discardItem(state, p, itemId);
+    return true;
+  }
+
   function ringFromTower(state, cell) { const tc = state.board[towerKey(state)]; return hexDistance(cell, tc); }
   function resolveEvent(state, id) {
     state.lastEvent = id;
@@ -532,8 +626,10 @@
     const close = get(e => e.combat === "close");
     const heads = get(e => e.slot === "head"), torsos = get(e => e.slot === "torso");
     p.equipped = { head: heads[0] ? heads[0].id : null, torso: torsos[0] ? torsos[0].id : null, hand: [] };
-    if (ranged[0]) p.equipped.hand.push(ranged[0].id);
-    if (close[0] && p.equipped.hand.length < 2) p.equipped.hand.push(close[0].id);
+    // hand slots: 2 single-hand OR 1 two-hand (rules 04:08)
+    let used = 0;
+    const tryHand = (e) => { if (!e) return; const need = e.hands || 1; if (used + need <= 2) { p.equipped.hand.push(e.id); used += need; } };
+    tryHand(ranged[0]); tryHand(close[0]);
   }
   function equippedRanged(p) { for (const id of p.equipped.hand) { const e = byId(id); if (e && e.combat === "ranged") return e; } return null; }
   function equippedClose(p) { for (const id of p.equipped.hand) { const e = byId(id); if (e && e.combat === "close") return e; } return null; }
@@ -543,6 +639,11 @@
     if (mod === "lowestTo3") { let i = -1, lo = 99; for (let k = 0; k < rolled.length; k++) { const v = rolled[k]; if (typeof v === "number" && v < lo) { lo = v; i = k; } } if (i >= 0 && rolled[i] < 3) rolled[i] = 3; }
     else if (mod === "twoOrThreeTo4") { const i = rolled.findIndex(v => v === 2 || v === 3); if (i >= 0) rolled[i] = 4; }
     else if (mod === "highestToSkull") { let i = -1, hi = -1; for (let k = 0; k < rolled.length; k++) { const v = rolled[k]; if (typeof v === "number" && v > hi) { hi = v; i = k; } } if (i >= 0) rolled[i] = "skull"; }
+    else if (mod === "fourToFive") { const i = rolled.findIndex(v => v === 4); if (i >= 0) rolled[i] = 5; }
+  }
+  function hasStealth(p) {
+    for (const id of [p.equipped.head, p.equipped.torso, ...p.equipped.hand]) { const e = byId(id); if (e && e.stealth) return true; }
+    return false;
   }
 
   // LOS via cube line walk
@@ -568,26 +669,27 @@
   }
   function rangedTargets(state, A) {
     const w = equippedRanged(A);
-    if (!w || !A.pos || A.defensePool < 1 || state.phase !== "action") return [];
+    if (!w || !A.pos || combatDice(A) < 1 || state.phase !== "action") return [];   // boost die can't be used in combat
     const out = [];
     for (const t of state.players) {
       if (t === A || !t.pos || t.reloadZone) continue;
       const d = hexDistance(A.pos, t.pos), r = w.range || [0, 0];
       if (d < (r[0] || 0) || d > r[1]) continue;
+      if (d >= 1 && hasStealth(t)) continue; // stealth: only targetable by ranged from same hex
       if (d >= 1 && !hasLOS(state, A.pos, t.pos, A.idx)) continue;
       out.push(t.idx);
     }
     return out;
   }
   function closeTargets(state, A) {
-    if (!A.pos || A.defensePool < 1 || state.phase !== "action") return [];
+    if (!A.pos || combatDice(A) < 1 || state.phase !== "action") return [];   // boost die can't be used in combat
     return state.players.filter(t => t !== A && t.pos && !t.reloadZone && t.pos.q === A.pos.q && t.pos.r === A.pos.r).map(t => t.idx);
   }
 
   function takeInjuryDieByHierarchy(p) {
     p.combatLine = sortCombatLine(p.combatLine || []);
     if (p.combatLine.length) { p.combatLine.pop(); return "combatLine"; }
-    if (p.defensePool > 0) { p.defensePool -= 1; return "defensePool"; }
+    if (combatDice(p) > 0) { p.defensePool -= 1; return "defensePool"; }   // boost dice can't be taken as injury
     if (p.assignedDice && p.assignedDice.length) { p.assignedDice.pop(); p.assigned = p.assignedDice.length; return "assigned"; }
     return "none";
   }
@@ -716,13 +818,15 @@
     makeRng, shuffle, hexKey, hexAdd, hexDistance, neighbors,
     newGame, hexCell, playersOnHex, totalFame, beaconHexCount, supplyHexCount,
     // turn/action API
-    SUPERSTAR_FAME, curP, isHumanTurn, legalParachute, parachute,
+    SUPERSTAR_FAME, superstarThreshold, curP, isHumanTurn, legalParachute, parachute,
     legalRuns, doRun, lootOptions, doLoot, endTurn, beginTurn, towerKey,
     canUpload, doActivate, bfsStep, resolveEvent,
     // build/heal API
     canHeal, doHeal, canBuild, emptyEdges, doBuildBarrier, doDemolish, doBuildHideout, doDemolishHideout, doBuildTrap,
+    // special-item API
+    specialItems, usableSpecials, explosiveTargets, useSpecialItem, combatDice,
     // combat API
-    INJURY_ZONE, ownedDice, autoEquip, equippedRanged, equippedClose, armorOf, hasLOS,
+    INJURY_ZONE, ownedDice, autoEquip, equippedRanged, equippedClose, armorOf, hasLOS, hasStealth,
     moveAssignedDiceToCombatLine, resolveHideoutBenefit, hasFriendlyHideout,
     takeInjuries, applySmallInjuries, applySmallInjuriesToPlayer,
     rangedTargets, closeTargets, doRanged, doClose, reloadPlayer,

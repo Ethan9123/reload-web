@@ -79,6 +79,9 @@ button.small { padding: 4px 10px; font-size: 13px; cursor: pointer; }
 .die.inj { background: #7a2230; color: #ffb3bd; }
 .cb-sec { margin-top: 14px; }
 .cb-sec h3 { margin: 0 0 8px; font-size: 14px; color: #cdd2db; }
+.cb-uses { display: flex; flex-wrap: wrap; gap: 8px; }
+.cb-use { background: #234032; border: 1px solid #3a6b4f; color: #d6ffe6; cursor: pointer; font-weight: 600; }
+.cb-use:hover { filter: brightness(1.12); }
 .ecards { display: flex; flex-wrap: wrap; gap: 8px; }
 .ecard { width: 158px; background: #1b1f28; border: 1px solid #2a2f3a; border-top: 3px solid #888;
   border-radius: 8px; padding: 8px 10px; }

@@ -260,6 +260,26 @@
     const row = (label, html) => `<div class="cb-dice"><span class="cb-dl">${label}</span>${html || '<i class="muted">—</i>'}</div>`;
     return row(`防御区(${p.defensePool})`, def) + row(`战斗列`, line) + row(`伤害区(${p.injuries}/${E.INJURY_ZONE})`, inj);
   }
+  const SP_ICON = { pain_killer: "💊", energy_drink: "🥤", tactical_explosive: "💣" };
+  // Free-action special items usable right now (only on the active human's own board, to match engine's curP).
+  function specialUseHTML(p) {
+    if (!p.human || G.gameOver || G.needsParachute || E.curP(G) !== p) return "";
+    const usable = E.usableSpecials(G, p);
+    if (!usable.length) return "";
+    const kindCN = (k) => k === "trap" ? "陷阱" : k === "wall" ? "屏障" : "藏身处";
+    let rows = "";
+    for (const e of usable) {
+      const icon = SP_ICON[e.id] || "✦";
+      if (e.id === "tactical_explosive") {
+        E.explosiveTargets(G, p).forEach((t, i) => {
+          rows += `<button class="cb-use small" data-item="${e.id}" data-ti="${i}">${icon} ${e.name}：拆除${kindCN(t.kind)}</button>`;
+        });
+      } else {
+        rows += `<button class="cb-use small" data-item="${e.id}">${icon} 使用 ${e.name}</button>`;
+      }
+    }
+    return `<div class="cb-sec"><h3>可用道具（自由行动 · 用后弃置）</h3><div class="cb-uses">${rows}</div></div>`;
+  }
   function openCharBoard(idx) {
     const p = G.players[idx], ch = CHAR[p.character];
     let ov = $("char-overlay");
@@ -282,9 +302,17 @@
         </div>
       </div>
       <div class="cb-sec"><h3>已装备（${SLOT_CN.head}1 / ${SLOT_CN.torso}1 / ${SLOT_CN.hand}2）</h3><div class="ecards">${eqHTML}</div></div>
+      ${specialUseHTML(p)}
       <div class="cb-sec"><h3>背包（${p.backpack.length}）</h3><div class="ecards">${packHTML}</div></div>
     </div>`;
     ov.querySelector(".cb-close").addEventListener("click", closeCharBoard);
+    ov.querySelectorAll(".cb-use").forEach(btn => btn.addEventListener("click", () => {
+      if (aiRunning || G.gameOver || !E.isHumanTurn(G) || E.curP(G) !== p) return;
+      const itemId = btn.dataset.item;
+      let target = null;
+      if (itemId === "tactical_explosive") target = E.explosiveTargets(G, p)[+btn.dataset.ti];
+      if (E.useSpecialItem(G, itemId, target)) { render(); openCharBoard(idx); }   // refresh panel
+    }));
     ov.style.display = "flex";
   }
   function closeCharBoard() { const ov = $("char-overlay"); if (ov) ov.style.display = "none"; }
