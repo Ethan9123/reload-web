@@ -15,6 +15,14 @@
     return out;
   }
   function cellOf(state, key) { return state.board[key]; }
+  // owner of a structure targeted by Tactical Explosive (trap owner lives on the cell; hideout carries owner)
+  function structOwner(state, t) { return t.kind === "trap" ? cellOf(state, t.key).trap : (t.kind === "hideout" ? t.owner : null); }
+  function isEnemyStruct(E, state, p, t) {
+    const o = structOwner(state, t);
+    if (typeof o !== "number") return false;
+    const op = state.players[o];
+    return !!op && op !== p && !E.sameTeam(p, op);   // never blow up our own / a teammate's trap or hideout
+  }
   function isToxic(E, state, p, key) {
     const c = cellOf(state, key);
     return !!(c && (c.toxin || c.toxinIcon) && !(c.dome || c.hideouts.includes(p.idx)));
@@ -72,8 +80,8 @@
     // Tactical Explosive on an adjacent enemy trap (clear our path) or enemy hideout
     if (usable.some(e => e.id === "tactical_explosive")) {
       const tgts = E.explosiveTargets(state, p);
-      const trap = tgts.find(t => t.kind === "trap");
-      const hideout = tgts.find(t => t.kind === "hideout");
+      const trap = tgts.find(t => t.kind === "trap" && isEnemyStruct(E, state, p, t));
+      const hideout = tgts.find(t => t.kind === "hideout" && isEnemyStruct(E, state, p, t));
       if (trap) return E.useSpecialItem(state, "tactical_explosive", trap);
       if (hideout) return E.useSpecialItem(state, "tactical_explosive", hideout);
     }

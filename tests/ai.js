@@ -85,6 +85,24 @@ function prep(seed, opts) {
   A(!!p.hideout, "automa built a hideout when idle (keeps the turn productive)");
 }
 
+// 7b) Tactical Explosive never destroys the bot's own / a teammate's trap or hideout
+{
+  const g = E.newGame({ numPlayers: 4, seed: 31, mode: "team", allAI: true });
+  g.activePlayer = 0; g.phase = "action"; g.needsParachute = false;
+  for (const k in g.board) g.board[k].tokens = [];
+  const p = g.players[0], mate = g.players[2];
+  const tk = E.towerKey(g); setPos(g, p, tk);
+  p.injuries = 0; p.actionDice = 5; p.defensePool = 5; p.backpack = ["tactical_explosive"];
+  g.players[1].pos = null; g.players[1].reloadZone = true; g.players[3].pos = null; g.players[3].reloadZone = true;
+  // own trap on this hex + a teammate hideout on an adjacent hex — both friendly, must NOT be blown up
+  g.board[E.hexKey(p.pos.q, p.pos.r)].trap = 0;
+  const adj = E.neighbors(g, p.pos.q, p.pos.r)[0]; g.board[adj].hideouts = [2]; mate.hideout = adj;
+  AI.takeTurn(g);
+  A(g.board[E.hexKey(p.pos.q, p.pos.r)].trap === 0, "automa did not blow up its own trap");
+  A(g.board[adj].hideouts.includes(2), "automa did not blow up its teammate's hideout");
+  A(p.backpack.includes("tactical_explosive"), "explosive kept (no friendly target to use it on)");
+}
+
 // 8) strength/quality: all-AI games complete and the winner earns real fame from objectives
 {
   let crashed = 0, beaconFameSeen = 0, fameSum = 0, n = 30;
