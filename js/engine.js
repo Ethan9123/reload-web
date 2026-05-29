@@ -354,12 +354,18 @@
     return -1;
   }
   // a wall blocks unless it belongs to the mover (own/team barriers don't block self).
+  // a wall is passable by the mover if it's their own or (Team Royale) a teammate's; neutral walls always block
+  function wallPassable(state, owner, moverIdx) {
+    if (owner === moverIdx) return true;
+    if (state.mode === "team" && typeof owner === "number" && state.players[owner] && state.players[moverIdx] && sameTeam(state.players[owner], state.players[moverIdx])) return true;
+    return false;
+  }
   function wallBetween(state, aKey, bKey, moverIdx) {
     const A = state.board[aKey], B = state.board[bKey], d = dirIndex(A, B);
     if (d < 0) return false;
     const oa = A.walls[d], ob = B.walls[(d + 3) % 6];
-    if (oa != null && oa !== moverIdx) return true;
-    if (ob != null && ob !== moverIdx) return true;
+    if (oa != null && !wallPassable(state, oa, moverIdx)) return true;
+    if (ob != null && !wallPassable(state, ob, moverIdx)) return true;
     return false;
   }
   function runCost(state, toKey) { return state.board[toKey].terrain === "mountain" ? MOUNTAIN_RUN_COST : 1; }
@@ -572,7 +578,12 @@
     const cell = state.board[hexKey(p.pos.q, p.pos.r)];
     if (cell.trap != null) return false;
     spendDice(state, p, 1, 1); cell.trap = p.idx; p.trapsUsed++;
-    log(state, `${p.name} 埋设陷阱`); return true;
+    log(state, `${p.name} 埋设陷阱`);
+    // Team Spirit: building a trap in the same hex as a teammate scores +1 (rules 002 modules)
+    if (state.mode === "team" && playersOnHex(state, p.pos.q, p.pos.r).some(x => x !== p && sameTeam(x, p))) {
+      gainFame(state, p, "teamSpirit", 1); log(state, `${p.name} 在队友身边埋雷 +1 团队精神`);
+    }
+    return true;
   }
   function resolveTrap(state, walker, ownerIdx, key) {
     const owner = state.players[ownerIdx], cell = state.board[key];

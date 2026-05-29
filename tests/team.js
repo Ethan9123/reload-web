@@ -1,5 +1,6 @@
 // node tests/team.js — Team Royale: teams, no friendly fire, team win, Team Spirit, shared walls, non-auto-heal.
 const E = require("../js/engine.js");
+const D = require("../js/data.js");
 require("../js/ai.js");
 const AI = global.RL.ai;
 let fails = 0;
@@ -85,6 +86,33 @@ const g8p = g8.players[0]; g8p.backpack = ["medkit"]; g8p._gaveThisTurn = false;
 A(E.giveToTeammate(g8, 2, "medkit"), "give equipment to a teammate");
 A(g8.players[2].backpack.includes("medkit") && !g8p.backpack.includes("medkit"), "equipment moved to the teammate");
 A(!E.giveToTeammate(g8, 2, "medkit"), "only one give per turn");
+
+// 8b) team walls are passable by teammates but block opponents
+const g10 = E.newGame({ numPlayers: 4, seed: 14, mode: "team", allAI: true });
+g10.phase = "action";
+const tcA = g10.board[E.towerKey(g10)];
+let edge10 = null, nbKey10 = null;
+for (let e = 0; e < 6; e++) {
+  const nk = E.hexKey(tcA.q + D.HEX_DIRS[e].q, tcA.r + D.HEX_DIRS[e].r), nb = g10.board[nk];
+  if (nb && tcA.walls[e] == null && nb.walls[(e + 3) % 6] == null) { edge10 = e; nbKey10 = nk; break; }
+}
+A(edge10 != null, "found a clear tower edge for the team-wall test");
+tcA.walls[edge10] = 0;                       // wall built by player 0
+const mate10 = g10.players[2], opp10 = g10.players[1];
+mate10.pos = { q: tcA.q, r: tcA.r }; mate10._noMove = false; mate10.defensePool = 5; mate10.actionDice = 5;
+A(E.legalRuns(g10, mate10).includes(nbKey10), "teammate can move through a team-owned wall");
+opp10.pos = { q: tcA.q, r: tcA.r }; opp10._noMove = false; opp10.defensePool = 5; opp10.actionDice = 5;
+A(!E.legalRuns(g10, opp10).includes(nbKey10), "opponent is blocked by the team-owned wall");
+
+// 8c) building a trap in the same hex as a teammate scores Team Spirit
+const g11 = E.newGame({ numPlayers: 4, seed: 15, mode: "team", allAI: true });
+const tc11 = g11.board[E.towerKey(g11)];
+const p11 = g11.players[0], mate11 = g11.players[2];
+p11.pos = { q: tc11.q, r: tc11.r }; mate11.pos = { q: tc11.q, r: tc11.r };
+g11.activePlayer = 0; g11.phase = "action"; p11.defensePool = 5; p11.actionDice = 5; p11.trapsUsed = 0;
+const ts11 = p11.fame.teamSpirit;
+A(E.doBuildTrap(g11), "build a trap while a teammate shares the hex");
+A(p11.fame.teamSpirit === ts11 + 1, "trapping next to a teammate scores +1 Team Spirit");
 
 // 9) regression — all-AI team games complete
 let crashed = 0;
