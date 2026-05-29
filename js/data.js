@@ -240,9 +240,47 @@
     announcement:   { name: "Announcement 战报", count: 2, desc: "结算「最多」成就并刷新一张「下一位」成就", achievementsOnly: true },
   };
 
+  // ---- Diplomacy chatter (flavoured after FPS in-game discourse: tactical comms + trash talk) ----
+  // Lines surface in the log / diplomacy feed when proposals, deals, and betrayals happen.
+  const CHATTER = {
+    proposeTruce: [
+      "停火？先各自发育，别互相送头。(Truce? Let's farm up, no feeding.)",
+      "Hold your fire — 井水不犯河水，先苟一会儿。",
+      "结个临时同盟？我保证不背刺……大概。",
+    ],
+    acceptTruce: [
+      "Copy that，先和平发展。",
+      "成交。NPNP，互不开火。",
+      "行，但你敢背刺就送你回老家。",
+    ],
+    declineTruce: [
+      "拒绝。点一下左键就能杀人，我为什么要停火？",
+      "No deal — 你的段位配不上我的子弹。",
+      "免谈，我专治各种苟。",
+    ],
+    proposeFocus: [
+      "先集火那个领头的，诺亚方舟也带不动他。(Focus the leader.)",
+      "他名望最高，rush 他，别让他上分。",
+      "把那个飘的先处理掉，转点包夹。",
+    ],
+    acceptFocus: ["收到，集火他。", "Roger，先 gank 他。", "好，谁让他飘。"],
+    declineFocus: ["我先发育，你们上。", "No，我盯着别人呢。"],
+    betray: [
+      "Sorry not sorry — 背刺时间到。(Deal's off.)",
+      "停火协议？我撕了。Mouse one。",
+      "抱歉，我的鼠标没选'讲信用'这个天赋。",
+    ],
+    trash: [
+      "你的地图意识跟哥伦布一样（完全走错方向）。",
+      "摘掉你那个一元店耳机吧，你已经没了。",
+      "留着子弹娶媳妇呢？别急。",
+      "诺亚方舟也装不下你们这队。",
+    ],
+  };
+
   const DATA = {
     DIE_FACES, DICE, START_ACTION_DICE, TERRAIN, ARCADIA, HEX_DIRS,
-    CHARACTERS, FAME, SLOTS, EQUIPMENT, ACTIONS, SETUP, TOKEN_ART, HIDEOUT_ART, TILE_ART, EVENTS, ACHIEVEMENTS,
+    CHARACTERS, FAME, SLOTS, EQUIPMENT, ACTIONS, SETUP, TOKEN_ART, HIDEOUT_ART, TILE_ART, EVENTS, ACHIEVEMENTS, CHATTER,
     EQUIP_BY_ID: Object.fromEntries(EQUIPMENT.map(e => [e.id, e])),
     ACHIEVEMENT_BY_ID: Object.fromEntries(ACHIEVEMENTS.map(a => [a.id, a])),
   };

@@ -88,18 +88,51 @@
     return false;
   }
 
+  // honor a truce unless we can finish the (near-)leader — then betrayal is worth the trust hit
+  function attackable(E, state, p, idx) {
+    if (!E.hasTruce || !E.hasTruce(state, p.idx, idx)) return true;
+    const leaderFame = Math.max(...state.players.map(x => E.totalFame(x)));
+    return E.totalFame(state.players[idx]) >= leaderFame && state.players[idx].injuries >= E.INJURY_ZONE - 2;
+  }
+  // among valid targets, honor an agreed focus pact, else hit the one nearest to RELOAD
+  function pickTarget(E, state, idxs) {
+    if (!idxs.length) return null;
+    const focus = state.diplomacy && state.diplomacy.focus;
+    if (focus != null && idxs.includes(focus)) return focus;
+    return pickByInjuries(state, idxs);
+  }
+  // once-per-turn table talk: rally the table against the leader, or de-escalate with a rival
+  function runDiplomacy(E, state, p) {
+    const d = state.diplomacy;
+    if (!d || !E.proposeTruce || state.players.length < 3 || state.gameOver) return;
+    if (state.rnd() > 0.35) return;                              // most turns, stay quiet
+    let leader = -1, lf = -1;
+    for (const o of state.players) { if (o.idx === p.idx || E.sameTeam(p, o)) continue; const f = E.totalFame(o); if (f > lf) { lf = f; leader = o.idx; } }
+    if (leader < 0) return;
+    const myFame = E.totalFame(p);
+    if (lf > myFame + 1) {                                       // behind the leader
+      if (d.focus == null) { E.proposeFocus(state, p.idx, leader); return; }   // rally the table on the leader
+      const rival = state.players.find(o => o.idx !== p.idx && o.idx !== leader && !E.sameTeam(p, o) && !E.hasTruce(state, p.idx, o.idx));
+      if (rival) E.proposeTruce(state, p.idx, rival.idx, 3);     // truce a side rival to cut mutual damage
+    } else if (!E.hasTruce(state, p.idx, leader)) {
+      E.proposeTruce(state, p.idx, leader, 3);                   // ahead/peer: offer the threat a truce to coast
+    }
+  }
+
   // ---- one action; returns "acted" | "stop" | "idle" ----
   function chooseAction(E, state, p) {
     if (tryFreeItems(E, state, p)) return "acted";
 
-    const close = E.closeTargets(state, p), ranged = E.rangedTargets(state, p);
+    // respect truces (skip partners) unless betrayal finishes the leader; honor a focus pact when choosing
+    const close = E.closeTargets(state, p).filter(i => attackable(E, state, p, i));
+    const ranged = E.rangedTargets(state, p).filter(i => attackable(E, state, p, i));
     const nearDeath = (i) => state.players[i].injuries >= E.INJURY_ZONE - 2;
 
     // 1) finish an opponent: close combat only when it likely RELOADs (it ends the turn)
     const closeKill = close.filter(nearDeath);
-    if (closeKill.length) { E.doClose(state, pickByInjuries(state, closeKill)); return "stop"; }
-    // 2) ranged at the enemy nearest to RELOAD (doesn't end the turn)
-    if (ranged.length) { E.doRanged(state, pickByInjuries(state, ranged), 3); return "acted"; }
+    if (closeKill.length) { E.doClose(state, pickTarget(E, state, closeKill)); return "stop"; }
+    // 2) ranged at the focus / enemy nearest to RELOAD (doesn't end the turn)
+    if (ranged.length) { E.doRanged(state, pickTarget(E, state, ranged), 3); return "acted"; }
 
     // 3) heal when hurt and safe (in team mode this also heals an injured teammate sharing the hex)
     if (E.canHeal(state, p)) {
@@ -128,7 +161,7 @@
     if (supplies.length) { if (stepToward(E, state, p, nearestTarget(E, state, p, supplies))) return "acted"; }
 
     // 7) nothing pressing: a weak close attack is still progress (chip damage / injury fame)
-    if (close.length) { E.doClose(state, pickByInjuries(state, close)); return "stop"; }
+    if (close.length) { E.doClose(state, pickTarget(E, state, close)); return "stop"; }
 
     // 8) idle building: set a hideout (end-phase die back + toxin safety) when safe and none yet
     if (E.canBuild(state, p) && !p.hideout) { if (E.doBuildHideout(state)) return "acted"; }
@@ -142,6 +175,7 @@
     const E = root.RL.engine;
     const p = E.curP(state);
     if (state.needsParachute) doParachute(E, state, p);
+    runDiplomacy(E, state, p);                          // table talk: truces / focus pacts
     let guard = 0;
     // keep acting while on the map and either dice remain, or Blitz has an unspent bonus step (Fastest There Is).
     // The p.pos guard stops the loop if a mid-turn RELOAD (e.g. a trap kill on the last die) sent us off-map.

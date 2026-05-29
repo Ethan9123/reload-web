@@ -173,6 +173,8 @@
       eventsResolved: 0, eventTotal: eventCount,
       superstarFame: superstarThreshold(mode, numPlayers),   // win threshold = fame-track length for this mode/player-count
       achievements,                                          // achievement board (null if module off)
+      // diplomacy: per-pair truces, trust/reputation, an agreed "focus first" target, pending offers, chatter feed
+      diplomacy: { truce: {}, rep: players.map(() => 50), focus: null, offers: [], feed: [] },
       phase: "start", needsParachute: false,
       gameOver: false, winner: null, superstar: false,
       _turnsTaken: 0, _eventsDone: false,
@@ -196,6 +198,80 @@
   function teamBarriers(state, team) { return teamMembers(state, team).reduce((s, p) => s + p.barriersUsed, 0); }
   // score that counts for the win: team total in Team Royale, else the player's own total
   function scoreFor(state, p) { return state.mode === "team" && p.team != null ? teamFame(state, p.team) : totalFame(p); }
+
+  // ---- diplomacy: truces, focus-target pacts, reputation/trust, betrayal ----
+  function dipKey(i, j) { return i < j ? i + "," + j : j + "," + i; }
+  function hasTruce(state, i, j) { const d = state.diplomacy; const u = d && d.truce[dipKey(i, j)]; return u != null && state.round < u; }
+  function truceRoundsLeft(state, i, j) { const u = state.diplomacy && state.diplomacy.truce[dipKey(i, j)]; return u != null ? Math.max(0, u - state.round) : 0; }
+  // players the active player should not attack: teammates always, truce partners by agreement
+  function friendly(state, a, b) { return a === b || sameTeam(state.players[a], state.players[b]) || hasTruce(state, a, b); }
+  function dipLine(state, kind) { const arr = (DATA.CHATTER && DATA.CHATTER[kind]) || []; return arr.length ? arr[Math.floor(state.rnd() * arr.length)] : ""; }
+  function dipSay(state, fromIdx, kind, msg) {
+    const who = state.players[fromIdx] ? state.players[fromIdx].name : "?";
+    const line = msg || dipLine(state, kind);
+    state.diplomacy.feed.unshift({ from: fromIdx, kind, line, round: state.round });
+    if (state.diplomacy.feed.length > 40) state.diplomacy.feed.pop();
+    log(state, `💬 ${who}：${line}`);
+  }
+  function setTruce(state, i, j, rounds) { state.diplomacy.truce[dipKey(i, j)] = state.round + (rounds || 3); }
+  function breakTruce(state, breaker, victim) {
+    const key = dipKey(breaker, victim), d = state.diplomacy;
+    if (d.truce[key] == null || state.round >= d.truce[key]) return false;
+    delete d.truce[key];
+    d.rep[breaker] = Math.max(0, d.rep[breaker] - 30);   // betrayal tanks the breaker's trust
+    dipSay(state, breaker, "betray");
+    return true;
+  }
+  function aiAcceptTruce(state, ai, from) {
+    if (sameTeam(state.players[ai], state.players[from])) return true;
+    const d = state.diplomacy;
+    if (d.rep[from] < 25) return false;                  // don't trust a known backstabber
+    const me = totalFame(state.players[ai]), them = totalFame(state.players[from]);
+    const leaderFame = Math.max(...state.players.map(totalFame));
+    if (me >= leaderFame && me > them + 2) return false; // I'm out front — keep the pressure on
+    const base = them >= me ? 0.75 : 0.45;               // more willing to truce a stronger rival
+    return state.rnd() < base * (d.rep[from] / 60);
+  }
+  function proposeTruce(state, from, to, rounds) {
+    rounds = rounds || 3;
+    if (from === to || sameTeam(state.players[from], state.players[to])) return { ok: false };
+    dipSay(state, from, "proposeTruce");
+    if (state.players[to].human) {                       // queue for the human to answer on their turn
+      state.diplomacy.offers.push({ id: (state._offerSeq = (state._offerSeq || 0) + 1), from, to, kind: "truce", rounds });
+      return { ok: true, pending: true };
+    }
+    const accept = aiAcceptTruce(state, to, from);
+    dipSay(state, to, accept ? "acceptTruce" : "declineTruce");
+    if (accept) setTruce(state, from, to, rounds);
+    return { ok: true, accepted: accept };
+  }
+  function aiAcceptFocus(state, ai, target, from) {
+    if (target === ai || sameTeam(state.players[ai], state.players[target])) return false;
+    if (state.diplomacy.rep[from] < 25) return false;
+    const tf = totalFame(state.players[target]), leaderFame = Math.max(...state.players.map(totalFame));
+    return tf >= leaderFame - 1 && state.rnd() < 0.7;    // gang up on the (near-)leader
+  }
+  function proposeFocus(state, from, target) {
+    if (from === target) return { ok: false };
+    dipSay(state, from, "proposeFocus");
+    let agree = 0, voicer = -1;
+    for (const p of state.players) if (!p.human && p.idx !== from && p.idx !== target && aiAcceptFocus(state, p.idx, target, from)) { agree++; if (voicer < 0) voicer = p.idx; }
+    if (agree) { state.diplomacy.focus = target; dipSay(state, voicer, "acceptFocus"); }   // only an AGREED pact steers AI fire
+    else dipSay(state, from, "declineFocus");                                               // nobody bit — no focus set
+    return { ok: true, focus: agree ? target : null, agree };
+  }
+  function respondToOffer(state, offerId, accept) {
+    const i = state.diplomacy.offers.findIndex(o => o.id === offerId); if (i < 0) return false;
+    const o = state.diplomacy.offers.splice(i, 1)[0];
+    dipSay(state, o.to, accept ? "acceptTruce" : "declineTruce");
+    if (accept && o.kind === "truce") setTruce(state, o.from, o.to, o.rounds);
+    return true;
+  }
+  function tickDiplomacy(state) {
+    const d = state.diplomacy; if (!d) return;
+    for (const k in d.truce) if (state.round >= d.truce[k]) delete d.truce[k];   // expire elapsed truces
+    if (d.focus != null) { const t = state.players[d.focus]; if (!t || t.reloadZone || totalFame(t) <= 0) d.focus = null; }
+  }
   function beaconHexCount(state) {
     return Object.values(state.board).filter(c => c.tokens.some(t => t.kind === "beacon")).length;
   }
@@ -751,7 +827,7 @@
       } else state._eventsDone = true;
     }
     state.activePlayer = (state.activePlayer + 1) % state.numPlayers;
-    if (isLastInRound) { state.round++; if (state._eventsDone) endGame(state); }
+    if (isLastInRound) { state.round++; tickDiplomacy(state); if (state._eventsDone) endGame(state); }
     if (!state.gameOver) beginTurn(state);
     return state;
   }
@@ -932,6 +1008,7 @@
   function doRanged(state, targetIdx, assignValue) {
     const A = curP(state), T = state.players[targetIdx];
     if (!rangedTargets(state, A).includes(targetIdx)) return false;
+    if (hasTruce(state, A.idx, T.idx)) breakTruce(state, A.idx, T.idx);   // attacking a truce partner = betrayal
     const w = equippedRanged(A); assignValue = assignValue || 3;
     spendDice(state, A, 1, assignValue);
     const shooterDice = rollDice(state.rnd, w.dice || 2);
@@ -974,6 +1051,7 @@
   function doClose(state, targetIdx) {
     const A = curP(state), T = state.players[targetIdx];
     if (!closeTargets(state, A).includes(targetIdx)) return false;
+    if (hasTruce(state, A.idx, T.idx)) breakTruce(state, A.idx, T.idx);   // attacking a truce partner = betrayal
     spendDice(state, A, 1, 1);
     const aRaw = rollDice(state.rnd, ownedDice(A)), tRaw = rollDice(state.rnd, ownedDice(T));
     const aCW = equippedClose(A), tCW = equippedClose(T);
@@ -1012,6 +1090,8 @@
     newGame, hexCell, playersOnHex, totalFame, beaconHexCount, supplyHexCount,
     // teams (Team Royale)
     sameTeam, teammates, teamMembers, teamFame, scoreFor, healTargets, giveToTeammate,
+    // diplomacy
+    hasTruce, truceRoundsLeft, friendly, proposeTruce, respondToOffer, proposeFocus, breakTruce, aiAcceptTruce,
     // turn/action API
     SUPERSTAR_FAME, superstarThreshold, curP, isHumanTurn, legalParachute, parachute,
     legalRuns, doRun, lootOptions, doLoot, endTurn, beginTurn, towerKey,

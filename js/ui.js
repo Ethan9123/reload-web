@@ -219,8 +219,60 @@
     clearTimeout(flashAchievement._t); flashAchievement._t = setTimeout(() => t.classList.remove("show"), 2600);
   }
 
+  // ---- diplomacy panel: relations, propose truce / focus, answer incoming offers, chatter feed ----
+  function relStatus(p, o) {
+    if (E.sameTeam(p, o)) return { txt: "队友", cls: "rel-ally" };
+    if (E.hasTruce(G, p.idx, o.idx)) return { txt: `休战 ${E.truceRoundsLeft(G, p.idx, o.idx)}回合`, cls: "rel-truce" };
+    const rep = G.diplomacy.rep[o.idx];
+    return { txt: rep < 25 ? "背信" : "中立", cls: rep < 25 ? "rel-foe" : "rel-neutral" };
+  }
+  function renderDiplomacy() {
+    const box = $("dip-panel"); if (!box) return;
+    if (!G.diplomacy || G.players.length < 2) { box.innerHTML = ""; return; }
+    const me = G.players.find(x => x.human) || G.players[G.activePlayer];
+    const myTurn = E.isHumanTurn(G) && !G.needsParachute && me === E.curP(G);
+    const focus = G.diplomacy.focus;
+    let rows = "";
+    for (const o of G.players) {
+      if (o === me) continue;
+      const r = relStatus(me, o);
+      const isFocus = focus === o.idx;
+      const canTalk = myTurn && !E.sameTeam(me, o);
+      const truced = E.hasTruce(G, me.idx, o.idx);
+      rows += `<div class="dip-row">
+        <span class="dip-name" style="color:${o.color}">${o.name}${o.team != null ? ` 队${o.team + 1}` : ""}</span>
+        <span class="rel ${r.cls}">${r.txt}</span>${isFocus ? '<span class="rel rel-focus">🎯目标</span>' : ""}
+        ${canTalk ? `<span class="dip-btns">
+          ${truced ? "" : `<button class="dip-b" data-act="truce" data-to="${o.idx}" title="提议休战">休战</button>`}
+          <button class="dip-b" data-act="focus" data-to="${o.idx}" title="提议先集火他">先打他</button></span>` : ""}
+      </div>`;
+    }
+    // pending offers addressed to the human
+    const offers = (G.diplomacy.offers || []).filter(of => of.to === me.idx);
+    let offerHtml = "";
+    for (const of of offers) {
+      offerHtml += `<div class="dip-offer">📨 ${G.players[of.from].name} 提议休战（${of.rounds}回合）
+        <button class="dip-b ok" data-offer="${of.id}" data-ok="1">接受</button>
+        <button class="dip-b no" data-offer="${of.id}" data-ok="0">拒绝</button></div>`;
+    }
+    const feed = (G.diplomacy.feed || []).slice(0, 4)
+      .map(f => `<div class="dip-line"><b style="color:${G.players[f.from] ? G.players[f.from].color : "#ccc"}">${G.players[f.from] ? G.players[f.from].name : "?"}</b>：${f.line}</div>`).join("");
+    box.innerHTML = `<h4>外交 / 喊话</h4>${offerHtml}<div class="dip-list">${rows}</div>${feed ? `<div class="dip-feed">${feed}</div>` : ""}`;
+    box.querySelectorAll(".dip-b[data-act]").forEach(b => b.addEventListener("click", () => {
+      if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;   // only on your own turn, not during AI autoplay
+      const to = +b.dataset.to;
+      if (b.dataset.act === "truce") E.proposeTruce(G, me.idx, to, 3);
+      else E.proposeFocus(G, me.idx, to);
+      render();
+    }));
+    box.querySelectorAll(".dip-b[data-offer]").forEach(b => b.addEventListener("click", () => {
+      if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;   // answer offers only on your turn
+      E.respondToOffer(G, +b.dataset.offer, b.dataset.ok === "1"); render();
+    }));
+  }
+
   function render() {
-    renderBoard(); renderPlayers(); renderTop(); renderLog(); renderAchievements();
+    renderBoard(); renderPlayers(); renderTop(); renderLog(); renderAchievements(); renderDiplomacy();
     if (G && (G._achSeq || 0) > lastAchSeq) { lastAchSeq = G._achSeq; if (G.lastAchievement) flashAchievement(G.lastAchievement); }
   }
 
@@ -644,6 +696,7 @@
   };
 
   function init() {
+    if (typeof window !== "undefined") window.__render = render;   // dev/test hook for forced re-render
     $("btn-start").addEventListener("click", startGame);
     $("btn-restart").addEventListener("click", () => location.reload());
     const modeSel = $("mode-select"), pcSel = $("player-count");
