@@ -17,15 +17,34 @@
           <option value="2">2 人</option>
           <option value="3">3 人</option>
           <option value="4" selected>4 人</option>
+          <option value="5">5 人</option>
+          <option value="6">6 人</option>
         </select>
       </label>
       <label>模式：
         <select id="mode-select">
           <option value="battleRoyale" selected>大逃杀（各自为战）</option>
           <option value="team">团队赛（2v2）</option>
+          <option value="team3v3">团队赛（3v3）</option>
+          <option value="team2v2v2">乱斗（2v2v2）</option>
         </select>
       </label>
-      <label>地图：<select id="map-select"><option value="arcadia" selected>Arcadia</option></select></label>
+      <label>地图：<select id="map-select">
+        <option value="arcadia" selected>Arcadia 阿卡迪亚 (3-4)</option>
+        <option value="imperial">帝国皇朝 (2-3)</option>
+        <option value="transit">转运站 · 4传送门 (4-6)</option>
+        <option value="ring">环形争霸战 (4-6)</option>
+        <option value="metropolis">大都会 · 迷宫 (3-4)</option>
+        <option value="reactor">反应炉 · 太阳能 (4-6)</option>
+      </select></label>
+      <label>难度：
+        <select id="difficulty-select">
+          <option value="easy">简单</option>
+          <option value="medium" selected>普通</option>
+          <option value="hard">困难</option>
+          <option value="expert">专家（前瞻搜索·较慢）</option>
+        </select>
+      </label>
       <label><input type="checkbox" id="all-ai"> 全部 AI（观战）</label>
       <button id="btn-start">开始游戏</button>
     </div>
@@ -53,9 +72,9 @@
   </section>
 </div>
 
-<script src="js/data.js?v=26"></script>
-<script src="js/engine.js?v=26"></script>
-<script src="js/ai.js?v=26"></script>
-<script src="js/ui.js?v=26"></script>
+<script src="js/data.js?v=34"></script>
+<script src="js/engine.js?v=34"></script>
+<script src="js/ai.js?v=34"></script>
+<script src="js/ui.js?v=34"></script>
 </body>
 </html>

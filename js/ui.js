@@ -162,15 +162,18 @@
   function renderTop() {
     const p = E.curP(G);
     let hint = "";
-    if (G.gameOver) hint = (G.mode === "team" && G.winnerTeam != null)
+    if (G.gameOver) hint = (G.isTeam && G.winnerTeam != null)
       ? `🏆 队伍 ${G.winnerTeam + 1} 获胜${G.superstar ? "（Superstar）" : ""}（队伍名望 ${E.teamFame(G, G.winnerTeam)}）`
       : `🏆 ${G.players[G.winner].name} 获胜${G.superstar ? "（Superstar）" : ""}`;
     else if (!p.human) hint = `${p.name}（AI）行动中…`;
     else if (G.needsParachute) hint = "跳伞：点击中央塔或相邻格";
     else { const h = highlightSet(); hint = `你的回合：点相邻格移动${h.loot ? " · 点当前格拾取" : ""}${E.canUpload(G, p) ? " · 点中央塔上缴信标" : ""}${h.atk.size ? " · 点红框敌人攻击" : ""} · 或结束回合`; }
     const le = (G.lastEvent && D.EVENTS[G.lastEvent]) ? ` · ⚡${D.EVENTS[G.lastEvent].name}` : "";
-    const modeLabel = G.mode === "team" ? `团队赛 队1 ${E.teamFame(G, 0)} : ${E.teamFame(G, 1)} 队2` : "大逃杀";
-    $("game-info").textContent = `Arcadia · ${G.numPlayers}人 · ${modeLabel} · 第${G.round}回合 · 事件${G.eventsResolved}/${G.eventTotal}${le} — ${hint}`;
+    const diffCN = { easy: "简单", medium: "普通", hard: "困难", expert: "专家" }[G.difficulty] || "普通";
+    let modeLabel = "大逃杀";
+    if (G.isTeam) { const ts = [...new Set(G.players.map(p => p.team))].sort((a, b) => a - b); modeLabel = "团队赛 " + ts.map(t => `队${t + 1} ${E.teamFame(G, t)}`).join(" : "); }
+    modeLabel += ` · ${diffCN}`;
+    $("game-info").textContent = `${G.map} · ${G.numPlayers}人 · ${modeLabel} · 第${G.round}回合 · 事件${G.eventsResolved}/${G.eventTotal}${le} — ${hint}`;
     const human = !G.gameOver && p.human, showAct = human && !G.needsParachute;
     const setBtn = (id, ok) => { const bt = $(id); if (!bt) return; bt.disabled = !ok; bt.classList.toggle("hidden", !human); };
     setBtn("btn-end", human && !G.needsParachute);
@@ -330,8 +333,11 @@
   async function startGame() {
     const modeSel = $("mode-select"), mode = modeSel ? modeSel.value : "battleRoyale";
     let n = parseInt($("player-count").value, 10);
-    if (mode === "team") n = 4;   // Team Royale is a 2v2 — always 4 characters (no one-player-controls-two)
-    G = E.newGame({ numPlayers: n, mode, allAI: $("all-ai").checked });
+    if (mode === "team") n = 4;                                  // 2v2
+    else if (mode === "team3v3" || mode === "team2v2v2") n = 6;  // 3v3 / 2v2v2 are 6-player team modes
+    const difficulty = ($("difficulty-select") || {}).value || "medium";
+    const map = ($("map-select") || {}).value || "arcadia";
+    G = E.newGame({ numPlayers: n, mode, allAI: $("all-ai").checked, allCharacters: true, difficulty, map });
     window.G = G; lastAchSeq = 0;
     $("setup-screen").classList.add("hidden");
     $("game-screen").classList.remove("hidden");
@@ -667,6 +673,8 @@
     let h = `<h5>${t.name}</h5>`; const lines = [];
     if (c.terrain === "tower") lines.push("在此 <b>Activate</b> 上缴携带的信标 → 换名望");
     if (c.terrain === "mountain") lines.push("进入需要 <b>2</b> 个移动骰");
+    if (c.terrain === "maze") lines.push("🌀 迷宫：进入需 <b>2</b> 移动骰，并<b>阻挡</b>穿过它的视线（无法隔着它射击）");
+    if (c.terrain === "solar") lines.push("☀ 太阳能阵列：回合开始在此 <b>+1 行动骰</b>（能量，不可用于战斗/承伤）");
     if (c.tokens.some(k => k.kind === "beacon")) lines.push("🔆 信标：<b>Loot</b> 拾取，带到中央塔上缴 +1 名望");
     if (c.tokens.some(k => k.kind === "supply")) lines.push("📦 2★补给箱：<b>Loot</b> 开箱，抽 2 张装备留 1");
     if (c.portal) lines.push("🌀 传送门：花 1 移动骰在任意两传送门间穿梭");
@@ -704,8 +712,11 @@
     $("btn-start").addEventListener("click", startGame);
     $("btn-restart").addEventListener("click", () => location.reload());
     const modeSel = $("mode-select"), pcSel = $("player-count");
-    if (modeSel && pcSel) modeSel.addEventListener("change", () => {   // Team Royale is always 2v2 (4 players)
-      if (modeSel.value === "team") { pcSel.value = "4"; pcSel.disabled = true; } else pcSel.disabled = false;
+    if (modeSel && pcSel) modeSel.addEventListener("change", () => {   // team modes fix the player count
+      const v = modeSel.value;
+      if (v === "team") { pcSel.value = "4"; pcSel.disabled = true; }
+      else if (v === "team3v3" || v === "team2v2v2") { pcSel.value = "6"; pcSel.disabled = true; }
+      else pcSel.disabled = false;
     });
     $("btn-end").addEventListener("click", endTurn);
     $("btn-heal").addEventListener("click", async () => {

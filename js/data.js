@@ -21,8 +21,13 @@
     tower:    { name: "中央塔 Central Tower", color: "#3a6ea5", beacon: false, supply: false },
     jungle:   { name: "丛林 Jungle",          color: "#1f7a3d", beacon: true,  supply: false },
     plains:   { name: "平原 Plains",          color: "#8aa84b", beacon: true,  supply: false },
-    mountain: { name: "山地 Mountain",        color: "#6b6f76", beacon: true,  supply: false },
+    mountain: { name: "山地 Mountain",        color: "#6b6f76", beacon: true,  supply: false, moveCost: 2 },
     village:  { name: "村庄 Village",         color: "#b08948", beacon: false, supply: "2star" },
+    // ---- special terrains from the map book (new mechanics; interpreted faithfully) ----
+    // maze: a labyrinth — slow to cross AND blocks line of sight through it (no shooting across it).
+    maze:     { name: "迷宫 Maze",            color: "#6a4f8a", beacon: false, supply: false, moveCost: 2, blocksLOS: true },
+    // solar: an energy array — start your turn here and you draw +1 boost die (spendable on actions, not combat).
+    solar:    { name: "太阳能阵列 Solar Array", color: "#d9b310", beacon: false, supply: false, energy: true },
   };
 
   // ---- Arcadia map: 19 hexes (axial q,r) = center + ring1(6) + ring2(12) ----
@@ -63,6 +68,94 @@
     zones: 6,
   };
 
+  // ---- Additional maps, reconstructed from the map-book photos (照片/30-54). Like Arcadia, these are
+  // FAITHFUL-BY-COUNTS interpretations: terrain mix, player count and signature feature match the photo,
+  // but exact hex positions are hand-laid as a valid contiguous island (the diagrams aren't pixel-readable).
+  // tests/maps.js validates contiguity / single tower / portals / token terrains for each. ----
+
+  // Imperial Dynasty — a compact 2-3 player map (13 hexes: Arcadia's footprint with the 6 corners trimmed).
+  const IMPERIAL = {
+    name: "Imperial Dynasty 帝国皇朝", players: "2-3",
+    hexes: [
+      { q: 0, r: 0, terrain: "tower" },
+      { q: 1, r: 0, terrain: "village" }, { q: 1, r: -1, terrain: "jungle" }, { q: 0, r: -1, terrain: "plains" },
+      { q: -1, r: 0, terrain: "mountain" }, { q: -1, r: 1, terrain: "village" }, { q: 0, r: 1, terrain: "plains" },
+      { q: 2, r: -1, terrain: "jungle" }, { q: 1, r: 1, terrain: "village" }, { q: -1, r: 2, terrain: "mountain" },
+      { q: -2, r: 1, terrain: "village" }, { q: -1, r: -1, terrain: "jungle" }, { q: 1, r: -2, terrain: "plains" },
+    ],
+    portals: [{ q: 1, r: -2 }, { q: -1, r: 2 }],
+    neutralWalls: [{ q: 0, r: 0, edge: 0 }, { q: 0, r: 0, edge: 2 }, { q: 0, r: 0, edge: 4 }],
+  };
+
+  // Transit Hub — full 19-hex island whose signature is a FOUR-portal network (any portal reaches any other).
+  const TRANSIT = {
+    name: "Transit Hub 转运站", players: "4-6",
+    hexes: [
+      { q: 0, r: 0, terrain: "tower" },
+      { q: 1, r: 0, terrain: "village" }, { q: 1, r: -1, terrain: "jungle" }, { q: 0, r: -1, terrain: "plains" },
+      { q: -1, r: 0, terrain: "mountain" }, { q: -1, r: 1, terrain: "jungle" }, { q: 0, r: 1, terrain: "plains" },
+      { q: 2, r: 0, terrain: "jungle" }, { q: 2, r: -1, terrain: "plains" }, { q: 2, r: -2, terrain: "village" },
+      { q: 1, r: -2, terrain: "jungle" }, { q: 0, r: -2, terrain: "mountain" }, { q: -1, r: -1, terrain: "plains" },
+      { q: -2, r: 0, terrain: "village" }, { q: -2, r: 1, terrain: "jungle" }, { q: -2, r: 2, terrain: "village" },
+      { q: -1, r: 2, terrain: "mountain" }, { q: 0, r: 2, terrain: "plains" }, { q: 1, r: 1, terrain: "village" },
+    ],
+    portals: [{ q: 2, r: 0 }, { q: -2, r: 0 }, { q: 0, r: -2 }, { q: 0, r: 2 }],
+    neutralWalls: [{ q: 0, r: 0, edge: 0 }, { q: 0, r: 0, edge: 3 }],
+  };
+
+  // Ring Arena — a larger radius-3 map (25 hexes): plains-heavy arena core + 6 mountain "outpost" spokes.
+  // Radius 3 means the toxin storm starts further out (engine reads the map's max ring).
+  const RING = {
+    name: "Ring Arena 环形争霸战", players: "4-6",
+    hexes: [
+      { q: 0, r: 0, terrain: "tower" },
+      { q: 1, r: 0, terrain: "plains" }, { q: 1, r: -1, terrain: "plains" }, { q: 0, r: -1, terrain: "jungle" },
+      { q: -1, r: 0, terrain: "plains" }, { q: -1, r: 1, terrain: "jungle" }, { q: 0, r: 1, terrain: "plains" },
+      { q: 2, r: 0, terrain: "village" }, { q: 2, r: -1, terrain: "plains" }, { q: 2, r: -2, terrain: "jungle" },
+      { q: 1, r: -2, terrain: "plains" }, { q: 0, r: -2, terrain: "village" }, { q: -1, r: -1, terrain: "plains" },
+      { q: -2, r: 0, terrain: "village" }, { q: -2, r: 1, terrain: "plains" }, { q: -2, r: 2, terrain: "jungle" },
+      { q: -1, r: 2, terrain: "plains" }, { q: 0, r: 2, terrain: "village" }, { q: 1, r: 1, terrain: "plains" },
+      { q: 3, r: 0, terrain: "mountain" }, { q: 3, r: -3, terrain: "mountain" }, { q: 0, r: -3, terrain: "mountain" },
+      { q: -3, r: 0, terrain: "mountain" }, { q: -3, r: 3, terrain: "mountain" }, { q: 0, r: 3, terrain: "mountain" },
+    ],
+    portals: [{ q: 3, r: -3 }, { q: -3, r: 3 }],
+    neutralWalls: [{ q: 0, r: 0, edge: 0 }, { q: 0, r: 0, edge: 2 }, { q: 0, r: 0, edge: 4 }],
+  };
+
+  // Metropolis — dense urban map whose signature is MAZE blocks (slow + block line of sight =街区死角).
+  const METROPOLIS = {
+    name: "Metropolis 大都会", players: "3-4",
+    hexes: [
+      { q: 0, r: 0, terrain: "tower" },
+      { q: 1, r: 0, terrain: "maze" }, { q: 1, r: -1, terrain: "village" }, { q: 0, r: -1, terrain: "plains" },
+      { q: -1, r: 0, terrain: "maze" }, { q: -1, r: 1, terrain: "village" }, { q: 0, r: 1, terrain: "plains" },
+      { q: 2, r: 0, terrain: "jungle" }, { q: 2, r: -1, terrain: "village" }, { q: 2, r: -2, terrain: "plains" },
+      { q: 1, r: -2, terrain: "jungle" }, { q: 0, r: -2, terrain: "maze" }, { q: -1, r: -1, terrain: "village" },
+      { q: -2, r: 0, terrain: "jungle" }, { q: -2, r: 1, terrain: "mountain" }, { q: -2, r: 2, terrain: "village" },
+      { q: -1, r: 2, terrain: "mountain" }, { q: 0, r: 2, terrain: "plains" }, { q: 1, r: 1, terrain: "mountain" },
+    ],
+    portals: [{ q: 2, r: -2 }, { q: -2, r: 2 }],
+    neutralWalls: [{ q: 0, r: 0, edge: 0 }, { q: 0, r: 0, edge: 2 }, { q: 0, r: 0, edge: 4 }],
+  };
+
+  // Reactor — energy facility: a ring of SOLAR arrays around the reactor core (the tower) gives free dice.
+  const REACTOR = {
+    name: "Reactor 反应炉", players: "4-6",
+    hexes: [
+      { q: 0, r: 0, terrain: "tower" },
+      { q: 1, r: 0, terrain: "solar" }, { q: 1, r: -1, terrain: "jungle" }, { q: 0, r: -1, terrain: "plains" },
+      { q: -1, r: 0, terrain: "solar" }, { q: -1, r: 1, terrain: "jungle" }, { q: 0, r: 1, terrain: "plains" },
+      { q: 2, r: 0, terrain: "village" }, { q: 2, r: -1, terrain: "plains" }, { q: 2, r: -2, terrain: "solar" },
+      { q: 1, r: -2, terrain: "jungle" }, { q: 0, r: -2, terrain: "mountain" }, { q: -1, r: -1, terrain: "plains" },
+      { q: -2, r: 0, terrain: "village" }, { q: -2, r: 1, terrain: "jungle" }, { q: -2, r: 2, terrain: "solar" },
+      { q: -1, r: 2, terrain: "mountain" }, { q: 0, r: 2, terrain: "village" }, { q: 1, r: 1, terrain: "village" },
+    ],
+    portals: [{ q: 1, r: -2 }, { q: -1, r: 2 }],
+    neutralWalls: [{ q: 0, r: 0, edge: 0 }, { q: 0, r: 0, edge: 3 }],
+  };
+
+  const MAPS = { arcadia: ARCADIA, imperial: IMPERIAL, transit: TRANSIT, ring: RING, metropolis: METROPOLIS, reactor: REACTOR };
+
   // axial neighbor directions (pointy-top), index 0..5
   const HEX_DIRS = [
     { q: 1, r: 0 }, { q: 1, r: -1 }, { q: 0, r: -1 },
@@ -97,6 +190,33 @@
       ability: { id: "fastest_there_is", name: "Fastest There Is", impl: true,
                  text: "His extra Run action — after a Run, Blitz may move one more hex (once per turn)." },
       mini: "assets/characters/Blitz_2.png", card: "assets/characters/Blitz_card.png" },
+    // ---- Expansion characters (轟隆鳴動 Rumble + 奪旗賽 Capture the Flag). Abilities transcribed from
+    // the official Chinese edition. Only drawn into a game when newGame is called with allCharacters:true.
+    // Figurine/card art not wired yet (UI falls back to a colored disc + name initial).
+    { id: "sora", name: "Sora", cn: "索拉", color: "#1fb6c9", set: "rumble",
+      ability: { id: "all_terrain", name: "All-Terrain", impl: true,
+                 text: "Moving or running ignores terrain and barrier movement restrictions." } },
+    { id: "betty", name: "Betty", cn: "炸彈貝蒂", color: "#e85aa0", set: "rumble",
+      ability: { id: "demolitions", name: "Demolitions", impl: true,
+                 text: "Once per turn, take a Build action for free (no action die)." } },
+    { id: "butcher", name: "Butcher", cn: "布彻", color: "#7a3fb0", set: "rumble",
+      ability: { id: "brawler", name: "Brawler", impl: true,
+                 text: "Close Combat: before comparing skulls, re-roll the lowest die in your combat line." } },
+    { id: "emmet", name: "Emmet", cn: "埃米特", color: "#e8632a", set: "rumble",
+      ability: { id: "field_medic", name: "Field Medic", impl: true,
+                 text: "Heal is unrestricted; you may re-roll the die assigned to a Heal action." } },
+    { id: "echo", name: "Echo", cn: "艾可", color: "#3fcaa0", set: "ctf",
+      ability: { id: "cloak", name: "Cloak", impl: true,
+                 text: "Stealth: only targetable by ranged attacks from your hex, until you take part in combat." } },
+    { id: "diana", name: "Diana", cn: "戴安娜", color: "#9aa7b3", set: "ctf",
+      ability: { id: "huntress", name: "Huntress", impl: true,
+                 text: "Ranged Combat: range +1, and you may re-roll one shooting die." } },
+    { id: "kaiser", name: "Kaiser", cn: "凱薩", color: "#e0a82e", set: "ctf",
+      ability: { id: "regeneration", name: "Regeneration", impl: true,
+                 text: "End Phase: heal 1 injury." } },
+    { id: "codybuzz", name: "Cody & Buzz", cn: "柯蒂與巴茲", color: "#f4b400", set: "ctf",
+      ability: { id: "drone_buzz", name: "Drone Buzz", impl: true,
+                 text: "Once per turn, assign an action die to the drone Buzz to Loot a token on your hex or an adjacent hex." } },
   ];
 
   // ---- Fame token types ----
@@ -202,7 +322,7 @@
   // ---- Per-player-count setup (from rulebook) ----
   const SETUP = {
     // event deck = 2 Supply Drops + N random events
-    eventRandom: { 2: 14, 3: 16, 4: 18 },
+    eventRandom: { 2: 14, 3: 16, 4: 18, 5: 20, 6: 22 },   // 5-6 player decks (Rumble): longer storms for bigger games
     walls: 6,   // per player/team
     traps: 6,   // per player
   };
@@ -338,9 +458,24 @@
       traits: { aggression: 1, frag: .7, caution: 0, betray: .5, trash: .7, diplomacy: .2 }, lines: ["梭哈！", "富贵险中求。"] },
   ];
 
+  // ---- AI difficulty: skill policies read by ai.js (separate from persona STYLE). ----
+  // medium = {} (all hand-tuned defaults). easy = blunders often + worse survival. hard = self-play-tuned
+  // (tools/train_ai.js writes the numbers here). Personas still layer their own style on top of any tier.
+  // Tuned via self-play (tools/train_ai.js): the optimizer consistently favored MORE proactive ranged play
+  // (low rangedAggro) with no blunders, so "hard" encodes that. Difficulty is scaled mainly by `blunder`
+  // — the proven lever (self-play win-share vs medium was ~easy 0.18 / medium 0.50 / hard 0.51+).
+  // tools/eval_ladder.js validates the ordering; tests/difficulty.js guards it.
+  const DIFFICULTY = {
+    easy:   { blunder: 0.45, healBase: 3, healMin: 3, rangedAggro: 0.60, closeAggro: 0.85, rushAggro: 0.98, buildTrap: 0.95 },
+    medium: { blunder: 0.12 },
+    hard:   { blunder: 0, rangedAggro: 0.15, closeAggro: 0.45, rushAggro: 0.60 },
+    // expert = hard heuristic AS the rollout policy + Monte-Carlo look-ahead (ai.js). rollouts = strength/think-time.
+    expert: { blunder: 0, rangedAggro: 0.15, closeAggro: 0.45, rushAggro: 0.60, rollouts: 16, rolloutDepth: 0 },   // rollouts = rollouts PER candidate (1-ply look-ahead); more = stronger + slower
+  };
+
   const DATA = {
-    DIE_FACES, DICE, START_ACTION_DICE, TERRAIN, ARCADIA, HEX_DIRS,
-    CHARACTERS, FAME, SLOTS, EQUIPMENT, ACTIONS, SETUP, TOKEN_ART, HIDEOUT_ART, TILE_ART, EVENTS, ACHIEVEMENTS, CHATTER, PERSONAS,
+    DIE_FACES, DICE, START_ACTION_DICE, TERRAIN, ARCADIA, MAPS, HEX_DIRS,
+    CHARACTERS, FAME, SLOTS, EQUIPMENT, ACTIONS, SETUP, TOKEN_ART, HIDEOUT_ART, TILE_ART, EVENTS, ACHIEVEMENTS, CHATTER, PERSONAS, DIFFICULTY,
     EQUIP_BY_ID: Object.fromEntries(EQUIPMENT.map(e => [e.id, e])),
     ACHIEVEMENT_BY_ID: Object.fromEntries(ACHIEVEMENTS.map(a => [a.id, a])),
   };
