@@ -350,6 +350,10 @@
     await sleep(950);
     // PHASE 3 — combat line, row by row (numeric, high->low)
     const aNum = aArr.filter(v => v !== "skull").sort((x, y) => y - x), dNum = dArr.filter(v => v !== "skull").sort((x, y) => y - x);
+    // mirror engine skull step: in ranged combat a defender skull-excess removes that many
+    // of the attacker's lowest shooting dice BEFORE the line comparison (doRanged sh.line.splice),
+    // so drop them here too — otherwise the overlay shows wins for dice the engine discarded.
+    if (rep.type === "ranged" && dS > aS) aNum.splice(Math.max(0, aNum.length - (dS - aS)), dS - aS);
     mid.innerHTML = `逐列比对 ▶`;
     aWrap.innerHTML = aNum.map(v => `<span class="adie settled">${v}</span>`).join("") || '<i class="muted">—</i>';
     dWrap.innerHTML = dNum.map(v => `<span class="adie settled">${v}</span>`).join("") || '<i class="muted">—</i>';
