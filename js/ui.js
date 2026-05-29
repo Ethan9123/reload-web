@@ -146,7 +146,7 @@
       const ch = CHAR[p.character];
       const portrait = ch && ch.mini ? `<img class="pportrait" src="${ch.mini}" alt="${p.name}" onerror="this.style.display='none'">` : "";
       d.innerHTML = `<div class="prow">${portrait}<div class="pinfo">` +
-        `<div class="pname">${p.name}${p.human ? " (你)" : ""}${p.idx === G.activePlayer ? " ◀" : ""}</div>` +
+        `<div class="pname">${p.name}${p.human ? " (你)" : ""}${p.team != null ? ` <span class="team-badge team${p.team}">队${p.team + 1}</span>` : ""}${p.idx === G.activePlayer ? " ◀" : ""}</div>` +
         `<div class="pstat">名望 ${E.totalFame(p)} · 伤害 ${p.injuries} · 防御区 ${p.defensePool}/${p.actionDice}${p.boostDice ? ` <span style="color:#5fd06f">+${p.boostDice}⚡</span>` : ""}${assigned}${combat} · 背包 ${p.backpack.length}` +
         (p.carryingBeacons ? ` · 携带信标 ${p.carryingBeacons}` : "") +
         ` · ${p.pos ? "在场" : "待跳伞"}</div></div></div>`;
@@ -160,12 +160,15 @@
   function renderTop() {
     const p = E.curP(G);
     let hint = "";
-    if (G.gameOver) hint = `🏆 ${G.players[G.winner].name} 获胜${G.superstar ? "（Superstar）" : ""}`;
+    if (G.gameOver) hint = (G.mode === "team" && G.winnerTeam != null)
+      ? `🏆 队伍 ${G.winnerTeam + 1} 获胜${G.superstar ? "（Superstar）" : ""}（队伍名望 ${E.teamFame(G, G.winnerTeam)}）`
+      : `🏆 ${G.players[G.winner].name} 获胜${G.superstar ? "（Superstar）" : ""}`;
     else if (!p.human) hint = `${p.name}（AI）行动中…`;
     else if (G.needsParachute) hint = "跳伞：点击中央塔或相邻格";
     else { const h = highlightSet(); hint = `你的回合：点相邻格移动${h.loot ? " · 点当前格拾取" : ""}${E.canUpload(G, p) ? " · 点中央塔上缴信标" : ""}${h.atk.size ? " · 点红框敌人攻击" : ""} · 或结束回合`; }
     const le = (G.lastEvent && D.EVENTS[G.lastEvent]) ? ` · ⚡${D.EVENTS[G.lastEvent].name}` : "";
-    $("game-info").textContent = `Arcadia · ${G.numPlayers}人 · 第${G.round}回合 · 事件${G.eventsResolved}/${G.eventTotal}${le} — ${hint}`;
+    const modeLabel = G.mode === "team" ? `团队赛 队1 ${E.teamFame(G, 0)} : ${E.teamFame(G, 1)} 队2` : "大逃杀";
+    $("game-info").textContent = `Arcadia · ${G.numPlayers}人 · ${modeLabel} · 第${G.round}回合 · 事件${G.eventsResolved}/${G.eventTotal}${le} — ${hint}`;
     const human = !G.gameOver && p.human, showAct = human && !G.needsParachute;
     const setBtn = (id, ok) => { const bt = $(id); if (!bt) return; bt.disabled = !ok; bt.classList.toggle("hidden", !human); };
     setBtn("btn-end", human && !G.needsParachute);
@@ -226,13 +229,16 @@
     const p = E.curP(G);
     if (G.needsParachute) { if (E.parachute(G, key)) render(); return; }
     const c = G.board[key];
-    const enemies = E.playersOnHex(G, c.q, c.r).filter(x => x.idx !== p.idx);
-    if (enemies.length) {
-      const tgt = enemies[0].idx;
-      if (E.closeTargets(G, p).includes(tgt)) { E.doClose(G, tgt); render(); await animateCombat(G.lastCombat); await endTurn(); return; } // close ends turn
-      if (E.rangedTargets(G, p).includes(tgt)) {
+    const occupants = E.playersOnHex(G, c.q, c.r).filter(x => x.idx !== p.idx).map(x => x.idx);
+    if (occupants.length) {
+      // pick an actually-attackable enemy on this hex (skip teammates / out-of-reach occupants)
+      const ct = E.closeTargets(G, p), rt = E.rangedTargets(G, p);
+      const closeTgt = occupants.find(idx => ct.includes(idx));
+      if (closeTgt != null) { E.doClose(G, closeTgt); render(); await animateCombat(G.lastCombat); await endTurn(); return; } // close ends turn
+      const rangedTgt = occupants.find(idx => rt.includes(idx));
+      if (rangedTgt != null) {
         const aKey = E.hexKey(p.pos.q, p.pos.r), tKey = key;     // capture hexes before resolution (target may RELOAD)
-        E.doRanged(G, tgt, 3); render(); await vfxGunshot(aKey, tKey); await animateCombat(G.lastCombat); return;
+        E.doRanged(G, rangedTgt, 3); render(); await vfxGunshot(aKey, tKey); await animateCombat(G.lastCombat); return;
       }
     }
     const curKey = E.hexKey(p.pos.q, p.pos.r);
@@ -268,7 +274,10 @@
   }
 
   async function startGame() {
-    G = E.newGame({ numPlayers: parseInt($("player-count").value, 10), allAI: $("all-ai").checked });
+    const modeSel = $("mode-select"), mode = modeSel ? modeSel.value : "battleRoyale";
+    let n = parseInt($("player-count").value, 10);
+    if (mode === "team") n = 4;   // Team Royale is a 2v2 — always 4 characters (no one-player-controls-two)
+    G = E.newGame({ numPlayers: n, mode, allAI: $("all-ai").checked });
     window.G = G; lastAchSeq = 0;
     $("setup-screen").classList.add("hidden");
     $("game-screen").classList.remove("hidden");
@@ -470,6 +479,17 @@
     await sleep(1100);
     ov.style.display = "none";
   }
+  // small styled chooser for the heal target (self vs teammate) — returns the chosen idx, or null if cancelled
+  function pickHealTarget(p, targets) {
+    return new Promise(resolve => {
+      let ov = $("choice-overlay");
+      if (!ov) { ov = document.createElement("div"); ov.id = "choice-overlay"; document.body.appendChild(ov); }
+      const btns = targets.map(idx => { const t = G.players[idx]; return `<button class="ch-btn" data-i="${idx}">${idx === p.idx ? "治疗自己（恢复 1）" : `治疗队友 ${t.name}（恢复 2 · +团队精神）`}</button>`; }).join("");
+      ov.innerHTML = `<div class="ch-panel"><div class="ch-title">选择治疗目标</div><div class="ch-btns">${btns}<button class="ch-btn cancel" data-i="">取消</button></div></div>`;
+      ov.style.display = "flex";
+      ov.querySelectorAll(".ch-btn").forEach(b => b.addEventListener("click", () => { ov.style.display = "none"; const v = b.dataset.i; resolve(v === "" ? null : +v); }));
+    });
+  }
   function animateHeal(roll) {
     if (!roll) return Promise.resolve();
     const p = G.players[roll.by];
@@ -626,11 +646,18 @@
   function init() {
     $("btn-start").addEventListener("click", startGame);
     $("btn-restart").addEventListener("click", () => location.reload());
+    const modeSel = $("mode-select"), pcSel = $("player-count");
+    if (modeSel && pcSel) modeSel.addEventListener("change", () => {   // Team Royale is always 2v2 (4 players)
+      if (modeSel.value === "team") { pcSel.value = "4"; pcSel.disabled = true; } else pcSel.disabled = false;
+    });
     $("btn-end").addEventListener("click", endTurn);
     $("btn-heal").addEventListener("click", async () => {
       if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
-      const p = E.curP(G);
-      if (E.canHeal(G, p) && E.doHeal(G)) { render(); await animateHeal(G.lastRoll); }
+      const p = E.curP(G), targets = E.healTargets(G, p);
+      if (!targets.length) return;
+      let targetIdx = targets[0];
+      if (targets.length > 1) { targetIdx = await pickHealTarget(p, targets); if (targetIdx == null) return; } // let the player choose self vs teammate
+      if (E.doHeal(G, targetIdx)) { render(); await animateHeal(G.lastRoll); }
     });
     $("btn-barrier").addEventListener("click", () => act(p => { const e = barrierEdgeTowardEnemy(p); return e != null && E.doBuildBarrier(G, e); }));
     $("btn-hideout").addEventListener("click", () => act(p => E.canBuild(G, p) && E.doBuildHideout(G)));

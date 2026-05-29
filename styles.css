@@ -49,6 +49,9 @@ button.small { padding: 4px 10px; font-size: 13px; cursor: pointer; }
 .pcard .pportrait { height: 46px; width: 34px; object-fit: contain; flex: none;
   background: #11141a; border-radius: 4px; }
 .pcard .pname { font-weight: 700; }
+.team-badge { font-size: 10px; font-weight: 700; border-radius: 4px; padding: 1px 5px; vertical-align: middle; }
+.team-badge.team0 { background: #1d3a5f; color: #9fd0ff; }
+.team-badge.team1 { background: #5f3a1d; color: #ffd09f; }
 .pcard .pstat { font-size: 12px; color: #9aa0ac; }
 #log-panel h4 { margin: 12px 0 6px; }
 #log { font-size: 12px; color: #aab0bc; max-height: 220px; overflow: auto; }
@@ -122,6 +125,16 @@ button.small { padding: 4px 10px; font-size: 13px; cursor: pointer; }
 .dz-result { margin-top: 14px; font-weight: 700; min-height: 20px; }
 .dz-result.hit { color: #7CFC7C; }
 .dz-result.big { color: #ff6b6b; font-size: 18px; }
+
+/* ---- generic choice overlay (e.g. heal target) ---- */
+#choice-overlay { display: none; position: fixed; inset: 0; z-index: 70; align-items: center; justify-content: center;
+  background: rgba(8, 10, 14, 0.7); }
+.ch-panel { background: #161a22; border: 2px solid #2a2f3a; border-radius: 14px; padding: 18px 22px; min-width: 280px; text-align: center; }
+.ch-title { font-weight: 700; margin-bottom: 14px; color: #cdd2db; }
+.ch-btns { display: flex; flex-direction: column; gap: 8px; }
+.ch-btn { font: inherit; padding: 10px 12px; border-radius: 8px; border: 1px solid #3a6b4f; background: #234032; color: #d6ffe6; font-weight: 600; cursor: pointer; }
+.ch-btn:hover { filter: brightness(1.12); }
+.ch-btn.cancel { background: #232936; border-color: #3a4150; color: #aab0bc; }
 
 /* ---- mine / trap reveal close-up ---- */
 #trap-overlay { display: none; position: fixed; inset: 0; z-index: 65; align-items: center; justify-content: center;
