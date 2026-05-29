@@ -278,9 +278,69 @@
     ],
   };
 
+  // ---- AI personas (player-behaviour archetypes from FPS motivation research) ----
+  // traits are 0..1 weights the automa reads to play differently (omitted keys fall back to engine defaults):
+  //   aggression(主动交火) frag(刷人头) objective(抢资源/上分) caution(自保/治疗早)
+  //   loot(舔包) build(架设防御) diplomacy(结盟) betray(背刺) vendetta(记仇) leaderHunt(针对头名) trash(垃圾话)
+  const PERSONAS = [
+    // 操作与对抗轴
+    { id: "rusher", name: "钢枪猛男", archetype: "疯狗流 Rusher", dim: "操作", blurb: "开局就喊 RUSH B，永远冲在最前，迷恋近距离对枪。",
+      traits: { aggression: 1, frag: .6, objective: .3, caution: .1, leaderHunt: .3, trash: .6, diplomacy: .2 }, lines: ["RUSH B！别墨迹！", "钢枪，怕的不算男人。"] },
+    { id: "fraghunter", name: "人头猎人", archetype: "刷屏狂魔 Frag Hunter", dim: "操作", blurb: "只看 K/D，专抓残血、收割战场，能卖队友抢人头。",
+      traits: { aggression: .8, frag: 1, objective: .2, caution: .3, trash: .5, diplomacy: .2 }, lines: ["这个人头我的。", "残血都归我。"] },
+    { id: "griefer", name: "破坏狂", archetype: "虐菜鞭尸 Griefer", dim: "操作", blurb: "喜欢羞辱对手、鞭尸嘲讽，快乐来自对方痛苦。",
+      traits: { aggression: .9, frag: .6, caution: .2, betray: .7, vendetta: .4, trash: 1, diplomacy: .2 }, lines: ["蹲下，给你表演个 T-bag。", "送你回新手村。"] },
+    // 战术与认知轴
+    { id: "igl", name: "铁血教条", archetype: "战术大师 IGL", dim: "战术", blurb: "背点位、控经济与视野，针对头名，厌恶运气成分。",
+      traits: { aggression: .5, objective: .7, caution: .5, build: .4, diplomacy: .7, leaderHunt: 1, trash: .2 }, lines: ["集火领头的，按我说的转点。", "纪律，纪律。"] },
+    { id: "edger", name: "圈边运营狗", archetype: "地理决定论 Map Controller", dim: "战术", blurb: "卡边运营，不轻易开枪，开枪就要灭队。",
+      traits: { aggression: .2, objective: .8, caution: .9, loot: .6, build: .5, diplomacy: .5, trash: .2 }, lines: ["稳住，发育。", "让他们自己走进死路。"] },
+    { id: "lurker", name: "独狼残局", archetype: "Clutch King / Lurker", dim: "战术", blurb: "从不与大队同行，残局靠冷静与听声辩位 1v多翻盘。",
+      traits: { aggression: .5, caution: .7, objective: .5, leaderHunt: .4, diplomacy: .1, trash: .2 }, lines: ["你们先上，我断后。", "残局交给我。"] },
+    // 社交与情感轴
+    { id: "shadow", name: "影形人", archetype: "连体巨婴 Backpack", dim: "社交", blurb: "绑定大腿、有求必应，0杀10死20助攻的绿叶。",
+      traits: { aggression: .3, objective: .4, caution: .6, diplomacy: 1, betray: 0, loot: .5, trash: .3 }, lines: ["大哥带我！", "枪都给你，我空手就行。"] },
+    { id: "entertainer", name: "气氛组", archetype: "相声演员 Entertainer", dim: "社交", blurb: "开麦讲段子放歌，胜负随缘，绝不冷场不内讧。",
+      traits: { aggression: .4, objective: .4, caution: .4, diplomacy: .8, trash: 1, betray: .2 }, lines: ["666 这波太秀了！", "来，整段活儿。"] },
+    { id: "blamer", name: "压力怪", archetype: "情绪垃圾桶 Toxic", dim: "社交", blurb: "死了一定是队友的错，打不顺就开骂、记仇。",
+      traits: { aggression: .6, caution: .3, vendetta: .7, betray: .6, trash: 1, diplomacy: .3 }, lines: ["你不拉线怪我咯？", "全是内鬼！" ] },
+    { id: "vendetta", name: "平头哥", archetype: "尊严复仇者 Vendetta", dim: "社交", blurb: "被针对就进狂暴模式，哪怕输也要杀他一次。",
+      traits: { aggression: .7, vendetta: 1, leaderHunt: .2, caution: .3, trash: .6, diplomacy: .3 }, lines: ["你完了，我记住你了。", "今天必须收了你。"] },
+    // 生存与防卫轴
+    { id: "lootgoblin", name: "拾荒恶鬼", archetype: "佛系仓鼠 Loot Goblin", dim: "生存", blurb: "毕生搜刮舔包，囤满物资才安心。",
+      traits: { aggression: .2, objective: .6, caution: .8, loot: 1, build: .2, diplomacy: .4, trash: .2 }, lines: ["这个盒子我先舔。", "再搜一个我就走。"] },
+    { id: "bushmaster", name: "伏地魔", archetype: "极限苟活 Survivalist", dim: "生存", blurb: "一枪不发苟到决赛圈，钝感力与克制力拉满。",
+      traits: { aggression: .15, caution: 1, objective: .5, build: .4, diplomacy: .3, trash: .1 }, lines: ["趴好，别动。", "苟到最后就是赢。"] },
+    { id: "architect", name: "基建狂魔", archetype: "自闭建造 Architect", dim: "生存", blurb: "风吹草动先盖楼，用结构与掩体抵消对手枪法。",
+      traits: { aggression: .3, caution: .8, build: 1, objective: .4, diplomacy: .3, trash: .2 }, lines: ["先盖个九层妖塔。", "墙比人靠谱。"] },
+    { id: "sightseer", name: "散步党", archetype: "纯粹观光客 Casual", dim: "生存", blurb: "开车看风景、研究地图，对胜负完全免疫。",
+      traits: { aggression: .2, objective: .3, caution: .5, loot: .5, diplomacy: .5, trash: .3 }, lines: ["这地图风景真不错。", "赢不赢的，开心就好。"] },
+    // 复合 / 缝合怪
+    { id: "exec", name: "商业精英", archetype: "战术大师×独狼 (INTJ)", dim: "复合", blurb: "平时不说话，关键时刻靠智商一打多，专收头名。",
+      traits: { aggression: .5, objective: .7, caution: .6, leaderHunt: .9, diplomacy: .5, betray: .4, trash: .1 }, lines: ["数据不会骗人。", "降维打击。"] },
+    { id: "officeworker", name: "压抑职场白", archetype: "拾荒×虐菜 反复横跳", dim: "复合", blurb: "安全时疯狂囤货，一拿到压制性武器就报复羞辱。",
+      traits: { aggression: .5, frag: .8, caution: .7, loot: .8, betray: .7, vendetta: .6, trash: .7 }, lines: ["平时忍着，现在该爽了。", "轮到我翻身了。"] },
+    { id: "warlord", name: "莽夫指挥", archetype: "Rusher×IGL", dim: "复合", blurb: "一边喊战术一边带头冲，混乱但有压迫力。",
+      traits: { aggression: .9, leaderHunt: .6, diplomacy: .6, build: .3, caution: .2, trash: .6 }, lines: ["跟我冲，别想太多！", "我说的就是战术。"] },
+    { id: "rat", name: "苟命人头狗", archetype: "Survivalist×Frag", dim: "复合", blurb: "苟到最后再出手，专收别人打残的尾刀。",
+      traits: { aggression: .4, frag: .8, caution: .8, objective: .4, diplomacy: .3, trash: .3 }, lines: ["你们先打，我捡漏。", "尾刀艺术家。"] },
+    { id: "guardian", name: "慈父辅助", archetype: "影形人×基建", dim: "复合", blurb: "高忠诚的保姆，搭墙、送物资、绝不背刺。",
+      traits: { aggression: .2, caution: .8, build: .7, diplomacy: .9, betray: 0, loot: .5, trash: .2 }, lines: ["墙我来盖，你只管输出。", "我罩着你。"] },
+    { id: "loudmouth", name: "嘴硬王", archetype: "Entertainer×Toxic", dim: "复合", blurb: "全程嘴炮，赢了狂笑输了嘴硬，偶尔记仇。",
+      traits: { aggression: .5, trash: 1, diplomacy: .6, vendetta: .5, betray: .3 }, lines: ["就这？", "菜是原罪，别怪我嘴臭。"] },
+    { id: "sniper", name: "冷面狙击手", archetype: "Marksman / 神射手", dim: "复合", blurb: "远距离锁人，专点高价值目标，话少手稳。",
+      traits: { aggression: .5, leaderHunt: .7, objective: .5, caution: .6, trash: .2, diplomacy: .3 }, lines: ["一枪一个。", "进镜，闭嘴。"] },
+    { id: "sneaky", name: "老六", archetype: "Lurker×伏地魔", dim: "复合", blurb: "阴人专家，卡视野绕后，从不正面硬刚。",
+      traits: { aggression: .4, caution: .9, leaderHunt: .3, diplomacy: .1, betray: .5, trash: .4 }, lines: ["惊不惊喜，意不意外。", "正面打不过？那就绕后。"] },
+    { id: "dove", name: "和平鸽", archetype: "外交家 Diplomat", dim: "复合", blurb: "见谁都先递橄榄枝，靠结盟与运营上分。",
+      traits: { aggression: .2, objective: .6, caution: .6, diplomacy: 1, betray: 0, leaderHunt: .3, trash: .2 }, lines: ["别打了，结个盟？", "以和为贵。"] },
+    { id: "gambler", name: "赌徒", archetype: "高方差莽夫 Gambler", dim: "复合", blurb: "全压一把，要么暴富要么暴毙，从不防守。",
+      traits: { aggression: 1, frag: .7, caution: 0, betray: .5, trash: .7, diplomacy: .2 }, lines: ["梭哈！", "富贵险中求。"] },
+  ];
+
   const DATA = {
     DIE_FACES, DICE, START_ACTION_DICE, TERRAIN, ARCADIA, HEX_DIRS,
-    CHARACTERS, FAME, SLOTS, EQUIPMENT, ACTIONS, SETUP, TOKEN_ART, HIDEOUT_ART, TILE_ART, EVENTS, ACHIEVEMENTS, CHATTER,
+    CHARACTERS, FAME, SLOTS, EQUIPMENT, ACTIONS, SETUP, TOKEN_ART, HIDEOUT_ART, TILE_ART, EVENTS, ACHIEVEMENTS, CHATTER, PERSONAS,
     EQUIP_BY_ID: Object.fromEntries(EQUIPMENT.map(e => [e.id, e])),
     ACHIEVEMENT_BY_ID: Object.fromEntries(ACHIEVEMENTS.map(a => [a.id, a])),
   };

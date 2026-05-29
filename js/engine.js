@@ -78,6 +78,8 @@
     return {
       idx, character: character.id, name: character.name, color: character.color, human,
       team: null,                      // Team Royale: 0/1 (teammates seated diagonally, idx%2)
+      persona: null,                   // AI behaviour archetype (data.PERSONAS); drives the automa's style
+      _lastAttacker: null,             // idx of the last player who damaged us (for the Vendetta persona)
       // dice: still count-based, with assignedDice preserving values spent this turn.
       actionDice: START_ACTION_DICE,   // action dice currently owned (5 minus injuries)
       defensePool: START_ACTION_DICE,  // unassigned, available this turn
@@ -115,6 +117,11 @@
     const players = chars.map((c, i) => newPlayer(i, c, opts.allAI ? false : i === 0));
     // Team Royale: teammates seated diagonally so turn order (clockwise) never gives back-to-back team turns
     if (mode === "team") for (const p of players) p.team = p.idx % 2;
+    // assign a distinct AI persona to each player (drives the automa's style); can be disabled with personas:false
+    if (opts.personas !== false && DATA.PERSONAS && DATA.PERSONAS.length) {
+      const pool = shuffle(DATA.PERSONAS.slice(), rnd);
+      players.forEach((p, i) => { p.persona = pool[i % pool.length]; });
+    }
 
     // board
     const board = {};
@@ -230,7 +237,8 @@
     const leaderFame = Math.max(...state.players.map(totalFame));
     if (me >= leaderFame && me > them + 2) return false; // I'm out front — keep the pressure on
     const base = them >= me ? 0.75 : 0.45;               // more willing to truce a stronger rival
-    return state.rnd() < base * (d.rep[from] / 60);
+    const per = state.players[ai].persona, dip = (per && per.traits.diplomacy != null) ? per.traits.diplomacy : 0.4;
+    return state.rnd() < base * (d.rep[from] / 60) * (0.5 + dip);   // diplomats accept readily; loners rarely
   }
   function proposeTruce(state, from, to, rounds) {
     rounds = rounds || 3;
@@ -265,6 +273,12 @@
     const o = state.diplomacy.offers.splice(i, 1)[0];
     dipSay(state, o.to, accept ? "acceptTruce" : "declineTruce");
     if (accept && o.kind === "truce") setTruce(state, o.from, o.to, o.rounds);
+    return true;
+  }
+  // emit a persona's signature line (or a generic trash line) into the feed/log
+  function dipTaunt(state, fromIdx) {
+    const p = state.players[fromIdx], lines = p && p.persona && p.persona.lines;
+    dipSay(state, fromIdx, "trash", (lines && lines.length) ? lines[Math.floor(state.rnd() * lines.length)] : null);
     return true;
   }
   function tickDiplomacy(state) {
@@ -1009,6 +1023,7 @@
     const A = curP(state), T = state.players[targetIdx];
     if (!rangedTargets(state, A).includes(targetIdx)) return false;
     if (hasTruce(state, A.idx, T.idx)) breakTruce(state, A.idx, T.idx);   // attacking a truce partner = betrayal
+    T._lastAttacker = A.idx;                                              // remember the aggressor (Vendetta persona)
     const w = equippedRanged(A); assignValue = assignValue || 3;
     spendDice(state, A, 1, assignValue);
     const shooterDice = rollDice(state.rnd, w.dice || 2);
@@ -1052,6 +1067,7 @@
     const A = curP(state), T = state.players[targetIdx];
     if (!closeTargets(state, A).includes(targetIdx)) return false;
     if (hasTruce(state, A.idx, T.idx)) breakTruce(state, A.idx, T.idx);   // attacking a truce partner = betrayal
+    T._lastAttacker = A.idx; A._lastAttacker = T.idx;                     // close combat is mutual (Vendetta persona)
     spendDice(state, A, 1, 1);
     const aRaw = rollDice(state.rnd, ownedDice(A)), tRaw = rollDice(state.rnd, ownedDice(T));
     const aCW = equippedClose(A), tCW = equippedClose(T);
@@ -1091,7 +1107,7 @@
     // teams (Team Royale)
     sameTeam, teammates, teamMembers, teamFame, scoreFor, healTargets, giveToTeammate,
     // diplomacy
-    hasTruce, truceRoundsLeft, friendly, proposeTruce, respondToOffer, proposeFocus, breakTruce, aiAcceptTruce,
+    hasTruce, truceRoundsLeft, friendly, proposeTruce, respondToOffer, proposeFocus, breakTruce, aiAcceptTruce, dipTaunt,
     // turn/action API
     SUPERSTAR_FAME, superstarThreshold, curP, isHumanTurn, legalParachute, parachute,
     legalRuns, doRun, lootOptions, doLoot, endTurn, beginTurn, towerKey,
