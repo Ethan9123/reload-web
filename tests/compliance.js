@@ -122,16 +122,23 @@ A(E.superstarThreshold("battleRoyale", 2) === 28, "2-player uses the longer trac
 A(E.newGame({ numPlayers: 2, seed: 8, allAI: true }).superstarFame === 28, "2-player game state.superstarFame = 28");
 A(E.newGame({ numPlayers: 4, seed: 8, allAI: true }).superstarFame === 16, "4-player game state.superstarFame = 16");
 
-// 10b) Boost die must NOT persist into the combat line (cap to real owned dice)
+// 10b) Boost die must NOT persist into the combat line — even when Heal recovers a die mid-turn.
+// Scenario (from Codex): injuries 4, drink, spend the real die on an action, then Heal with the boost die.
 const g10 = E.newGame({ numPlayers: 2, seed: 11, allAI: true });
 const tk10 = E.towerKey(g10), tc10 = g10.board[tk10];
-const p10 = E.curP(g10); p10.pos = { q: tc10.q, r: tc10.r }; g10.phase = "action";
-p10.injuries = 4; p10.actionDice = 1; p10.defensePool = 1; p10.combatLine = []; p10.assignedDice = []; p10.backpack = ["energy_drink"];
-E.useSpecialItem(g10, "energy_drink");                 // pool 2 (1 real + 1 boost)
-p10.assignedDice = [5, 4]; p10.assigned = 2; p10.defensePool = 0; p10.boostDice = 0;  // both dice spent on actions
-E.moveAssignedDiceToCombatLine(p10);
-A(p10.combatLine.length === p10.actionDice && p10.actionDice === 1,
-  `combat line capped at real owned dice after spending the boost die (line=${p10.combatLine.length})`);
+const p10 = E.curP(g10), other10 = g10.players[1];
+p10.pos = { q: tc10.q, r: tc10.r }; other10.pos = null; other10.reloadZone = true; // p10 alone -> can Heal
+g10.phase = "action"; g10.activePlayer = 0;
+// state right after: drank Energy Drink (boost die) + spent the 1 real die on a Run (assignedDice=[1])
+p10.injuries = 4; p10.actionDice = 2; p10.defensePool = 1; p10.boostDice = 1; p10.assignedDice = [1]; p10.combatLine = [];
+g10.rnd = () => 0.7;                                    // Heal rolls a 5
+A(E.doHeal(g10), "Heal succeeds using the boost die");
+A(p10.injuries === 3, "Heal reduced injuries 4 -> 3");
+A(p10.boostDice === 0, "boost die was the die spent on Heal (real die was kept)");
+E.moveAssignedDiceToCombatLine(p10);                   // End Phase
+A(!p10.combatLine.includes(5), "boost-die Heal roll (5) did NOT enter the combat line");
+A(p10.combatLine.length === 1 && p10.combatLine[0] === 1, "only the real action die remains in the combat line");
+A(p10.defensePool === 1, "the recovered real die sits in the defense pool, not the combat line");
 
 // 10c) Tactical Explosive range is enforced by the engine (out-of-range target rejected)
 const g10c = E.newGame({ numPlayers: 2, seed: 12, allAI: true });

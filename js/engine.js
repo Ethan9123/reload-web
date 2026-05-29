@@ -278,16 +278,21 @@
   // dice available for COMBAT/injury = pool minus the Energy Drink boost dice (which can't be used in combat / as injury)
   function combatDice(p) { return p.defensePool - (p.boostDice || 0); }
   function spendDice(state, p, n, face) {
-    p.defensePool -= n; p.assigned += n;
     const f = face == null ? 1 : face;
-    for (let i = 0; i < n; i++) p.assignedDice.push(f);
-    p.boostDice = Math.min(p.boostDice || 0, p.defensePool);   // boost die is consumed only once no real dice remain to absorb the spend
+    for (let i = 0; i < n; i++) {
+      if (p.defensePool <= 0) break;
+      const realAvail = p.defensePool - (p.boostDice || 0);   // real action dice remaining before this spend
+      p.defensePool -= 1;
+      if (realAvail > 0) p.assignedDice.push(f);              // a real action die -> becomes a combat-line die in End Phase
+      else p.boostDice = Math.max(0, (p.boostDice || 0) - 1); // the Energy Drink boost die: spent now, never enters the combat line / injury zone
+    }
+    p.assigned = p.assignedDice.length;
   }
   function moveAssignedDiceToCombatLine(p) {
     p.actionDice = START_ACTION_DICE - p.injuries;
+    // assignedDice holds only real action dice (boost dice are dropped at spend-time in spendDice and
+    // never reach here). Cap to real owned dice as a defensive safety net.
     let line = sortCombatLine([...(p.combatLine || []), ...(p.assignedDice || [])]);
-    // Energy Drink boost dice are "this turn only": they may have been assigned to actions but must NOT
-    // persist into the combat line (where they'd act as combat/injury dice). Cap the line to real owned dice.
     if (line.length > p.actionDice) line = line.slice(0, p.actionDice);
     p.combatLine = line;
     p.assignedDice = []; p.assigned = 0; p.boostDice = 0;
