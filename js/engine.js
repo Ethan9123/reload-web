@@ -209,11 +209,23 @@
     return p;
   }
 
+  const faceDir = (f) => (f === "skull" ? 5 : f - 1);   // die face -> hex direction 0..5
   function parachute(state, key) {
     if (!state.needsParachute || !legalParachute(state).includes(key)) return false;
     const p = curP(state), c = state.board[key];
-    p.pos = { q: c.q, r: c.r }; p.reloadZone = false; state.needsParachute = false; state.phase = "action";
-    log(state, `${p.name} 跳伞降落到 ${c.terrain}`);
+    p.pos = { q: c.q, r: c.r };
+    // drift: roll 2 dice — land on chosen hex if same value OR opposite directions; else a
+    // front pushes you 1 hex in a rolled direction (drift ignores walls). (rules 07:08)
+    const f1 = rollDie(state.rnd), f2 = rollDie(state.rnd), d1 = faceDir(f1), d2 = faceDir(f2);
+    if (f1 !== f2 && d2 !== (d1 + 3) % 6) {
+      for (const d of [d1, d2]) {
+        const nk = hexKey(p.pos.q + HEX_DIRS[d].q, p.pos.r + HEX_DIRS[d].r);
+        if (state.board[nk]) { p.pos = { q: state.board[nk].q, r: state.board[nk].r }; break; }
+      }
+      log(state, `${p.name} 空降遇锋面，飘移一格`);
+    }
+    p.reloadZone = false; state.needsParachute = false; state.phase = "action";
+    log(state, `${p.name} 跳伞降落到 ${state.board[hexKey(p.pos.q, p.pos.r)].terrain}`);
     return true;
   }
 
@@ -524,6 +536,14 @@
     if (close[0] && p.equipped.hand.length < 2) p.equipped.hand.push(close[0].id);
   }
   function equippedRanged(p) { for (const id of p.equipped.hand) { const e = byId(id); if (e && e.combat === "ranged") return e; } return null; }
+  function equippedClose(p) { for (const id of p.equipped.hand) { const e = byId(id); if (e && e.combat === "close") return e; } return null; }
+  // apply an equipped close weapon's modify to a rolled-dice array before resolution
+  function applyCloseModify(rolled, mod) {
+    if (!mod) return;
+    if (mod === "lowestTo3") { let i = -1, lo = 99; for (let k = 0; k < rolled.length; k++) { const v = rolled[k]; if (typeof v === "number" && v < lo) { lo = v; i = k; } } if (i >= 0 && rolled[i] < 3) rolled[i] = 3; }
+    else if (mod === "twoOrThreeTo4") { const i = rolled.findIndex(v => v === 2 || v === 3); if (i >= 0) rolled[i] = 4; }
+    else if (mod === "highestToSkull") { let i = -1, hi = -1; for (let k = 0; k < rolled.length; k++) { const v = rolled[k]; if (typeof v === "number" && v > hi) { hi = v; i = k; } } if (i >= 0) rolled[i] = "skull"; }
+  }
 
   // LOS via cube line walk
   function cubeRound(x, y, z) {
@@ -626,7 +646,9 @@
     const aArm = armorOf(A), tArm = armorOf(T);
     const aSk = Math.max(0, sh.skulls - tArm.skullReduce), tSk = Math.max(0, def.skulls - aArm.skullReduce);
     let dealt = 0, reload = false;
-    if (aSk > tSk) { dealt += aSk - tSk; reload = takeInjuries(state, T, aSk - tSk, { hierarchy: false }); }
+    // skull step: excess skulls send the loser's LOWEST dice to the injury zone — they leave
+    // the combat line before the row-by-row compare (rules 11:16).
+    if (aSk > tSk) { const ex = aSk - tSk; def.line.splice(Math.max(0, def.line.length - ex), ex); dealt += ex; reload = takeInjuries(state, T, ex, { hierarchy: false }); }
     else if (tSk > aSk) sh.line.splice(Math.max(0, sh.line.length - (tSk - aSk)), tSk - aSk);
     if (!reload) {
       let smalls = 0;
@@ -659,12 +681,16 @@
     if (!closeTargets(state, A).includes(targetIdx)) return false;
     spendDice(state, A, 1, 1);
     const aRaw = rollDice(state.rnd, ownedDice(A)), tRaw = rollDice(state.rnd, ownedDice(T));
+    const aCW = equippedClose(A), tCW = equippedClose(T);
+    if (aCW) applyCloseModify(aRaw, aCW.modify);   // close-weapon modify (Baton lowest->3, Sickle 2/3->4, Knife highest->skull...)
+    if (tCW) applyCloseModify(tRaw, tCW.modify);
     const aR = splitRoll(aRaw), tR = splitRoll(tRaw);
     const aArm = armorOf(A), tArm = armorOf(T);
     const aSk = Math.max(0, aR.skulls - tArm.skullReduce), tSk = Math.max(0, tR.skulls - aArm.skullReduce);
     let aDealt = 0, tDealt = 0, aReload = false, tReload = false;
-    if (aSk > tSk) { aDealt += aSk - tSk; tReload = takeInjuries(state, T, aSk - tSk, { hierarchy: false }); }
-    else if (tSk > aSk) { tDealt += tSk - aSk; aReload = takeInjuries(state, A, tSk - aSk, { hierarchy: false }); }
+    // skull step: loser's lowest dice -> injury, removed from the combat line before compare
+    if (aSk > tSk) { const ex = aSk - tSk; tR.line.splice(Math.max(0, tR.line.length - ex), ex); aDealt += ex; tReload = takeInjuries(state, T, ex, { hierarchy: false }); }
+    else if (tSk > aSk) { const ex = tSk - aSk; aR.line.splice(Math.max(0, aR.line.length - ex), ex); tDealt += ex; aReload = takeInjuries(state, A, ex, { hierarchy: false }); }
     let aSmall = 0, tSmall = 0;
     const n = Math.max(aR.line.length, tR.line.length);
     for (let i = 0; i < n; i++) {
@@ -696,7 +722,7 @@
     // build/heal API
     canHeal, doHeal, canBuild, emptyEdges, doBuildBarrier, doDemolish, doBuildHideout, doDemolishHideout, doBuildTrap,
     // combat API
-    INJURY_ZONE, ownedDice, autoEquip, equippedRanged, armorOf, hasLOS,
+    INJURY_ZONE, ownedDice, autoEquip, equippedRanged, equippedClose, armorOf, hasLOS,
     moveAssignedDiceToCombatLine, resolveHideoutBenefit, hasFriendlyHideout,
     takeInjuries, applySmallInjuries, applySmallInjuriesToPlayer,
     rangedTargets, closeTargets, doRanged, doClose, reloadPlayer,
