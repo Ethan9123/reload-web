@@ -650,7 +650,7 @@
     else if (dealt > 0) { gainFame(state, A, "injury", 1); log(state, `🔫 ${A.name} 用${w.name}射击 ${T.name}，造成 ${dealt} 伤 → +1 受伤名望`); }
     else log(state, `🔫 ${A.name} 射击 ${T.name}，未造成伤害`);
     state.lastCombat = { type: "ranged", a: A.idx, t: T.idx, weapon: w.name, assignValue,
-      shooter: shooterDice.slice(), defender: defRaw.slice(), dealt, reload };
+      shooter: shooterDice.slice(), defender: defRaw.slice(), aSkulls: aSk, dSkulls: tSk, dealt, reload };
     return true;
   }
 
@@ -681,7 +681,7 @@
     if (aReload) reloadPlayer(state, A, T); else if (tDealt > 0) { gainFame(state, T, "injury", 1); }
     log(state, `🗡 近战 ${A.name} vs ${T.name}：造成 ${aDealt} / 受到 ${tDealt}`);
     state.lastCombat = { type: "close", a: A.idx, t: T.idx, shooter: aRaw.slice(), defender: tRaw.slice(),
-      dealt: aDealt, taken: tDealt, reload: tReload, selfReload: aReload };
+      aSkulls: aSk, dSkulls: tSk, dealt: aDealt, taken: tDealt, reload: tReload, selfReload: aReload };
     A.defensePool = 0; A._closeEndedTurn = true;          // close combat ends the active player's turn
     return true;
   }
