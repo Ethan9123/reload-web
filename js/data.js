@@ -74,16 +74,24 @@
   // their character reference cards (not yet transcribed) — TODO fill abilities.
   // mini = figurine standee (transparent PNG, from TTS Figurine_Custom diffuse);
   // card = full character reference card. Colors match the figurine plastic.
+  // Abilities transcribed from each character's reference card. impl=true ones are
+  // wired into engine.js; Blitz's text is partly truncated on the card (character action).
   const CHARACTERS = [
-    { id: "korat", name: "Korat", color: "#3b9ad6", ability: null,
+    { id: "korat", name: "Korat", color: "#3b9ad6",
+      ability: { id: "gift_from_father", name: "Gift From Father", impl: true,
+                 text: "When resolving a Supply Box token, draw 1 additional card." },
       mini: "assets/characters/Korat_2.png", card: "assets/characters/Korat_card.png" },
-    { id: "duke",  name: "Duke",  color: "#3aa84b", ability: null,
+    { id: "duke",  name: "Duke",  color: "#3aa84b",
+      ability: { id: "sharpshooter", name: "Sharpshooter", impl: true,
+                 text: "When taking a Ranged Combat action, increase the value of any shooting die by 1." },
       mini: "assets/characters/Duke_2.png",  card: "assets/characters/Duke_card.png" },
     { id: "dax",   name: "Dax",   color: "#c8459b",
-      ability: { id: "unrivaled_agility", name: "Unrivaled Agility",
+      ability: { id: "unrivaled_agility", name: "Unrivaled Agility", impl: true,
                  text: "End Phase: place the bottom die of Dax's combat line into his defense pool." },
       mini: "assets/characters/Dax_2.png",   card: "assets/characters/Dax_card.png" },
-    { id: "blitz", name: "Blitz", color: "#e0c93a", ability: null,
+    { id: "blitz", name: "Blitz", color: "#e0c93a",
+      ability: { id: "fastest_there_is", name: "Fastest There Is", impl: false,
+                 text: "Character action: assign an action die to take a Run action (figure-specific)." },
       mini: "assets/characters/Blitz_2.png", card: "assets/characters/Blitz_card.png" },
   ];
 

@@ -162,13 +162,13 @@
     const enemies = E.playersOnHex(G, c.q, c.r).filter(x => x.idx !== p.idx);
     if (enemies.length) {
       const tgt = enemies[0].idx;
-      if (E.closeTargets(G, p).includes(tgt)) { E.doClose(G, tgt); render(); await endTurn(); return; } // close ends turn
-      if (E.rangedTargets(G, p).includes(tgt)) { E.doRanged(G, tgt, 3); render(); return; }
+      if (E.closeTargets(G, p).includes(tgt)) { E.doClose(G, tgt); render(); await animateCombat(G.lastCombat); await endTurn(); return; } // close ends turn
+      if (E.rangedTargets(G, p).includes(tgt)) { E.doRanged(G, tgt, 3); render(); await animateCombat(G.lastCombat); return; }
     }
     const curKey = E.hexKey(p.pos.q, p.pos.r);
-    if (key === curKey && E.canUpload(G, p)) { E.doActivate(G); render(); return; } // upload beacons at tower
-    if (key === curKey && E.lootOptions(G, p).length) { E.doLoot(G, 0); render(); return; }
-    if (E.legalRuns(G, p).includes(key)) { E.doRun(G, key); render(); return; }
+    if (key === curKey && E.canUpload(G, p)) { E.doActivate(G); render(); placeDieAnim(curKey); return; } // upload beacons at tower
+    if (key === curKey && E.lootOptions(G, p).length) { E.doLoot(G, 0); render(); placeDieAnim(curKey); return; }
+    if (E.legalRuns(G, p).includes(key)) { E.doRun(G, key); render(); placeDieAnim(key); return; }
   }
 
   async function runAI() {
@@ -201,7 +201,8 @@
 
   function act(fn) {
     if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
-    if (fn(E.curP(G))) render();
+    const p = E.curP(G), here = p.pos && E.hexKey(p.pos.q, p.pos.r);
+    if (fn(p)) { render(); if (here) placeDieAnim(here); }
   }
   function barrierEdgeTowardEnemy(p) {
     const empties = E.emptyEdges(G, p); if (!empties.length) return null;
@@ -266,11 +267,77 @@
   }
   function closeCharBoard() { const ov = $("char-overlay"); if (ov) ov.style.display = "none"; }
 
+  // ---- dice animations: combat/heal rolls (tumble→settle) + action-die placement ----
+  const DFACE = (v) => v === "skull" ? "💀" : v;
+  const rollFace = () => { const r = Math.floor(Math.random() * 6) + 1; return r === 6 ? "💀" : r; };
+  function ensureDiceOverlay() {
+    let ov = $("dice-overlay");
+    if (!ov) {
+      ov = document.createElement("div"); ov.id = "dice-overlay";
+      ov.innerHTML = '<div class="dz-panel"><div class="dz-title"></div><div class="dz-body"></div><div class="dz-result"></div></div>';
+      document.body.appendChild(ov);
+    }
+    return ov;
+  }
+  async function animateRoll(title, groups, resultText, resultClass) {
+    const ov = ensureDiceOverlay();
+    ov.querySelector(".dz-title").textContent = title;
+    const rEl = ov.querySelector(".dz-result"); rEl.textContent = ""; rEl.className = "dz-result";
+    const body = ov.querySelector(".dz-body");
+    body.innerHTML = groups.map((g, gi) =>
+      `<div class="dz-side"><div class="dz-who" style="color:${g.color || "#e6e8ec"}">${g.label}</div>` +
+      `<div class="dz-dice" data-g="${gi}">${g.values.map(() => '<span class="adie rolling">?</span>').join("") || '<i class="muted">无骰</i>'}</div></div>`
+    ).join('<div class="dz-vs">VS</div>');
+    ov.style.display = "flex";
+    const all = [];
+    groups.forEach((g, gi) => [...body.querySelectorAll(`[data-g="${gi}"] .adie`)].forEach((el, i) => all.push({ el, v: g.values[i] })));
+    const t0 = Date.now();
+    await new Promise(res => { const iv = setInterval(() => { all.forEach(d => { if (!d.el.classList.contains("settled")) d.el.textContent = rollFace(); }); if (Date.now() - t0 > 620) { clearInterval(iv); res(); } }, 70); });
+    for (const d of all) { d.el.textContent = DFACE(d.v); d.el.classList.remove("rolling"); d.el.classList.add("settled"); if (d.v === "skull") d.el.classList.add("skull"); await sleep(55); }
+    rEl.textContent = resultText || ""; if (resultClass) rEl.classList.add(resultClass);
+    await sleep(850); ov.style.display = "none";
+  }
+  function animateCombat(rep) {
+    if (!rep) return Promise.resolve();
+    const A = G.players[rep.a], T = G.players[rep.t];
+    const groups = [
+      { label: `${A.name}（攻）`, color: A.color, values: rep.shooter || [] },
+      { label: `${T.name}（守）`, color: T.color, values: rep.defender || [] },
+    ];
+    const res = rep.reload ? `💥 ${T.name} 被迫 RELOAD！` : (rep.dealt > 0 ? `命中！造成 ${rep.dealt} 点伤` : "未造成伤害");
+    return animateRoll(`${A.name} ${rep.type === "ranged" ? "🔫 远程" : "🗡 近战"} ${T.name}`, groups, res, rep.reload ? "big" : (rep.dealt > 0 ? "hit" : ""));
+  }
+  function animateHeal(roll) {
+    if (!roll) return Promise.resolve();
+    const p = G.players[roll.by];
+    return animateRoll(`${p.name} 治疗`, [{ label: "治疗骰", color: "#5fd0e0", values: [roll.value] }],
+      roll.value === "skull" ? `骷髅！恢复 ${roll.healed} 点` : `恢复 ${roll.healed} 点`, "hit");
+  }
+  // an action die "drops" onto the target hex (placed, not rolled)
+  function placeDieAnim(key) {
+    const svg = $("board"), c = key && G.board[key]; if (!svg || !c) return;
+    const { x, y } = hexToPixel(c.q, c.r);
+    const g = svgEl("g", { "pointer-events": "none" });
+    g.appendChild(svgEl("rect", { x: x - 11, y: y - 11, width: 22, height: 22, rx: 5, fill: "#e8eef6", stroke: "#11141a", "stroke-width": 1.5 }));
+    svg.appendChild(g);
+    const t0 = performance.now(), dur = 470;
+    (function step(t) {
+      const k = Math.min(1, (t - t0) / dur);
+      g.setAttribute("transform", `translate(0,${(-26 * (1 - k) * (1 - k)).toFixed(1)})`);
+      g.setAttribute("opacity", (k < 0.65 ? 1 : 1 - (k - 0.65) / 0.35).toFixed(2));
+      if (k < 1) requestAnimationFrame(step); else g.remove();
+    })(performance.now());
+  }
+
   function init() {
     $("btn-start").addEventListener("click", startGame);
     $("btn-restart").addEventListener("click", () => location.reload());
     $("btn-end").addEventListener("click", endTurn);
-    $("btn-heal").addEventListener("click", () => act(p => E.canHeal(G, p) && E.doHeal(G)));
+    $("btn-heal").addEventListener("click", async () => {
+      if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
+      const p = E.curP(G);
+      if (E.canHeal(G, p) && E.doHeal(G)) { render(); await animateHeal(G.lastRoll); }
+    });
     $("btn-barrier").addEventListener("click", () => act(p => { const e = barrierEdgeTowardEnemy(p); return e != null && E.doBuildBarrier(G, e); }));
     $("btn-hideout").addEventListener("click", () => act(p => E.canBuild(G, p) && E.doBuildHideout(G)));
     $("btn-trap").addEventListener("click", () => act(() => E.doBuildTrap(G)));

@@ -88,3 +88,23 @@ button.small { padding: 4px 10px; font-size: 13px; cursor: pointer; }
 .ecard-meta { font-size: 11px; color: #8fb0c8; margin: 3px 0; }
 .ecard-eff { font-size: 11px; color: #9aa0ac; line-height: 1.35; }
 .muted { color: #6b7280; font-size: 12px; }
+
+/* ---- dice roll animation overlay ---- */
+#dice-overlay { display: none; position: fixed; inset: 0; z-index: 60; pointer-events: none;
+  background: rgba(8, 10, 14, 0.55); align-items: center; justify-content: center; }
+.dz-panel { background: #161a22; border: 2px solid #2a2f3a; border-radius: 14px; padding: 18px 26px;
+  min-width: 320px; text-align: center; box-shadow: 0 14px 48px rgba(0, 0, 0, 0.55); }
+.dz-title { font-weight: 700; margin-bottom: 12px; }
+.dz-body { display: flex; align-items: center; justify-content: center; gap: 20px; }
+.dz-who { font-size: 12px; font-weight: 700; margin-bottom: 6px; }
+.dz-dice { display: flex; gap: 6px; justify-content: center; min-height: 34px; }
+.dz-vs { color: #8a909c; font-weight: 700; align-self: center; }
+.adie { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px;
+  border-radius: 7px; background: #e8eef6; color: #11141a; font-weight: 700; font-size: 16px; }
+.adie.rolling { background: #cfd6e0; animation: dz-shake 0.16s infinite; }
+.adie.settled { box-shadow: inset 0 0 0 2px #3a4150; }
+.adie.skull { background: #7a2230; color: #ffd0d6; }
+@keyframes dz-shake { 0% { transform: translateY(-2px) rotate(-7deg); } 50% { transform: translateY(2px) rotate(7deg); } 100% { transform: translateY(-2px) rotate(-7deg); } }
+.dz-result { margin-top: 14px; font-weight: 700; min-height: 20px; }
+.dz-result.hit { color: #7CFC7C; }
+.dz-result.big { color: #ff6b6b; font-size: 18px; }

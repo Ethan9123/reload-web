@@ -291,9 +291,10 @@
     if (tok.kind === "beacon") { p.carryingBeacons += 1; log(state, `${p.name} 拾取信标（需带到中央塔上缴）`); }
     else if (tok.kind === "supply") {
       const dk = "equip" + (tok.star || 2), xk = "discard" + (tok.star || 2);
-      const a = state.decks[dk].pop(), b = state.decks[dk].pop();
-      if (a) p.backpack.push(a); if (b) state.decks[xk].push(b);
-      log(state, `${p.name} 开 ${tok.star || 2} 星补给箱，获得装备`);
+      const draws = p.character === "korat" ? 3 : 2;        // Korat — Gift From Father: +1 card
+      const got = []; for (let i = 0; i < draws; i++) { const c = state.decks[dk].pop(); if (c) got.push(c); }
+      if (got.length) { p.backpack.push(got[0]); for (let i = 1; i < got.length; i++) state.decks[xk].push(got[i]); }
+      log(state, `${p.name} 开 ${tok.star || 2} 星补给箱，抽${got.length}留1${draws === 3 ? "（Gift From Father）" : ""}`);
     }
     return true;
   }
@@ -341,6 +342,7 @@
     spendDice(state, p, 1, die);
     p.injuries -= heal; p.actionDice = START_ACTION_DICE - p.injuries; p.defensePool += heal; // recovered dice usable this turn
     log(state, `${p.name} 治疗：掷${die === "skull" ? "骷髅(+2)" : die}，恢复 ${heal} 点伤`);
+    state.lastRoll = { kind: "heal", by: p.idx, value: die, healed: heal };
     return true;
   }
 
@@ -422,6 +424,10 @@
     const p = curP(state);
     moveAssignedDiceToCombatLine(p);
     resolveHideoutBenefit(state, p);
+    if (p.character === "dax" && p.combatLine.length) {   // Dax — Unrivaled Agility: bottom combat-line die -> defense
+      p.combatLine = sortCombatLine(p.combatLine); p.combatLine.pop();
+      p.defensePool = Math.min(p.actionDice, p.defensePool + 1);
+    }
     // End phase (Auto-Heal board side, Battle Royale): every OTHER player with >=2
     // injuries heals 1. (TODO: skip those standing in a toxin hex once toxin exists.)
     for (const o of state.players) { if (o !== p && o.injuries >= 2) o.injuries -= 1; }
@@ -534,6 +540,12 @@
     syncDiceCounts(p);
     return p.injuries >= INJURY_ZONE;
   }
+  function bumpOneDie(dice, assignValue, w) {  // Duke — Sharpshooter: +1 to one numeric die (prefer making a bonus match)
+    let idx = -1;
+    if (w && w.bonus) idx = dice.findIndex(d => typeof d === "number" && d === assignValue - 1);
+    if (idx < 0) { let lo = 6; for (let i = 0; i < dice.length; i++) { const d = dice[i]; if (typeof d === "number" && d < 5 && d < lo) { lo = d; idx = i; } } }
+    if (idx >= 0) dice[idx] = Math.min(5, dice[idx] + 1);
+  }
   function applySmallInjuries(line, n) { // mutate line; return # dice reduced below 1 (-> injuries)
     let conv = 0; const idx = line.map((v, i) => i).filter(i => line[i] != null).sort((a, b) => line[a] - line[b]);
     let k = 0;
@@ -569,7 +581,9 @@
     const w = equippedRanged(A); assignValue = assignValue || 3;
     spendDice(state, A, 1, assignValue);
     const shooterDice = rollDice(state.rnd, w.dice || 2);
-    const sh = splitRoll(shooterDice), def = splitRoll(rollDice(state.rnd, ownedDice(T)));
+    if (A.character === "duke") bumpOneDie(shooterDice, assignValue, w);   // Duke — Sharpshooter
+    const defRaw = rollDice(state.rnd, ownedDice(T));
+    const sh = splitRoll(shooterDice), def = splitRoll(defRaw);
     const aArm = armorOf(A), tArm = armorOf(T);
     const aSk = Math.max(0, sh.skulls - tArm.skullReduce), tSk = Math.max(0, def.skulls - aArm.skullReduce);
     let dealt = 0, reload = false;
@@ -596,6 +610,8 @@
     if (reload) reloadPlayer(state, T, A);
     else if (dealt > 0) { gainFame(state, A, "injury", 1); log(state, `🔫 ${A.name} 用${w.name}射击 ${T.name}，造成 ${dealt} 伤 → +1 受伤名望`); }
     else log(state, `🔫 ${A.name} 射击 ${T.name}，未造成伤害`);
+    state.lastCombat = { type: "ranged", a: A.idx, t: T.idx, weapon: w.name, assignValue,
+      shooter: shooterDice.slice(), defender: defRaw.slice(), dealt, reload };
     return true;
   }
 
@@ -603,7 +619,8 @@
     const A = curP(state), T = state.players[targetIdx];
     if (!closeTargets(state, A).includes(targetIdx)) return false;
     spendDice(state, A, 1, 1);
-    const aR = splitRoll(rollDice(state.rnd, ownedDice(A))), tR = splitRoll(rollDice(state.rnd, ownedDice(T)));
+    const aRaw = rollDice(state.rnd, ownedDice(A)), tRaw = rollDice(state.rnd, ownedDice(T));
+    const aR = splitRoll(aRaw), tR = splitRoll(tRaw);
     const aArm = armorOf(A), tArm = armorOf(T);
     const aSk = Math.max(0, aR.skulls - tArm.skullReduce), tSk = Math.max(0, tR.skulls - aArm.skullReduce);
     let aDealt = 0, tDealt = 0, aReload = false, tReload = false;
@@ -624,6 +641,8 @@
     if (tReload) reloadPlayer(state, T, A); else if (aDealt > 0) { gainFame(state, A, "injury", 1); }
     if (aReload) reloadPlayer(state, A, T); else if (tDealt > 0) { gainFame(state, T, "injury", 1); }
     log(state, `🗡 近战 ${A.name} vs ${T.name}：造成 ${aDealt} / 受到 ${tDealt}`);
+    state.lastCombat = { type: "close", a: A.idx, t: T.idx, shooter: aRaw.slice(), defender: tRaw.slice(),
+      dealt: aDealt, taken: tDealt, reload: tReload, selfReload: aReload };
     A.defensePool = 0; A._closeEndedTurn = true;          // close combat ends the active player's turn
     return true;
   }
