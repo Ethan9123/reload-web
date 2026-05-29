@@ -9,6 +9,8 @@
   const E = RL.engine, D = RL.data;
   const CHAR = Object.fromEntries(D.CHARACTERS.map(c => [c.id, c]));  // id -> character (mini/card/color)
   const EQ = D.EQUIP_BY_ID;                                          // equipment id -> data
+  const ACH = D.ACHIEVEMENT_BY_ID;                                   // achievement id -> data
+  let lastAchSeq = 0;                                                // tracks claimed-achievement notifications
   const $ = (id) => document.getElementById(id);
   const SVGNS = "http://www.w3.org/2000/svg";
   const HEX = 46;
@@ -178,7 +180,46 @@
     for (const m of G.log.slice(0, 40)) { const d = document.createElement("div"); d.textContent = m; l.appendChild(d); }
   }
 
-  function render() { renderBoard(); renderPlayers(); renderTop(); renderLog(); }
+  // current leader name(s) for a MOST achievement metric (for the side-panel hint)
+  function mostLeader(metric) {
+    let best = -1, names = [];
+    for (const p of G.players) { const v = E.mostMetric(G, p, metric); if (v > best) { best = v; names = [p.name]; } else if (v === best && v > 0) names.push(p.name); }
+    return best > 0 ? `${names.join("/")}（${best}）` : "—";
+  }
+  function renderAchievements() {
+    const box = $("ach-panel"); if (!box) return;
+    if (!G.achievements || !G.achievements.board.length) { box.innerHTML = ""; return; }
+    let cards = "";
+    for (const slot of G.achievements.board) {
+      const a = ACH[slot.id]; if (!a) continue;
+      const isNext = a.type === "next";
+      const badge = isNext ? '<span class="ach-next">⚡即时</span>' : '<span class="ach-most">🏆比拼</span>';
+      cards += `<div class="ach-card" data-id="${slot.id}">
+        <img class="ach-img" src="${a.card}" alt="${a.cn}" onerror="this.style.display='none'">
+        <div class="ach-meta"><div class="ach-name">${a.cn} ${badge}</div>
+        <div class="ach-fame">🏅×${slot.fameBelow || 0}</div></div></div>`;
+    }
+    box.innerHTML = `<h4>成就板</h4><div class="ach-list">${cards}</div>`;
+    box.querySelectorAll(".ach-card").forEach(el => {
+      const a = ACH[el.dataset.id];
+      bindTip(el, () => `<h5>${a.cn} · ${a.name}</h5>${a.desc}<div class="tt-sub">${a.type === "next" ? "⚡ 即时：下一位达成者立即获得卡片及其名望" : `🏆 比拼：游戏结束结算 · 当前领先：${mostLeader(a.metric)}`}</div>`);
+    });
+  }
+
+  // non-blocking ⚡ toast when a NEXT achievement is claimed
+  function flashAchievement(rep) {
+    if (!rep) return; const a = ACH[rep.id]; if (!a) return;
+    const who = G.players[rep.player];
+    let t = $("ach-toast"); if (!t) { t = document.createElement("div"); t.id = "ach-toast"; document.body.appendChild(t); }
+    t.innerHTML = `<img src="${a.card}" onerror="this.style.display='none'"><div><div class="at-h">⚡ 达成成就</div><div class="at-n" style="color:${who.color}">${who.name} — ${a.cn}</div><div class="at-f">+${rep.fame} 成就名望</div></div>`;
+    t.classList.remove("show"); void t.offsetWidth; t.classList.add("show");
+    clearTimeout(flashAchievement._t); flashAchievement._t = setTimeout(() => t.classList.remove("show"), 2600);
+  }
+
+  function render() {
+    renderBoard(); renderPlayers(); renderTop(); renderLog(); renderAchievements();
+    if (G && (G._achSeq || 0) > lastAchSeq) { lastAchSeq = G._achSeq; if (G.lastAchievement) flashAchievement(G.lastAchievement); }
+  }
 
   async function onHex(key) {
     if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
@@ -228,7 +269,7 @@
 
   async function startGame() {
     G = E.newGame({ numPlayers: parseInt($("player-count").value, 10), allAI: $("all-ai").checked });
-    window.G = G;
+    window.G = G; lastAchSeq = 0;
     $("setup-screen").classList.add("hidden");
     $("game-screen").classList.remove("hidden");
     render();
@@ -315,7 +356,8 @@
         <div class="cb-info">
           <h2 style="color:${p.color}">${p.name}${p.human ? " (你)" : ""}</h2>
           ${ch.ability ? `<div class="cb-ability"><b>${ch.ability.name}</b><div>${ch.ability.text}</div></div>` : '<div class="muted">（角色能力见左侧卡牌）</div>'}
-          <div class="cb-fame">名望 <b>${E.totalFame(p)}</b> ＝ 信标${f.beacon}·受伤${f.injury}·重整${f.reload}·陷阱${f.trap || 0}${p.carryingBeacons ? `　｜　携带信标 ${p.carryingBeacons}（需到中央塔上缴）` : ""}</div>
+          <div class="cb-fame">名望 <b>${E.totalFame(p)}</b> ＝ 信标${f.beacon}·受伤${f.injury}·重整${f.reload}·陷阱${f.trap || 0}·成就${f.achievement || 0}${p.carryingBeacons ? `　｜　携带信标 ${p.carryingBeacons}（需到中央塔上缴）` : ""}</div>
+          ${p.achievementsWon && p.achievementsWon.length ? `<div class="cb-fame">🏅 成就：${p.achievementsWon.map(id => (ACH[id] ? ACH[id].cn : id)).join("、")}</div>` : ""}
           ${diceRowsHTML(p)}
         </div>
       </div>

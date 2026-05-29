@@ -106,7 +106,31 @@
     // NOTE: physical game has no dedicated "trap" token; we track trap fame as a
     // separate counter (placeholder supply) since the rules call it a fame source.
     trap:       { name: "Trap",        supply: 99 },
+    achievement: { name: "Achievement", supply: 30 },   // Achievements module fame (its own token color)
   };
+
+  // ---- Achievements module (Reload modules rulebook). 8 cards: 4 "next" + 4 "most". ----
+  // NEXT  = scored mid-game, the next player to fulfil the condition claims the card + its fame tokens.
+  // MOST  = scored at End of Game, awarded to the player(s) with the most of the metric.
+  // Card art indices map to assets/cards/Achievement_Deck/00..07.png (verified by montage).
+  const ACHIEVEMENTS = [
+    { id: "martial_artist",   name: "Martial Artist", cn: "格斗家",   type: "next", metric: "closeReload",
+      desc: "成为下一位在近战中迫使对手 RELOAD 的玩家。", card: "assets/cards/Achievement_Deck/00.png" },
+    { id: "marksman",         name: "Marksman",       cn: "神射手",   type: "next", metric: "rangedReload",
+      desc: "成为下一位在远程战斗中迫使对手 RELOAD 的玩家。", card: "assets/cards/Achievement_Deck/05.png" },
+    { id: "mechanic",         name: "Mechanic",       cn: "机械师",   type: "next", metric: "trapFame",
+      desc: "成为下一位获得陷阱名望的玩家。", card: "assets/cards/Achievement_Deck/02.png" },
+    { id: "double_trouble",   name: "Double Trouble", cn: "祸不单行", type: "next", metric: "twoInjuryFame",
+      desc: "成为下一位在同一回合获得 2 个受伤名望的玩家。", card: "assets/cards/Achievement_Deck/07.png" },
+    { id: "predator",         name: "Predator",       cn: "掠食者",   type: "most", metric: "reload",
+      desc: "游戏结束时，声望轨上 RELOAD 名望最多的玩家。", card: "assets/cards/Achievement_Deck/03.png" },
+    { id: "treasure_hunter",  name: "Treasure Hunter", cn: "寻宝者",  type: "most", metric: "beacon",
+      desc: "游戏结束时，声望轨上信标名望最多的玩家。", card: "assets/cards/Achievement_Deck/06.png" },
+    { id: "jack_of_all_trades", name: "Jack of All Trades", cn: "万事通", type: "most", metric: "variety",
+      desc: "游戏结束时，声望轨上名望种类（颜色）最多的玩家。", card: "assets/cards/Achievement_Deck/04.png" },
+    { id: "collector",        name: "Collector",      cn: "收藏家",   type: "most", metric: "threeStar",
+      desc: "游戏结束时，拥有最多 3★ 装备（装备中+背包）的玩家。", card: "assets/cards/Achievement_Deck/01.png" },
+  ];
 
   // ---- Equipment slots ----
   const SLOTS = { head: 1, torso: 1, hand: 2 }; // limits while equipped
@@ -188,6 +212,7 @@
     portal: "assets/hexes/Portal.png",
     toxin:  "assets/tokens/Toxin.png",
     dome:   "assets/tokens/Dome.png",
+    achievement: "assets/tokens/Achievement_Fame.png",
   };
   const HIDEOUT_ART = {
     korat: "assets/tokens/Blue_Hideout.png", duke: "assets/tokens/Green_Hideout.png",
@@ -209,12 +234,15 @@
     gift_fans:      { name: "Gift from the Fans 粉丝馈赠", count: 1, desc: "每位玩家抽 1 张 1★ 装备" },
     gift_producers: { name: "Gift from the Producers 制作人馈赠", count: 1, desc: "名望最低者抽 1 张 2★ 装备" },
     gift_sponsors:  { name: "Gift from the Sponsors 赞助商馈赠", count: 1, desc: "每位玩家 +1 携带信标" },
+    // Achievements module: 2 Announcement cards score MOST achievements mid-game + refresh a NEXT card.
+    announcement:   { name: "Announcement 战报", count: 2, desc: "结算「最多」成就并刷新一张「下一位」成就", achievementsOnly: true },
   };
 
   const DATA = {
     DIE_FACES, DICE, START_ACTION_DICE, TERRAIN, ARCADIA, HEX_DIRS,
-    CHARACTERS, FAME, SLOTS, EQUIPMENT, ACTIONS, SETUP, TOKEN_ART, HIDEOUT_ART, TILE_ART, EVENTS,
+    CHARACTERS, FAME, SLOTS, EQUIPMENT, ACTIONS, SETUP, TOKEN_ART, HIDEOUT_ART, TILE_ART, EVENTS, ACHIEVEMENTS,
     EQUIP_BY_ID: Object.fromEntries(EQUIPMENT.map(e => [e.id, e])),
+    ACHIEVEMENT_BY_ID: Object.fromEntries(ACHIEVEMENTS.map(a => [a.id, a])),
   };
 
   if (typeof module !== "undefined" && module.exports) module.exports = DATA;

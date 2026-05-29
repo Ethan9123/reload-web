@@ -59,13 +59,19 @@
     }
     return shuffle(deck, rnd);
   }
-  // event deck = 2 guaranteed Supply Drops + N random (from the event pool), per rulebook
-  function buildEventDeck(numPlayers, rnd) {
+  // event deck = 2 guaranteed Supply Drops (+ 2 Announcements if achievements module) + N random
+  function buildEventDeck(numPlayers, rnd, achievements) {
     const randomN = SETUP.eventRandom[numPlayers] || 16;
     const pool = [];
-    for (const id in DATA.EVENTS) { let n = DATA.EVENTS[id].count; if (id === "supply_drop") n -= 2; for (let i = 0; i < n; i++) pool.push(id); }
+    for (const id in DATA.EVENTS) {
+      if (DATA.EVENTS[id].achievementsOnly) continue;   // Announcements are added as guaranteed cards below, only with the module
+      let n = DATA.EVENTS[id].count; if (id === "supply_drop") n -= 2;
+      for (let i = 0; i < n; i++) pool.push(id);
+    }
     shuffle(pool, rnd);
-    return shuffle(pool.slice(0, randomN).concat(["supply_drop", "supply_drop"]), rnd);
+    const guaranteed = ["supply_drop", "supply_drop"];
+    if (achievements) guaranteed.push("announcement", "announcement");
+    return shuffle(pool.slice(0, randomN).concat(guaranteed), rnd);
   }
 
   function newPlayer(idx, character, human) {
@@ -81,7 +87,8 @@
       boost: false,
       boostDice: 0,                    // Energy Drink green boost dice this turn: spendable on actions, but NOT usable in combat or as injury
 
-      fame: { injury: 0, beacon: 0, teamSpirit: 0, reload: 0, trap: 0 },
+      fame: { injury: 0, beacon: 0, teamSpirit: 0, reload: 0, trap: 0, achievement: 0 },
+      achievementsWon: [],             // ids of achievement cards this player has claimed
       fameTrackPos: 0,
       pos: null,                       // axial {q,r}; null = off-map (parachute)
       equipped: { head: null, torso: null, hand: [] },
@@ -100,6 +107,7 @@
     const numPlayers = opts.numPlayers || 4;
     const rnd = makeRng(opts.seed != null ? opts.seed : (Math.random() * 1e9) | 0);
     const mode = opts.mode || "battleRoyale";
+    const useAchievements = opts.achievements !== false;   // achievements module on by default
 
     // choose characters (first = human unless allAI)
     const chars = shuffle(CHARACTERS.slice(), rnd).slice(0, numPlayers);
@@ -126,14 +134,23 @@
     for (const w of ARCADIA.neutralWalls) board[hexKey(w.q, w.r)].walls[w.edge] = "n";
 
     // decks
-    const eventCount = (SETUP.eventRandom[numPlayers] || 16) + 2; // +2 supply drops
+    const eventCount = (SETUP.eventRandom[numPlayers] || 16) + 2 + (useAchievements ? 2 : 0); // +2 supply drops (+2 announcements w/ module)
     const decks = {
       equip1: buildEquipDeck(1, rnd),
       equip2: buildEquipDeck(2, rnd),
       equip3: buildEquipDeck(3, rnd),
-      event: buildEventDeck(numPlayers, rnd),
+      event: buildEventDeck(numPlayers, rnd, useAchievements),
       discard1: [], discard2: [], discard3: [],
     };
+
+    // achievement board: shuffle the 8 cards, deal 3 faceup, 1 fame token below each (rulebook modules)
+    let achievements = null;
+    if (useAchievements) {
+      const deck = shuffle(DATA.ACHIEVEMENTS.map(a => a.id), rnd);
+      const board3 = [];
+      for (let i = 0; i < 3 && deck.length; i++) board3.push({ id: deck.pop(), fameBelow: 1 });
+      achievements = { deck, board: board3, log: [] };
+    }
 
     // starting equipment: each draws 2 one-star, keeps 1 (AI/human keep first for now)
     for (const p of players) {
@@ -152,6 +169,7 @@
       decks, fameSupply,
       eventsResolved: 0, eventTotal: eventCount,
       superstarFame: superstarThreshold(mode, numPlayers),   // win threshold = fame-track length for this mode/player-count
+      achievements,                                          // achievement board (null if module off)
       phase: "start", needsParachute: false,
       gameOver: false, winner: null, superstar: false,
       _turnsTaken: 0, _eventsDone: false,
@@ -166,7 +184,7 @@
   function playersOnHex(state, q, r) {
     return state.players.filter(p => p.pos && p.pos.q === q && p.pos.r === r);
   }
-  function totalFame(p) { return p.fame.injury + p.fame.beacon + p.fame.teamSpirit + p.fame.reload + (p.fame.trap || 0); }
+  function totalFame(p) { return p.fame.injury + p.fame.beacon + p.fame.teamSpirit + p.fame.reload + (p.fame.trap || 0) + (p.fame.achievement || 0); }
   function beaconHexCount(state) {
     return Object.values(state.board).filter(c => c.tokens.some(t => t.kind === "beacon")).length;
   }
@@ -207,10 +225,71 @@
   function gainFame(state, p, kind, n) {
     const got = Math.min(n, state.fameSupply[kind]);
     p.fame[kind] += got; state.fameSupply[kind] -= got;
+    // NEXT-achievement triggers fire off the underlying fame gains (guard against achievement recursion)
+    if (got > 0 && state.achievements && kind !== "achievement") {
+      if (kind === "trap") awardNextAchievement(state, p, "trapFame");
+      else if (kind === "injury") { p._injFameTurn = (p._injFameTurn || 0) + got; if (p._injFameTurn >= 2) awardNextAchievement(state, p, "twoInjuryFame"); }
+    }
     if (totalFame(p) >= (state.superstarFame || SUPERSTAR_FAME) && !state.gameOver) {
       state.gameOver = true; state.winner = p.idx; state.superstar = true;
       log(state, `★ ${p.name} 达到 Superstar，立即获胜！`);
     }
+  }
+
+  // ---- Achievements module ----
+  // metric value for a MOST achievement (end-game / announcement scoring)
+  function mostMetric(state, p, metric) {
+    if (metric === "reload") return p.fame.reload;
+    if (metric === "beacon") return p.fame.beacon;
+    if (metric === "variety") return ["injury", "beacon", "teamSpirit", "reload", "trap", "achievement"].filter(k => p.fame[k] > 0).length;
+    if (metric === "threeStar") return [p.equipped.head, p.equipped.torso, ...p.equipped.hand, ...p.backpack].map(byId).filter(e => e && e.star === 3).length;
+    return 0;
+  }
+  // NEXT achievement: the next player to fulfil the metric claims the card + its accumulated fame tokens
+  function awardNextAchievement(state, p, metric) {
+    const ac = state.achievements; if (!ac) return false;
+    const slot = ac.board.findIndex(s => { const c = DATA.ACHIEVEMENT_BY_ID[s.id]; return c.type === "next" && c.metric === metric; });
+    if (slot < 0) return false;
+    const card = DATA.ACHIEVEMENT_BY_ID[ac.board[slot].id], fame = ac.board[slot].fameBelow || 0;
+    p.achievementsWon.push(card.id);
+    state.lastAchievement = { player: p.idx, id: card.id, name: card.cn, fame, kind: "next" };
+    state._achSeq = (state._achSeq || 0) + 1;
+    if (ac.deck.length) ac.board[slot] = { id: ac.deck.pop(), fameBelow: 1 };   // replace from deck (new card starts with 1 token)
+    else ac.board.splice(slot, 1);
+    log(state, `⚡ ${p.name} 达成成就「${card.cn}」(+${fame} 成就名望)`);
+    gainFame(state, p, "achievement", fame);                                    // may trigger Superstar — that's legal mid-game
+    return true;
+  }
+  // MOST achievements: scored at End of Game (no Superstar can be triggered during awarding)
+  function scoreMostAchievements(state) {
+    const ac = state.achievements; if (!ac) return;
+    for (const slot of ac.board) {
+      const card = DATA.ACHIEVEMENT_BY_ID[slot.id]; if (card.type !== "most") continue;
+      const val = (p) => mostMetric(state, p, card.metric);
+      let best = -1; for (const p of state.players) best = Math.max(best, val(p));
+      if (best <= 0) continue;                                                  // nobody qualifies
+      const fame = slot.fameBelow || 1;
+      for (const w of state.players.filter(p => val(p) === best)) {             // ties: all tied players earn it
+        const got = Math.min(fame, state.fameSupply.achievement);
+        w.fame.achievement += got; state.fameSupply.achievement -= got; w.achievementsWon.push(card.id);
+        log(state, `🏆 ${w.name} 获得「${card.cn}」成就 (+${got} 成就名望)`);
+      }
+    }
+  }
+  // Announcement event: MOST(1) award current leaders + NEXT(1) refresh, plus token top-ups
+  function resolveAnnouncement(state) {
+    const ac = state.achievements; if (!ac || !ac.board.length) return;
+    for (const slot of ac.board) {
+      const card = DATA.ACHIEVEMENT_BY_ID[slot.id]; if (card.type !== "most") continue;
+      const val = (p) => mostMetric(state, p, card.metric);
+      let best = -1; for (const p of state.players) best = Math.max(best, val(p));
+      if (best <= 0) continue;
+      for (const w of state.players.filter(p => val(p) === best)) { log(state, `📣 战报：${w.name} 暂列「${card.cn}」领先 (+1 成就名望)`); gainFame(state, w, "achievement", 1); }
+    }
+    ac.board[0].fameBelow = (ac.board[0].fameBelow || 0) + 1;                   // top up leftmost card
+    const nextIdx = ac.board.findIndex(s => DATA.ACHIEVEMENT_BY_ID[s.id].type === "next");
+    if (nextIdx >= 0 && ac.deck.length) { ac.board[nextIdx] = { id: ac.deck.pop(), fameBelow: 1 }; log(state, `📣 战报：刷新一张「下一位」成就`); }
+    const last = ac.board[ac.board.length - 1]; if (last) last.fameBelow = (last.fameBelow || 0) + 1; // top up rightmost
   }
 
   function beginTurn(state) {
@@ -218,6 +297,8 @@
     p.actionDice = START_ACTION_DICE - p.injuries;       // injuries reduce available dice
     p.defensePool = p.actionDice; p.assigned = 0; p.assignedDice = []; p.boost = false; p.boostDice = 0; p.combatLine = [];
     p._closeEndedTurn = false; p._noMove = false;
+    for (const x of state.players) x._injFameTurn = 0;   // DOUBLE TROUBLE counts injury fame within a single turn
+    state.lastAchievement = null;
     autoEquip(p);                                        // MVP: auto-equip best weapon/armor (no equip UI yet)
     // NOTE: carried beacons are NOT auto-scored. Per rules they stay in temp storage
     // until the player Activates the Central Tower to upload them (see doActivate).
@@ -556,13 +637,16 @@
       const c = state.decks.equip2.pop(); if (c) lo.backpack.push(c); log(state, `　落后的 ${lo.name} 抽 1 张 2★ 装备`);
     } else if (id === "gift_sponsors") {
       for (const p of state.players) p.carryingBeacons += 1; log(state, "　每位玩家 +1 携带信标");
+    } else if (id === "announcement") {
+      resolveAnnouncement(state);
     }
   }
 
   function endGame(state) {
     state.gameOver = true;
-    // tie-break: total fame, then RELOAD fame count (most prestigious source)
-    const key = (p) => totalFame(p) * 1000 + p.fame.reload;
+    scoreMostAchievements(state);   // award End-of-Game (MOST) achievements before final scoring
+    // tie-break (achievements rulebook): total fame -> most Achievement fame -> most RELOAD fame
+    const key = (p) => totalFame(p) * 1e6 + (p.fame.achievement || 0) * 1e3 + p.fame.reload;
     let win = 0, best = -1;
     for (const p of state.players) { const k = key(p); if (k > best) { best = k; win = p.idx; } }
     state.winner = win;
@@ -774,7 +858,7 @@
       }
     }
     T.combatLine = def.line.filter(x => x != null);
-    if (reload) reloadPlayer(state, T, A);
+    if (reload) { reloadPlayer(state, T, A); awardNextAchievement(state, A, "rangedReload"); }  // MARKSMAN
     else if (dealt > 0) { gainFame(state, A, "injury", 1); log(state, `🔫 ${A.name} 用${w.name}射击 ${T.name}，造成 ${dealt} 伤 → +1 受伤名望`); }
     else log(state, `🔫 ${A.name} 射击 ${T.name}，未造成伤害`);
     state.lastCombat = { type: "ranged", a: A.idx, t: T.idx, weapon: w.name, assignValue,
@@ -809,8 +893,8 @@
     }
     const tc = applySmallInjuries(tR.line, Math.max(0, tSmall - tArm.smallInjuryReduce)); if (tc) { aDealt += tc; if (takeInjuries(state, T, tc, { hierarchy: false })) tReload = true; }
     const ac = applySmallInjuries(aR.line, Math.max(0, aSmall - aArm.smallInjuryReduce)); if (ac) { tDealt += ac; if (takeInjuries(state, A, ac, { hierarchy: false })) aReload = true; }
-    if (tReload) reloadPlayer(state, T, A); else if (aDealt > 0) { gainFame(state, A, "injury", 1); }
-    if (aReload) reloadPlayer(state, A, T); else if (tDealt > 0) { gainFame(state, T, "injury", 1); }
+    if (tReload) { reloadPlayer(state, T, A); awardNextAchievement(state, A, "closeReload"); } else if (aDealt > 0) { gainFame(state, A, "injury", 1); }  // MARTIAL ARTIST
+    if (aReload) { reloadPlayer(state, A, T); awardNextAchievement(state, T, "closeReload"); } else if (tDealt > 0) { gainFame(state, T, "injury", 1); }
     log(state, `🗡 近战 ${A.name} vs ${T.name}：造成 ${aDealt} / 受到 ${tDealt}`);
     state.lastCombat = { type: "close", a: A.idx, t: T.idx, shooter: aRaw.slice(), defender: tRaw.slice(),
       aSkulls: aSk, dSkulls: tSk, dealt: aDealt, taken: tDealt, reload: tReload, selfReload: aReload };
@@ -829,6 +913,8 @@
     canHeal, doHeal, canBuild, emptyEdges, doBuildBarrier, doDemolish, doBuildHideout, doDemolishHideout, doBuildTrap,
     // special-item API
     specialItems, usableSpecials, explosiveTargets, useSpecialItem, combatDice,
+    // achievements API
+    mostMetric, awardNextAchievement, scoreMostAchievements, resolveAnnouncement,
     // combat API
     INJURY_ZONE, ownedDice, autoEquip, equippedRanged, equippedClose, armorOf, hasLOS, hasStealth,
     moveAssignedDiceToCombatLine, resolveHideoutBenefit, hasFriendlyHideout,

@@ -147,3 +147,28 @@ button.small { padding: 4px 10px; font-size: 13px; cursor: pointer; }
 #tooltip h5 { margin: 0 0 5px; font-size: 13px; }
 #tooltip .tt-sub { color: #aab0bc; margin-top: 5px; }
 #tooltip .tt-hint { color: #f4d03f; margin-top: 6px; }
+
+/* ---- achievement board (side panel) ---- */
+#ach-panel h4 { margin: 12px 0 6px; }
+.ach-list { display: flex; flex-direction: column; gap: 6px; }
+.ach-card { display: flex; gap: 8px; align-items: center; background: #1b1f28; border: 1px solid #2a2f3a;
+  border-radius: 8px; padding: 6px 8px; cursor: help; }
+.ach-card:hover { border-color: #f4d03f; }
+.ach-img { width: 30px; height: 42px; object-fit: cover; border-radius: 4px; background: #11141a; flex: none; }
+.ach-meta { flex: 1; min-width: 0; }
+.ach-name { font-size: 12px; font-weight: 700; }
+.ach-fame { font-size: 11px; color: #f4d03f; margin-top: 2px; }
+.ach-next { font-size: 10px; color: #5fd0e0; font-weight: 600; }
+.ach-most { font-size: 10px; color: #d6a35f; font-weight: 600; }
+
+/* ---- achievement claim toast (⚡) ---- */
+#ach-toast { position: fixed; top: 56px; left: 50%; transform: translate(-50%, -24px); z-index: 70;
+  display: flex; gap: 12px; align-items: center; pointer-events: none; opacity: 0;
+  background: linear-gradient(135deg, #2a2410, #1b1f28); border: 2px solid #f4d03f; border-radius: 12px;
+  padding: 12px 18px; box-shadow: 0 12px 40px rgba(0,0,0,0.55), 0 0 28px rgba(244,208,63,0.25);
+  transition: opacity 0.3s ease, transform 0.3s ease; }
+#ach-toast.show { opacity: 1; transform: translate(-50%, 0); }
+#ach-toast img { width: 44px; height: 62px; object-fit: cover; border-radius: 5px; background: #11141a; }
+#ach-toast .at-h { font-size: 12px; color: #f4d03f; font-weight: 700; letter-spacing: 1px; }
+#ach-toast .at-n { font-size: 15px; font-weight: 800; margin: 2px 0; }
+#ach-toast .at-f { font-size: 12px; color: #cdd2db; }

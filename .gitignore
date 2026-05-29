@@ -20,6 +20,13 @@ assets/tokens/*
 !assets/tokens/Green_Hideout.png
 !assets/tokens/Purple_Hideout.png
 !assets/tokens/Yellow_Hideout.png
+!assets/tokens/Achievement_Fame.png
+# achievement card fronts used by the UI (8 cards: 00-07)
+!assets/cards/
+assets/cards/*
+!assets/cards/Achievement_Deck/
+assets/cards/Achievement_Deck/*
+!assets/cards/Achievement_Deck/0[0-7].png
 # portal tile art + illustrated terrain hex tiles live under hexes/
 !assets/hexes/
 assets/hexes/*
