@@ -7,10 +7,16 @@ const A = (c, m) => { if (!c) { console.error("  FAIL:", m); fails++; } else con
 const sup = (g) => Object.values(g.board).reduce((s, c) => s + c.tokens.filter(t => t.kind === "supply").length, 0);
 const tox = (g) => Object.values(g.board).filter(c => c.toxin).length;
 
-let g = E.newGame({ numPlayers: 4, seed: 1, allAI: true });
-A(g.decks.event.length === 20, `4p event deck = 20 (got ${g.decks.event.length})`);
+let g = E.newGame({ numPlayers: 4, seed: 1, allAI: true, achievements: false });
+A(g.decks.event.length === 20, `4p base event deck = 20 (got ${g.decks.event.length})`);
 A(g.decks.event.every(id => typeof id === "string" && !/^event_/.test(id)), "deck holds real event ids (no stubs)");
 A(g.decks.event.filter(id => id === "supply_drop").length >= 2, "≥2 Supply Drops guaranteed");
+A(g.decks.event.every(id => id !== "announcement"), "no Announcement cards when achievements module is off");
+// with the achievements module on (default), the 2 Announcement cards are added
+let ga = E.newGame({ numPlayers: 4, seed: 1, allAI: true });
+A(ga.decks.event.length === 22, `4p event deck with achievements = 22 (got ${ga.decks.event.length})`);
+A(ga.decks.event.filter(id => id === "announcement").length === 2, "2 Announcement cards added with the module");
+A(ga.eventTotal === 22, `eventTotal matches deck size with module (${ga.eventTotal})`);
 
 let g2 = E.newGame({ numPlayers: 4, seed: 2, allAI: true });
 const tb = tox(g2); E.resolveEvent(g2, "contamination");
