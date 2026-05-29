@@ -306,7 +306,7 @@
     const p = curP(state);
     p.actionDice = START_ACTION_DICE - p.injuries;       // injuries reduce available dice
     p.defensePool = p.actionDice; p.assigned = 0; p.assignedDice = []; p.boost = false; p.boostDice = 0; p.combatLine = [];
-    p._closeEndedTurn = false; p._noMove = false;
+    p._closeEndedTurn = false; p._noMove = false; p.hasActed = false;
     for (const x of state.players) x._injFameTurn = 0;   // DOUBLE TROUBLE counts injury fame within a single turn
     state.lastAchievement = null;
     autoEquip(p);                                        // MVP: auto-equip best weapon/armor (no equip UI yet)
@@ -378,6 +378,7 @@
       else p.boostDice = Math.max(0, (p.boostDice || 0) - 1); // the Energy Drink boost die: spent now, never enters the combat line / injury zone
     }
     p.assigned = p.assignedDice.length;
+    p.hasActed = true;                                        // locks equipment for the rest of the turn (survives injury die-pops)
   }
   function moveAssignedDiceToCombatLine(p) {
     p.actionDice = START_ACTION_DICE - p.injuries;
@@ -729,6 +730,32 @@
     const tryHand = (e) => { if (!e) return; const need = e.hands || 1; if (used + need <= 2) { p.equipped.hand.push(e.id); used += need; } };
     tryHand(ranged[0]); tryHand(close[0]);
   }
+  // ---- manual equip (rules 04:00): chosen at turn start, locked once an action die is assigned ----
+  function handSlotsUsed(p) { return p.equipped.hand.reduce((s, id) => s + (((byId(id) || {}).hands) || 1), 0); }
+  function canEquip(state, p) {
+    // equipment is fixed for the turn once the player has acted. Use a persistent hasActed flag rather than
+    // the live assigned count, because taking an injury can pop a spent die and reset assigned to 0 mid-turn.
+    return state.phase === "action" && !p.hasActed && (p.combatLine || []).length === 0 && !p._closeEndedTurn;
+  }
+  function equipItem(state, p, id) {
+    if (!canEquip(state, p)) return false;
+    const e = byId(id); if (!e || !p.backpack.includes(id) || e.slot === "special") return false;
+    if (e.slot === "head") { p.equipped.head = id; return true; }
+    if (e.slot === "torso") { p.equipped.torso = id; return true; }
+    if (e.slot === "hand") {
+      if (p.equipped.hand.includes(id)) return false;
+      if (handSlotsUsed(p) + (e.hands || 1) > 2) return false;   // respects two-handed weapons
+      p.equipped.hand.push(id); return true;
+    }
+    return false;
+  }
+  function unequipItem(state, p, id) {
+    if (!canEquip(state, p)) return false;
+    if (p.equipped.head === id) { p.equipped.head = null; return true; }
+    if (p.equipped.torso === id) { p.equipped.torso = null; return true; }
+    const i = p.equipped.hand.indexOf(id); if (i >= 0) { p.equipped.hand.splice(i, 1); return true; }
+    return false;
+  }
   function equippedRanged(p) { for (const id of p.equipped.hand) { const e = byId(id); if (e && e.combat === "ranged") return e; } return null; }
   function equippedClose(p) { for (const id of p.equipped.hand) { const e = byId(id); if (e && e.combat === "close") return e; } return null; }
   // apply an equipped close weapon's modify to a rolled-dice array before resolution
@@ -926,7 +953,7 @@
     // achievements API
     mostMetric, awardNextAchievement, scoreMostAchievements, resolveAnnouncement,
     // combat API
-    INJURY_ZONE, ownedDice, autoEquip, equippedRanged, equippedClose, armorOf, hasLOS, hasStealth,
+    INJURY_ZONE, ownedDice, autoEquip, canEquip, equipItem, unequipItem, handSlotsUsed, equippedRanged, equippedClose, armorOf, hasLOS, hasStealth,
     moveAssignedDiceToCombatLine, resolveHideoutBenefit, hasFriendlyHideout,
     takeInjuries, applySmallInjuries, applySmallInjuriesToPlayer,
     rangedTargets, closeTargets, doRanged, doClose, reloadPlayer,
