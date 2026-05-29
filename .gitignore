@@ -20,10 +20,11 @@ assets/tokens/*
 !assets/tokens/Green_Hideout.png
 !assets/tokens/Purple_Hideout.png
 !assets/tokens/Yellow_Hideout.png
-# portal tile art lives under hexes/
+# portal tile art + illustrated terrain hex tiles live under hexes/
 !assets/hexes/
 assets/hexes/*
 !assets/hexes/Portal.png
+!assets/hexes/tile_*.png
 
 # Editor / OS / runtime
 .DS_Store

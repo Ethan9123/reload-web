@@ -189,10 +189,16 @@
     korat: "assets/tokens/Blue_Hideout.png", duke: "assets/tokens/Green_Hideout.png",
     dax:   "assets/tokens/Purple_Hideout.png", blitz: "assets/tokens/Yellow_Hideout.png",
   };
+  // illustrated terrain hex tiles (cropped from the map book Arcadia legend)
+  const TILE_ART = {
+    tower: "assets/hexes/tile_tower.png", jungle: "assets/hexes/tile_jungle.png",
+    plains: "assets/hexes/tile_plains.png", mountain: "assets/hexes/tile_mountain.png",
+    village: "assets/hexes/tile_village.png",
+  };
 
   const DATA = {
     DIE_FACES, DICE, START_ACTION_DICE, TERRAIN, ARCADIA, HEX_DIRS,
-    CHARACTERS, FAME, SLOTS, EQUIPMENT, ACTIONS, SETUP, TOKEN_ART, HIDEOUT_ART,
+    CHARACTERS, FAME, SLOTS, EQUIPMENT, ACTIONS, SETUP, TOKEN_ART, HIDEOUT_ART, TILE_ART,
     EQUIP_BY_ID: Object.fromEntries(EQUIPMENT.map(e => [e.id, e])),
   };
 

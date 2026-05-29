@@ -20,24 +20,25 @@
     for (const k in attrs) e.setAttribute(k, attrs[k]);
     return e;
   }
-  function svgImg(href, x, y, w, h, opacity) {
-    const im = svgEl("image", { x, y, width: w, height: h, preserveAspectRatio: "xMidYMid meet", "pointer-events": "none" });
+  function svgImg(href, x, y, w, h, opacity, fit) {
+    const im = svgEl("image", { x, y, width: w, height: h, preserveAspectRatio: fit || "xMidYMid meet", "pointer-events": "none" });
     if (opacity != null) im.setAttribute("opacity", opacity);
     im.setAttributeNS("http://www.w3.org/1999/xlink", "href", href); im.setAttribute("href", href);
     return im;
   }
-  const hexToPixel = (q, r) => ({ x: HEX * Math.sqrt(3) * (q + r / 2), y: HEX * 1.5 * r });
+  // flat-top hexes (to match the illustrated map-book tiles)
+  const hexToPixel = (q, r) => ({ x: HEX * 1.5 * q, y: HEX * Math.sqrt(3) * (r + q / 2) });
   function hexCorners(cx, cy) {
     const pts = [];
     for (let i = 0; i < 6; i++) {
-      const a = Math.PI / 180 * (60 * i - 90);
+      const a = Math.PI / 180 * (60 * i);
       pts.push((cx + HEX * Math.cos(a)).toFixed(1) + "," + (cy + HEX * Math.sin(a)).toFixed(1));
     }
     return pts.join(" ");
   }
   function corners(cx, cy) {
     const a = [];
-    for (let i = 0; i < 6; i++) { const ang = Math.PI / 180 * (60 * i - 90); a.push([cx + HEX * Math.cos(ang), cy + HEX * Math.sin(ang)]); }
+    for (let i = 0; i < 6; i++) { const ang = Math.PI / 180 * (60 * i); a.push([cx + HEX * Math.cos(ang), cy + HEX * Math.sin(ang)]); }
     return a;
   }
 
@@ -64,11 +65,21 @@
     svg.setAttribute("viewBox",
       `${Math.min(...xs) - pad} ${Math.min(...ys) - pad} ${Math.max(...xs) - Math.min(...xs) + pad * 2} ${Math.max(...ys) - Math.min(...ys) + pad * 2}`);
 
+    const defs = svgEl("defs", {}); svg.appendChild(defs);
     const cur = E.curP(G);
     const curKey = cur.pos ? E.hexKey(cur.pos.q, cur.pos.r) : null;
     for (const { c, x, y } of pix) {
-      const key = E.hexKey(c.q, c.r), t = D.TERRAIN[c.terrain];
-      const poly = svgEl("polygon", { points: hexCorners(x, y), fill: t.color, class: "hex-poly" });
+      const key = E.hexKey(c.q, c.r), t = D.TERRAIN[c.terrain], pts = hexCorners(x, y);
+      svg.appendChild(svgEl("polygon", { points: pts, fill: t.color, "pointer-events": "none" })); // fallback tint
+      const tile = D.TILE_ART[c.terrain];
+      if (tile) {
+        const clipId = "hc" + key.replace(/[^0-9-]/g, "_");
+        const cp = svgEl("clipPath", { id: clipId, clipPathUnits: "userSpaceOnUse" });
+        cp.appendChild(svgEl("polygon", { points: pts })); defs.appendChild(cp);
+        const im = svgImg(tile, x - HEX, y - HEX * 0.9, HEX * 2, HEX * 1.8, null, "xMidYMid slice");
+        im.setAttribute("clip-path", `url(#${clipId})`); svg.appendChild(im);
+      }
+      const poly = svgEl("polygon", { points: pts, fill: "transparent", class: "hex-poly" }); // interactive + highlight
       if (hl.atk.has(key)) { poly.setAttribute("stroke", "#e3424b"); poly.setAttribute("stroke-width", "4"); }
       else if (hl.para.has(key)) { poly.setAttribute("stroke", "#f4d03f"); poly.setAttribute("stroke-width", "4"); poly.setAttribute("stroke-dasharray", "6 4"); }
       else if (hl.run.has(key)) { poly.setAttribute("stroke", "#5fd0e0"); poly.setAttribute("stroke-width", "3"); }
@@ -76,7 +87,6 @@
       poly.addEventListener("click", () => onHex(key));
       bindTip(poly, () => hexTip(c));
       svg.appendChild(poly);
-      svg.appendChild(Object.assign(svgEl("text", { x, y: y + 30, class: "hex-label" }), { textContent: c.terrain === "tower" ? "TOWER" : c.terrain.toUpperCase().slice(0, 4) }));
       // map token art (portal/toxin under, beacon/supply on top)
       if (c.toxin && D.TOKEN_ART.toxin) svg.appendChild(svgImg(D.TOKEN_ART.toxin, x - HEX * 0.7, y - HEX * 0.7, HEX * 1.4, HEX * 1.4, 0.5));
       if (c.portal) svg.appendChild(svgImg(D.TOKEN_ART.portal, x - 23, y - 23, 46, 46, 0.92));
