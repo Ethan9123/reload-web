@@ -116,9 +116,36 @@ A(E.useSpecialItem(g9, "tactical_explosive", trapT), "useSpecialItem(tactical_ex
 A(nb9.trap == null && !p9.backpack.includes("tactical_explosive"), "Tactical Explosive removed the trap and was discarded");
 
 // 10) Mode-aware Superstar threshold (fame-track length)
-A(E.superstarThreshold("battleRoyale") === 16, "Battle Royale threshold = 16 (Start+2 mid+End)");
-A(E.superstarThreshold("team") === 28, "Team/2P threshold = 28 (Start+4 mid+End, longer track)");
-A(E.newGame({ numPlayers: 2, seed: 8, allAI: true }).superstarFame === 16, "state.superstarFame set from mode");
+A(E.superstarThreshold("battleRoyale", 4) === 16, "4p Battle Royale threshold = 16 (Start+2 mid+End)");
+A(E.superstarThreshold("team") === 28, "Team threshold = 28 (Start+4 mid+End, longer track)");
+A(E.superstarThreshold("battleRoyale", 2) === 28, "2-player uses the longer track (28) per rulebook recommendation");
+A(E.newGame({ numPlayers: 2, seed: 8, allAI: true }).superstarFame === 28, "2-player game state.superstarFame = 28");
+A(E.newGame({ numPlayers: 4, seed: 8, allAI: true }).superstarFame === 16, "4-player game state.superstarFame = 16");
+
+// 10b) Boost die must NOT persist into the combat line (cap to real owned dice)
+const g10 = E.newGame({ numPlayers: 2, seed: 11, allAI: true });
+const tk10 = E.towerKey(g10), tc10 = g10.board[tk10];
+const p10 = E.curP(g10); p10.pos = { q: tc10.q, r: tc10.r }; g10.phase = "action";
+p10.injuries = 4; p10.actionDice = 1; p10.defensePool = 1; p10.combatLine = []; p10.assignedDice = []; p10.backpack = ["energy_drink"];
+E.useSpecialItem(g10, "energy_drink");                 // pool 2 (1 real + 1 boost)
+p10.assignedDice = [5, 4]; p10.assigned = 2; p10.defensePool = 0; p10.boostDice = 0;  // both dice spent on actions
+E.moveAssignedDiceToCombatLine(p10);
+A(p10.combatLine.length === p10.actionDice && p10.actionDice === 1,
+  `combat line capped at real owned dice after spending the boost die (line=${p10.combatLine.length})`);
+
+// 10c) Tactical Explosive range is enforced by the engine (out-of-range target rejected)
+const g10c = E.newGame({ numPlayers: 2, seed: 12, allAI: true });
+const tk10c = E.towerKey(g10c), tc10c = g10c.board[tk10c];
+const p10c = E.curP(g10c); p10c.pos = { q: tc10c.q, r: tc10c.r }; p10c.backpack = ["tactical_explosive"]; g10c.phase = "action";
+// pick a far hex (distance >= 2) and plant a trap there
+let farKey = null;
+for (const k in g10c.board) { const c = g10c.board[k]; if (E.hexDistance(p10c.pos, c) >= 2) { farKey = k; break; } }
+A(!!farKey, "found a far hex for the out-of-range explosive test");
+g10c.board[farKey].trap = 1;
+A(!E.useSpecialItem(g10c, "tactical_explosive", { key: farKey, kind: "trap" }),
+  "engine rejects a Tactical Explosive target outside same/adjacent range");
+A(g10c.board[farKey].trap === 1 && p10c.backpack.includes("tactical_explosive"),
+  "out-of-range explosive did not destroy the trap nor consume the item");
 
 // 11) regression — all-AI games with the new combat/parachute rules still complete
 let crashed = 0;

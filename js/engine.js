@@ -151,7 +151,7 @@
       firstPlayer: 0, activePlayer: 0, round: 1,
       decks, fameSupply,
       eventsResolved: 0, eventTotal: eventCount,
-      superstarFame: superstarThreshold(mode),   // win threshold = fame-track length for this mode
+      superstarFame: superstarThreshold(mode, numPlayers),   // win threshold = fame-track length for this mode/player-count
       phase: "start", needsParachute: false,
       gameOver: false, winner: null, superstar: false,
       _turnsTaken: 0, _eventsDone: false,
@@ -184,11 +184,14 @@
   // Modelling each piece's fame-token spaces as Start≈2, middle≈6, End≈2 gives:
   //   Battle Royale = 2 + 2*6 + 2 = 16 ;  Team = 2 + 4*6 + 2 = 28.
   const TRACK_PIECE_SPACES = { start: 2, middle: 6, end: 2 };
-  function superstarThreshold(mode) {
-    const mids = (mode === "team" || mode === "team2v2v2" || mode === "twoPlayer") ? 4 : 2;
+  function superstarThreshold(mode, numPlayers) {
+    // Team Royale uses the longer track; the rulebook also recommends the longer 2-player Team track
+    // for any 2-player game ("If playing with 2 players it is recommended ... use the 2 player Team Royale variant").
+    const longTrack = mode === "team" || mode === "team2v2v2" || mode === "twoPlayer" || numPlayers === 2;
+    const mids = longTrack ? 4 : 2;
     return TRACK_PIECE_SPACES.start + mids * TRACK_PIECE_SPACES.middle + TRACK_PIECE_SPACES.end;
   }
-  const SUPERSTAR_FAME = superstarThreshold("battleRoyale");  // 16 — Battle Royale standard track
+  const SUPERSTAR_FAME = superstarThreshold("battleRoyale");  // 16 — Battle Royale standard track (3-4 players)
   const MOUNTAIN_RUN_COST = 2;
 
   function log(state, msg) { state.log.unshift(msg); if (state.log.length > 120) state.log.pop(); }
@@ -281,9 +284,13 @@
     p.boostDice = Math.min(p.boostDice || 0, p.defensePool);   // boost die is consumed only once no real dice remain to absorb the spend
   }
   function moveAssignedDiceToCombatLine(p) {
-    p.combatLine = sortCombatLine([...(p.combatLine || []), ...(p.assignedDice || [])]);
-    p.assignedDice = []; p.assigned = 0;
     p.actionDice = START_ACTION_DICE - p.injuries;
+    let line = sortCombatLine([...(p.combatLine || []), ...(p.assignedDice || [])]);
+    // Energy Drink boost dice are "this turn only": they may have been assigned to actions but must NOT
+    // persist into the combat line (where they'd act as combat/injury dice). Cap the line to real owned dice.
+    if (line.length > p.actionDice) line = line.slice(0, p.actionDice);
+    p.combatLine = line;
+    p.assignedDice = []; p.assigned = 0; p.boostDice = 0;
     p.defensePool = Math.max(0, p.actionDice - p.combatLine.length);
   }
   function hasFriendlyHideout(state, p) {
@@ -494,6 +501,12 @@
       log(state, `🥤 ${p.name} 喝下能量饮料，本回合 +1 行动骰（不可用于战斗/承伤）`);
     } else if (itemId === "tactical_explosive") {
       if (state.phase !== "action" || !target) return false;
+      // enforce the same/adjacent range rule in the engine itself (don't trust the caller's target)
+      const inRange = explosiveTargets(state, p).some(t =>
+        t.key === target.key && t.kind === target.kind &&
+        (t.kind !== "wall" || t.edge === target.edge) &&
+        (t.kind !== "hideout" || t.owner === target.owner));
+      if (!inRange) return false;
       const c = state.board[target.key]; if (!c) return false;
       if (target.kind === "trap") { if (c.trap == null) return false; const o = state.players[c.trap]; c.trap = null; if (o) o.trapsUsed = Math.max(0, o.trapsUsed - 1); }
       else if (target.kind === "wall") { if (c.walls[target.edge] == null) return false; const o = c.walls[target.edge]; delete c.walls[target.edge]; if (typeof o === "number" && state.players[o]) state.players[o].barriersUsed = Math.max(0, state.players[o].barriersUsed - 1); }
