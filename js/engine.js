@@ -317,7 +317,7 @@
     const p = curP(state);
     p.actionDice = START_ACTION_DICE - p.injuries;       // injuries reduce available dice
     p.defensePool = p.actionDice; p.assigned = 0; p.assignedDice = []; p.boost = false; p.boostDice = 0; p.combatLine = [];
-    p._closeEndedTurn = false; p._noMove = false; p.hasActed = false; p._gaveThisTurn = false;
+    p._closeEndedTurn = false; p._noMove = false; p.hasActed = false; p._gaveThisTurn = false; p._freeRunUsed = false;
     for (const x of state.players) x._injFameTurn = 0;   // DOUBLE TROUBLE counts injury fame within a single turn
     state.lastAchievement = null;
     autoEquip(p);                                        // MVP: auto-equip best weapon/armor (no equip UI yet)
@@ -370,14 +370,16 @@
   }
   function runCost(state, toKey) { return state.board[toKey].terrain === "mountain" ? MOUNTAIN_RUN_COST : 1; }
 
+  function hasFreeRun(p) { return p.character === "blitz" && !p._freeRunUsed; }   // Blitz — Fastest There Is
   function legalRuns(state, p) {
     if (!p.pos || state.phase !== "action" || p._noMove) return [];
+    const budget = hasFreeRun(p) ? Infinity : p.defensePool;   // a free Run ignores the dice budget
     const cur = hexKey(p.pos.q, p.pos.r), out = [];
     for (const nk of neighbors(state, p.pos.q, p.pos.r)) {
       if (wallBetween(state, cur, nk, p.idx)) continue;
-      if (runCost(state, nk) <= p.defensePool) out.push(nk);
+      if (runCost(state, nk) <= budget) out.push(nk);
     }
-    if (state.board[cur].portal && p.defensePool >= 1)
+    if (state.board[cur].portal && (hasFreeRun(p) || p.defensePool >= 1))
       for (const k in state.board) if (k !== cur && state.board[k].portal) out.push(k);
     return out;
   }
@@ -430,7 +432,8 @@
     if (!legalRuns(state, p).includes(toKey)) return false;
     const cur = hexKey(p.pos.q, p.pos.r);
     const portalJump = state.board[cur].portal && state.board[toKey].portal && dirIndex(p.pos, state.board[toKey]) < 0;
-    spendDice(state, p, portalJump ? 1 : runCost(state, toKey), 1);
+    if (hasFreeRun(p)) { p._freeRunUsed = true; p.hasActed = true; log(state, `⚡ ${p.name} 疾速奔跑（免费）`); }  // Blitz — first Run free
+    else spendDice(state, p, portalJump ? 1 : runCost(state, toKey), 1);
     const c = state.board[toKey]; p.pos = { q: c.q, r: c.r };
     log(state, `${p.name} ${portalJump ? "穿越传送门到" : "移动到"} ${c.terrain}`);
     if (c.trap != null && c.trap !== p.idx) resolveTrap(state, p, c.trap, toKey); // step on enemy trap

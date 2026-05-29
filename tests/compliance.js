@@ -181,6 +181,31 @@ E.takeInjuries(gel, pel, 1);                                 // injury pops the 
 A(pel.assigned === 0, "precondition: injury reset assigned to 0");
 A(!E.canEquip(gel, pel), "equipment stays locked after a spent die is removed by injury");
 
+// 10f) Blitz — Fastest There Is: the first Run each turn is free (no action die)
+const gbl = E.newGame({ numPlayers: 2, seed: 30, allAI: true });
+const bl = gbl.players[0]; bl.character = "blitz";
+gbl.activePlayer = 0; gbl.phase = "action"; gbl.needsParachute = false;
+const tkb = E.towerKey(gbl), tcb = gbl.board[tkb];
+bl.pos = { q: tcb.q, r: tcb.r }; bl.actionDice = 5; bl.defensePool = 5; bl._freeRunUsed = false; bl._noMove = false;
+A(E.doRun(gbl, E.legalRuns(gbl, bl)[0]), "Blitz takes a Run");
+A(bl.defensePool === 5 && bl._freeRunUsed === true, "Blitz's first Run is free (no die spent)");
+const dp2 = bl.defensePool;
+A(E.doRun(gbl, E.legalRuns(gbl, bl)[0]) && bl.defensePool < dp2, "Blitz's second Run costs a die");
+// free run is available even with 0 action dice
+const gbz = E.newGame({ numPlayers: 2, seed: 31, allAI: true });
+const bz = gbz.players[0]; bz.character = "blitz";
+gbz.activePlayer = 0; gbz.phase = "action"; gbz.needsParachute = false;
+const tkz = E.towerKey(gbz), tcz = gbz.board[tkz];
+bz.pos = { q: tcz.q, r: tcz.r }; bz.actionDice = 0; bz.defensePool = 0; bz._freeRunUsed = false; bz._noMove = false;
+A(E.legalRuns(gbz, bz).length > 0 && E.doRun(gbz, E.legalRuns(gbz, bz)[0]), "Blitz can free-run with 0 dice");
+// a non-Blitz Run always costs a die
+const gnb = E.newGame({ numPlayers: 2, seed: 32, allAI: true });
+const nb = gnb.players[0]; nb.character = "korat";
+gnb.activePlayer = 0; gnb.phase = "action"; gnb.needsParachute = false;
+const tkn = E.towerKey(gnb), tcn = gnb.board[tkn];
+nb.pos = { q: tcn.q, r: tcn.r }; nb.actionDice = 5; nb.defensePool = 5; nb._noMove = false;
+A(E.doRun(gnb, E.legalRuns(gnb, nb)[0]) && nb.defensePool < 5, "non-Blitz Run costs a die");
+
 // 11) regression — all-AI games with the new combat/parachute rules still complete
 let crashed = 0;
 for (let s = 0; s < 25; s++) {
