@@ -77,6 +77,7 @@
   function newPlayer(idx, character, human) {
     return {
       idx, character: character.id, name: character.name, color: character.color, human,
+      team: null,                      // Team Royale: 0/1 (teammates seated diagonally, idx%2)
       // dice: still count-based, with assignedDice preserving values spent this turn.
       actionDice: START_ACTION_DICE,   // action dice currently owned (5 minus injuries)
       defensePool: START_ACTION_DICE,  // unassigned, available this turn
@@ -112,6 +113,8 @@
     // choose characters (first = human unless allAI)
     const chars = shuffle(CHARACTERS.slice(), rnd).slice(0, numPlayers);
     const players = chars.map((c, i) => newPlayer(i, c, opts.allAI ? false : i === 0));
+    // Team Royale: teammates seated diagonally so turn order (clockwise) never gives back-to-back team turns
+    if (mode === "team") for (const p of players) p.team = p.idx % 2;
 
     // board
     const board = {};
@@ -185,6 +188,14 @@
     return state.players.filter(p => p.pos && p.pos.q === q && p.pos.r === r);
   }
   function totalFame(p) { return p.fame.injury + p.fame.beacon + p.fame.teamSpirit + p.fame.reload + (p.fame.trap || 0) + (p.fame.achievement || 0); }
+  // ---- teams (Team Royale) ----
+  function sameTeam(a, b) { return a && b && a.team != null && a.team === b.team; }
+  function teammates(state, p) { return state.players.filter(x => x !== p && sameTeam(x, p)); }
+  function teamMembers(state, team) { return state.players.filter(p => p.team === team); }
+  function teamFame(state, team) { return teamMembers(state, team).reduce((s, p) => s + totalFame(p), 0); }
+  function teamBarriers(state, team) { return teamMembers(state, team).reduce((s, p) => s + p.barriersUsed, 0); }
+  // score that counts for the win: team total in Team Royale, else the player's own total
+  function scoreFor(state, p) { return state.mode === "team" && p.team != null ? teamFame(state, p.team) : totalFame(p); }
   function beaconHexCount(state) {
     return Object.values(state.board).filter(c => c.tokens.some(t => t.kind === "beacon")).length;
   }
@@ -230,9 +241,9 @@
       if (kind === "trap") awardNextAchievement(state, p, "trapFame");
       else if (kind === "injury") { p._injFameTurn = (p._injFameTurn || 0) + got; if (p._injFameTurn >= 2) awardNextAchievement(state, p, "twoInjuryFame"); }
     }
-    if (totalFame(p) >= (state.superstarFame || SUPERSTAR_FAME) && !state.gameOver) {
-      state.gameOver = true; state.winner = p.idx; state.superstar = true;
-      log(state, `★ ${p.name} 达到 Superstar，立即获胜！`);
+    if (scoreFor(state, p) >= (state.superstarFame || SUPERSTAR_FAME) && !state.gameOver) {
+      state.gameOver = true; state.winner = p.idx; state.winnerTeam = p.team; state.superstar = true;
+      log(state, `★ ${state.mode === "team" && p.team != null ? `队伍 ${p.team + 1}` : p.name} 达到 Superstar，立即获胜！`);
     }
   }
 
@@ -306,7 +317,7 @@
     const p = curP(state);
     p.actionDice = START_ACTION_DICE - p.injuries;       // injuries reduce available dice
     p.defensePool = p.actionDice; p.assigned = 0; p.assignedDice = []; p.boost = false; p.boostDice = 0; p.combatLine = [];
-    p._closeEndedTurn = false; p._noMove = false; p.hasActed = false;
+    p._closeEndedTurn = false; p._noMove = false; p.hasActed = false; p._gaveThisTurn = false;
     for (const x of state.players) x._injFameTurn = 0;   // DOUBLE TROUBLE counts injury fame within a single turn
     state.lastAchievement = null;
     autoEquip(p);                                        // MVP: auto-equip best weapon/armor (no equip UI yet)
@@ -473,24 +484,45 @@
     return null;
   }
 
-  // ---- Heal (restricted: not while an enemy shares your hex) ----
-  function canHeal(state, p) {
-    if (state.phase !== "action" || p.defensePool < 1 || p.injuries < 1 || !p.pos) return false;
-    return playersOnHex(state, p.pos.q, p.pos.r).every(x => x === p);
+  // ---- Heal (restricted: not while an ENEMY shares your hex; a teammate sharing is fine) ----
+  function enemyOnHex(state, p) { return !!(p.pos && playersOnHex(state, p.pos.q, p.pos.r).some(x => x !== p && !sameTeam(x, p))); }
+  // who the active player can heal right now: self (if injured) + injured teammates on the same hex
+  function healTargets(state, p) {
+    if (state.phase !== "action" || p.defensePool < 1 || !p.pos || enemyOnHex(state, p)) return [];
+    const out = [];
+    if (p.injuries > 0) out.push(p.idx);
+    for (const t of playersOnHex(state, p.pos.q, p.pos.r)) if (t !== p && sameTeam(t, p) && t.injuries > 0) out.push(t.idx);
+    return out;
   }
-  function doHeal(state) {
-    const p = curP(state); if (!canHeal(state, p)) return false;
-    const die = rollDie(state.rnd), heal = Math.min(p.injuries, die === "skull" ? 2 : 1);
+  function canHeal(state, p) { return healTargets(state, p).length > 0; }
+  function doHeal(state, targetIdx) {
+    const p = curP(state);
+    const targets = healTargets(state, p); if (!targets.length) return false;
+    let target = (targetIdx != null && targets.includes(targetIdx)) ? state.players[targetIdx] : state.players[targets[0]];
+    const die = rollDie(state.rnd);
+    const base = target === p ? 1 : 2;                                          // healing a teammate restores 2 (rules p.8)
+    const heal = Math.min(target.injuries, base + (die === "skull" ? 1 : 0));   // skull +1
     spendDice(state, p, 1, die);
-    p.injuries -= heal; p.actionDice = START_ACTION_DICE - p.injuries; p.defensePool += heal; // recovered dice usable this turn
-    log(state, `${p.name} 治疗：掷${die === "skull" ? "骷髅(+2)" : die}，恢复 ${heal} 点伤`);
-    state.lastRoll = { kind: "heal", by: p.idx, value: die, healed: heal };
+    target.injuries -= heal; target.actionDice = START_ACTION_DICE - target.injuries; target.defensePool += heal;
+    if (target !== p) { log(state, `${p.name} 治疗队友 ${target.name}：掷${die === "skull" ? "骷髅" : die}，恢复 ${heal} 点（+1 团队精神）`); gainFame(state, p, "teamSpirit", 1); }
+    else log(state, `${p.name} 治疗：掷${die === "skull" ? "骷髅(+2)" : die}，恢复 ${heal} 点伤`);
+    state.lastRoll = { kind: "heal", by: p.idx, target: target.idx, value: die, healed: heal };
+    return true;
+  }
+  // Equip a Teammate (free action, once per turn): give a backpack equipment or a carried beacon to a teammate
+  function giveToTeammate(state, toIdx, what) {
+    const p = curP(state), to = state.players[toIdx];
+    if (state.phase !== "action" || !to || !sameTeam(p, to) || p === to || p._gaveThisTurn) return false;
+    if (what === "beacon") { if (p.carryingBeacons < 1) return false; p.carryingBeacons--; to.carryingBeacons++; }
+    else { const i = p.backpack.indexOf(what); if (i < 0) return false; p.backpack.splice(i, 1); to.backpack.push(what); }
+    p._gaveThisTurn = true;
+    log(state, `${p.name} 将${what === "beacon" ? "1 信标" : (byId(what) || {}).name || "装备"}交给队友 ${to.name}`);
     return true;
   }
 
   // ---- Build (restricted): barriers / hideout / trap ----
   const SETUP_WALLS = SETUP.walls, SETUP_TRAPS = SETUP.traps;
-  function noEnemyHere(state, p) { return p.pos && playersOnHex(state, p.pos.q, p.pos.r).every(x => x === p); }
+  function noEnemyHere(state, p) { return !!p.pos && !enemyOnHex(state, p); }   // teammates sharing the hex don't restrict
   function canBuild(state, p) { return state.phase === "action" && p.defensePool >= 1 && noEnemyHere(state, p); }
   function emptyEdges(state, p) {
     if (!p.pos) return [];
@@ -501,9 +533,10 @@
     }
     return out;
   }
+  function wallsUsed(state, p) { return state.mode === "team" && p.team != null ? teamBarriers(state, p.team) : p.barriersUsed; }
   function doBuildBarrier(state, edge) {
     const p = curP(state);
-    if (!canBuild(state, p) || p.barriersUsed >= SETUP_WALLS || !emptyEdges(state, p).includes(edge)) return false;
+    if (!canBuild(state, p) || wallsUsed(state, p) >= SETUP_WALLS || !emptyEdges(state, p).includes(edge)) return false; // teams share the 6-wall limit
     spendDice(state, p, 1, 1);
     state.board[hexKey(p.pos.q, p.pos.r)].walls[edge] = p.idx; p.barriersUsed++;
     log(state, `${p.name} 建造屏障`); return true;
@@ -656,6 +689,15 @@
   function endGame(state) {
     state.gameOver = true;
     scoreMostAchievements(state);   // award End-of-Game (MOST) achievements before final scoring
+    if (state.mode === "team") {    // team with the most fame; tie-break by team Achievement then RELOAD fame
+      const teams = [...new Set(state.players.map(p => p.team))];
+      const sum = (t, sel) => teamMembers(state, t).reduce((s, p) => s + sel(p), 0);
+      const key = (t) => sum(t, totalFame) * 1e6 + sum(t, p => p.fame.achievement || 0) * 1e3 + sum(t, p => p.fame.reload);
+      let winT = teams[0], best = -1; for (const t of teams) { const k = key(t); if (k > best) { best = k; winT = t; } }
+      state.winnerTeam = winT; state.winner = teamMembers(state, winT)[0].idx;
+      log(state, `游戏结束：队伍 ${winT + 1} 获胜（队伍名望 ${teamFame(state, winT)}）`);
+      return;
+    }
     // tie-break (achievements rulebook): total fame -> most Achievement fame -> most RELOAD fame
     const key = (p) => totalFame(p) * 1e6 + (p.fame.achievement || 0) * 1e3 + p.fame.reload;
     let win = 0, best = -1;
@@ -672,9 +714,14 @@
       p.combatLine = sortCombatLine(p.combatLine); p.combatLine.pop();
       p.defensePool = Math.min(p.actionDice, p.defensePool + 1);
     }
-    // End phase (Auto-Heal board side, Battle Royale): every OTHER player with >=2
-    // injuries heals 1. (TODO: skip those standing in a toxin hex once toxin exists.)
-    for (const o of state.players) { if (o !== p && o.injuries >= 2) o.injuries -= 1; }
+    // End phase Auto-Heal: only Battle Royale uses the Auto-Heal board side (every OTHER player not in
+    // toxin with >=2 injuries heals 1). Team Royale uses the non-Auto-Heal side, so skip it. (rules p.4)
+    if (state.mode !== "team") for (const o of state.players) {
+      if (o === p || o.injuries < 2 || !o.pos) continue;
+      const oc = state.board[hexKey(o.pos.q, o.pos.r)];
+      if (oc && (oc.toxin || oc.toxinIcon) && !hasFriendlyHideout(state, o)) continue;   // not while standing in toxin
+      o.injuries -= 1; o.actionDice = START_ACTION_DICE - o.injuries;
+    }
     // End phase toxin (inert until events add toxin tokens): toxin hex & not safe -> 1 injury
     if (p.pos) {
       const cell = state.board[hexKey(p.pos.q, p.pos.r)], safe = hasFriendlyHideout(state, p);
@@ -797,7 +844,7 @@
     if (!w || !A.pos || combatDice(A) < 1 || state.phase !== "action") return [];   // boost die can't be used in combat
     const out = [];
     for (const t of state.players) {
-      if (t === A || !t.pos || t.reloadZone) continue;
+      if (t === A || !t.pos || t.reloadZone || sameTeam(A, t)) continue;   // no friendly fire
       const d = hexDistance(A.pos, t.pos), r = w.range || [0, 0];
       if (d < (r[0] || 0) || d > r[1]) continue;
       if (d >= 1 && hasStealth(t)) continue; // stealth: only targetable by ranged from same hex
@@ -808,7 +855,7 @@
   }
   function closeTargets(state, A) {
     if (!A.pos || combatDice(A) < 1 || state.phase !== "action") return [];   // boost die can't be used in combat
-    return state.players.filter(t => t !== A && t.pos && !t.reloadZone && t.pos.q === A.pos.q && t.pos.r === A.pos.r).map(t => t.idx);
+    return state.players.filter(t => t !== A && t.pos && !t.reloadZone && !sameTeam(A, t) && t.pos.q === A.pos.q && t.pos.r === A.pos.r).map(t => t.idx);
   }
 
   function takeInjuryDieByHierarchy(p) {
@@ -847,6 +894,9 @@
   }
   function reloadPlayer(state, p, attacker) {
     const cell = p.pos && state.board[hexKey(p.pos.q, p.pos.r)];
+    // Team Spirit: RELOADing an opponent in the same hex as a teammate (the victim's hex) scores +1
+    const coopTeamSpirit = attacker && state.mode === "team" && p.pos &&
+      state.players.some(x => x !== attacker && sameTeam(x, attacker) && x.pos && x.pos.q === p.pos.q && x.pos.r === p.pos.r);
     if (cell) for (let i = 0; i < p.carryingBeacons; i++) cell.tokens.push({ kind: "beacon" });
     p.carryingBeacons = 0;
     for (const id of [p.equipped.head, p.equipped.torso, ...p.equipped.hand, ...p.backpack]) {
@@ -858,7 +908,10 @@
     p.injuries = 0; p.actionDice = START_ACTION_DICE; p.defensePool = 0; p.assigned = 0; p.assignedDice = [];
     p.pos = null; p.reloadZone = true; p.combatLine = [];
     log(state, `💥 ${p.name} 被迫 RELOAD！丢弃装备，回到跳伞区`);
-    if (attacker) { gainFame(state, attacker, "reload", 1); log(state, `${attacker.name} +1 RELOAD 名望`); }
+    if (attacker) {
+      gainFame(state, attacker, "reload", 1); log(state, `${attacker.name} +1 RELOAD 名望`);
+      if (coopTeamSpirit) { gainFame(state, attacker, "teamSpirit", 1); log(state, `${attacker.name} 在队友身边击退对手 +1 团队精神`); }
+    }
   }
 
   function doRanged(state, targetIdx, assignValue) {
@@ -942,6 +995,8 @@
   const ENGINE = {
     makeRng, shuffle, hexKey, hexAdd, hexDistance, neighbors,
     newGame, hexCell, playersOnHex, totalFame, beaconHexCount, supplyHexCount,
+    // teams (Team Royale)
+    sameTeam, teammates, teamMembers, teamFame, scoreFor, healTargets, giveToTeammate,
     // turn/action API
     SUPERSTAR_FAME, superstarThreshold, curP, isHumanTurn, legalParachute, parachute,
     legalRuns, doRun, lootOptions, doLoot, endTurn, beginTurn, towerKey,

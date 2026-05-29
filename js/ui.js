@@ -146,7 +146,7 @@
       const ch = CHAR[p.character];
       const portrait = ch && ch.mini ? `<img class="pportrait" src="${ch.mini}" alt="${p.name}" onerror="this.style.display='none'">` : "";
       d.innerHTML = `<div class="prow">${portrait}<div class="pinfo">` +
-        `<div class="pname">${p.name}${p.human ? " (你)" : ""}${p.idx === G.activePlayer ? " ◀" : ""}</div>` +
+        `<div class="pname">${p.name}${p.human ? " (你)" : ""}${p.team != null ? ` <span class="team-badge team${p.team}">队${p.team + 1}</span>` : ""}${p.idx === G.activePlayer ? " ◀" : ""}</div>` +
         `<div class="pstat">名望 ${E.totalFame(p)} · 伤害 ${p.injuries} · 防御区 ${p.defensePool}/${p.actionDice}${p.boostDice ? ` <span style="color:#5fd06f">+${p.boostDice}⚡</span>` : ""}${assigned}${combat} · 背包 ${p.backpack.length}` +
         (p.carryingBeacons ? ` · 携带信标 ${p.carryingBeacons}` : "") +
         ` · ${p.pos ? "在场" : "待跳伞"}</div></div></div>`;
@@ -160,12 +160,15 @@
   function renderTop() {
     const p = E.curP(G);
     let hint = "";
-    if (G.gameOver) hint = `🏆 ${G.players[G.winner].name} 获胜${G.superstar ? "（Superstar）" : ""}`;
+    if (G.gameOver) hint = (G.mode === "team" && G.winnerTeam != null)
+      ? `🏆 队伍 ${G.winnerTeam + 1} 获胜${G.superstar ? "（Superstar）" : ""}（队伍名望 ${E.teamFame(G, G.winnerTeam)}）`
+      : `🏆 ${G.players[G.winner].name} 获胜${G.superstar ? "（Superstar）" : ""}`;
     else if (!p.human) hint = `${p.name}（AI）行动中…`;
     else if (G.needsParachute) hint = "跳伞：点击中央塔或相邻格";
     else { const h = highlightSet(); hint = `你的回合：点相邻格移动${h.loot ? " · 点当前格拾取" : ""}${E.canUpload(G, p) ? " · 点中央塔上缴信标" : ""}${h.atk.size ? " · 点红框敌人攻击" : ""} · 或结束回合`; }
     const le = (G.lastEvent && D.EVENTS[G.lastEvent]) ? ` · ⚡${D.EVENTS[G.lastEvent].name}` : "";
-    $("game-info").textContent = `Arcadia · ${G.numPlayers}人 · 第${G.round}回合 · 事件${G.eventsResolved}/${G.eventTotal}${le} — ${hint}`;
+    const modeLabel = G.mode === "team" ? `团队赛 队1 ${E.teamFame(G, 0)} : ${E.teamFame(G, 1)} 队2` : "大逃杀";
+    $("game-info").textContent = `Arcadia · ${G.numPlayers}人 · ${modeLabel} · 第${G.round}回合 · 事件${G.eventsResolved}/${G.eventTotal}${le} — ${hint}`;
     const human = !G.gameOver && p.human, showAct = human && !G.needsParachute;
     const setBtn = (id, ok) => { const bt = $(id); if (!bt) return; bt.disabled = !ok; bt.classList.toggle("hidden", !human); };
     setBtn("btn-end", human && !G.needsParachute);
@@ -268,7 +271,10 @@
   }
 
   async function startGame() {
-    G = E.newGame({ numPlayers: parseInt($("player-count").value, 10), allAI: $("all-ai").checked });
+    const modeSel = $("mode-select"), mode = modeSel ? modeSel.value : "battleRoyale";
+    let n = parseInt($("player-count").value, 10);
+    if (mode === "team" && n % 2 !== 0) n = 4;   // team mode needs even teams
+    G = E.newGame({ numPlayers: n, mode, allAI: $("all-ai").checked });
     window.G = G; lastAchSeq = 0;
     $("setup-screen").classList.add("hidden");
     $("game-screen").classList.remove("hidden");
