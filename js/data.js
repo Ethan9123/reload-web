@@ -90,10 +90,12 @@
                  text: "End Phase: place the bottom die of Dax's combat line into his defense pool." },
       mini: "assets/characters/Dax_2.png",   card: "assets/characters/Dax_card.png" },
     { id: "blitz", name: "Blitz", color: "#e0c93a",
-      // Full card text. In our simplified dice model Run is already die-gated for everyone,
-      // so this character-action Run has no distinct mechanical effect yet (impl:false).
-      ability: { id: "fastest_there_is", name: "Fastest There Is", impl: false,
-                 text: "Character action: assign an action die to take a Run action." },
+      // Card: a character-action Run space (die value 3) — an EXTRA Run action only Blitz has.
+      // Our engine has no per-action-space caps, so we model the extra Run as bonus REACH (not a free
+      // die): Blitz's first die-paid Run each turn unlocks one extra follow-up hex (a free bonus step).
+      // The Run still costs an action die and can't be taken from 0 dice — it just goes one hex further.
+      ability: { id: "fastest_there_is", name: "Fastest There Is", impl: true,
+                 text: "His extra Run action — after a Run, Blitz may move one more hex (once per turn)." },
       mini: "assets/characters/Blitz_2.png", card: "assets/characters/Blitz_card.png" },
   ];
 
