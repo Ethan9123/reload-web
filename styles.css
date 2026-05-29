@@ -167,6 +167,28 @@ button.small { padding: 4px 10px; font-size: 13px; cursor: pointer; }
 #tooltip .tt-sub { color: #aab0bc; margin-top: 5px; }
 #tooltip .tt-hint { color: #f4d03f; margin-top: 6px; }
 
+/* ---- diplomacy panel (side) ---- */
+#dip-panel h4 { margin: 12px 0 6px; }
+.dip-list { display: flex; flex-direction: column; gap: 4px; }
+.dip-row { display: flex; align-items: center; gap: 6px; font-size: 12px; flex-wrap: wrap; }
+.dip-name { font-weight: 700; }
+.rel { font-size: 10px; border-radius: 4px; padding: 1px 5px; }
+.rel-ally { background: #1d3a5f; color: #9fd0ff; }
+.rel-truce { background: #234032; color: #9fffce; }
+.rel-neutral { background: #2a2f3a; color: #aab0bc; }
+.rel-foe { background: #402323; color: #ffb3bd; }
+.rel-focus { background: #5a4410; color: #f4d03f; }
+.dip-btns { display: flex; gap: 4px; margin-left: auto; }
+.dip-b { font: inherit; font-size: 11px; padding: 2px 7px; border-radius: 5px; cursor: pointer;
+  border: 1px solid #3a4150; background: #232936; color: #e6e8ec; }
+.dip-b:hover { filter: brightness(1.15); }
+.dip-b.ok { background: #234032; border-color: #3a6b4f; color: #d6ffe6; }
+.dip-b.no { background: #402323; border-color: #6b3a3a; color: #ffd6d6; }
+.dip-offer { font-size: 12px; background: #1b1f28; border: 1px solid #f4d03f; border-radius: 8px;
+  padding: 6px 8px; margin-bottom: 6px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.dip-feed { margin-top: 8px; border-top: 1px solid #20242e; padding-top: 6px; }
+.dip-line { font-size: 11px; color: #aab0bc; padding: 1px 0; }
+
 /* ---- achievement board (side panel) ---- */
 #ach-panel h4 { margin: 12px 0 6px; }
 .ach-list { display: flex; flex-direction: column; gap: 6px; }
