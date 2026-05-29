@@ -72,14 +72,19 @@
   // ---- Characters (4). Battle Royale uses the Auto-Heal board side. ----
   // Only Dax's ability text is in the core rulebook (p.12); the other three are on
   // their character reference cards (not yet transcribed) — TODO fill abilities.
+  // mini = figurine standee (transparent PNG, from TTS Figurine_Custom diffuse);
+  // card = full character reference card. Colors match the figurine plastic.
   const CHARACTERS = [
-    { id: "korat", name: "Korat", color: "#e0c93a", ability: null, mini: "assets/characters/Korat.png" },
-    { id: "duke",  name: "Duke",  color: "#4aa3df", ability: null, mini: "assets/characters/Duke.png" },
-    { id: "dax",   name: "Dax",   color: "#cf5050",
+    { id: "korat", name: "Korat", color: "#3b9ad6", ability: null,
+      mini: "assets/characters/Korat_2.png", card: "assets/characters/Korat_card.png" },
+    { id: "duke",  name: "Duke",  color: "#3aa84b", ability: null,
+      mini: "assets/characters/Duke_2.png",  card: "assets/characters/Duke_card.png" },
+    { id: "dax",   name: "Dax",   color: "#c8459b",
       ability: { id: "unrivaled_agility", name: "Unrivaled Agility",
                  text: "End Phase: place the bottom die of Dax's combat line into his defense pool." },
-      mini: "assets/characters/Dax.png" },
-    { id: "blitz", name: "Blitz", color: "#9b59b6", ability: null, mini: "assets/characters/Blitz.png" },
+      mini: "assets/characters/Dax_2.png",   card: "assets/characters/Dax_card.png" },
+    { id: "blitz", name: "Blitz", color: "#e0c93a", ability: null,
+      mini: "assets/characters/Blitz_2.png", card: "assets/characters/Blitz_card.png" },
   ];
 
   // ---- Fame token types ----

@@ -7,6 +7,7 @@
 (function () {
   "use strict";
   const E = RL.engine, D = RL.data;
+  const CHAR = Object.fromEntries(D.CHARACTERS.map(c => [c.id, c]));  // id -> character (mini/card/color)
   const $ = (id) => document.getElementById(id);
   const SVGNS = "http://www.w3.org/2000/svg";
   const HEX = 46;
@@ -83,15 +84,26 @@
       if (c.trap != null) svg.appendChild(Object.assign(svgEl("text", { x: x - 18, y: y + 20, "font-size": "14", fill: "#e3424b" }), { textContent: "⚠" }));
       if (c.hideouts.length) svg.appendChild(Object.assign(svgEl("text", { x: x + 8, y: y + 20, "font-size": "14", fill: "#fff" }), { textContent: "⌂" }));
     }
-    // minis
+    // minis — character figurine standees (fall back to a colored disc if art is missing)
     for (const c of cells) {
       const here = E.playersOnHex(G, c.q, c.r);
       const { x, y } = hexToPixel(c.q, c.r);
       here.forEach((p, i) => {
         const ang = here.length > 1 ? (Math.PI * 2 * i / here.length) : 0;
-        const ox = here.length > 1 ? Math.cos(ang) * 14 : 0, oy = here.length > 1 ? Math.sin(ang) * 14 : 0;
-        svg.appendChild(svgEl("circle", { cx: x + ox, cy: y + oy, r: 13, fill: p.color, stroke: p.idx === G.activePlayer ? "#fff" : "#0c0e12", "stroke-width": p.idx === G.activePlayer ? 3 : 2 }));
-        svg.appendChild(Object.assign(svgEl("text", { x: x + ox, y: y + oy + 4, "text-anchor": "middle", "font-size": "12", "font-weight": "700", fill: "#0c0e12", "pointer-events": "none" }), { textContent: p.name[0] }));
+        const ox = here.length > 1 ? Math.cos(ang) * 16 : 0, oy = here.length > 1 ? Math.sin(ang) * 12 : 0;
+        const cx = x + ox, cy = y + oy, active = p.idx === G.activePlayer;
+        if (active) svg.appendChild(svgEl("ellipse", { cx, cy: cy + 12, rx: 16, ry: 6, fill: "none", stroke: "#fff", "stroke-width": 2, "pointer-events": "none" }));
+        svg.appendChild(svgEl("ellipse", { cx, cy: cy + 12, rx: 12, ry: 4.5, fill: p.color, "fill-opacity": 0.9, stroke: "#0c0e12", "stroke-width": 1.2, "pointer-events": "none" }));
+        const ch = CHAR[p.character];
+        if (ch && ch.mini) {
+          const img = svgEl("image", { x: cx - 18, y: cy - 28, width: 36, height: 42, preserveAspectRatio: "xMidYMax meet", "pointer-events": "none" });
+          img.setAttributeNS("http://www.w3.org/1999/xlink", "href", ch.mini);
+          img.setAttribute("href", ch.mini);
+          svg.appendChild(img);
+        } else {
+          svg.appendChild(svgEl("circle", { cx, cy, r: 12, fill: p.color, "pointer-events": "none" }));
+          svg.appendChild(Object.assign(svgEl("text", { x: cx, y: cy + 4, "text-anchor": "middle", "font-size": "12", "font-weight": "700", fill: "#0c0e12", "pointer-events": "none" }), { textContent: p.name[0] }));
+        }
       });
     }
   }
@@ -104,10 +116,13 @@
       if (p.idx === G.activePlayer) d.style.background = "#222a38";
       const assigned = p.assignedDice && p.assignedDice.length ? ` · 已用 ${p.assignedDice.join("/")}` : "";
       const combat = p.combatLine && p.combatLine.length ? ` · 战斗列 ${p.combatLine.join("/")}` : "";
-      d.innerHTML = `<div class="pname">${p.name}${p.human ? " (你)" : ""}${p.idx === G.activePlayer ? " ◀" : ""}</div>` +
+      const ch = CHAR[p.character];
+      const portrait = ch && ch.mini ? `<img class="pportrait" src="${ch.mini}" alt="${p.name}" onerror="this.style.display='none'">` : "";
+      d.innerHTML = `<div class="prow">${portrait}<div class="pinfo">` +
+        `<div class="pname">${p.name}${p.human ? " (你)" : ""}${p.idx === G.activePlayer ? " ◀" : ""}</div>` +
         `<div class="pstat">名望 ${E.totalFame(p)} · 伤害 ${p.injuries} · 防御区 ${p.defensePool}/${p.actionDice}${assigned}${combat} · 背包 ${p.backpack.length}` +
         (p.carryingBeacons ? ` · 携带信标 ${p.carryingBeacons}` : "") +
-        ` · ${p.pos ? "在场" : "待跳伞"}</div>`;
+        ` · ${p.pos ? "在场" : "待跳伞"}</div></div></div>`;
       box.appendChild(d);
     }
   }
