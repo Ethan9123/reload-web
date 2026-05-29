@@ -479,6 +479,17 @@
     await sleep(1100);
     ov.style.display = "none";
   }
+  // small styled chooser for the heal target (self vs teammate) — returns the chosen idx, or null if cancelled
+  function pickHealTarget(p, targets) {
+    return new Promise(resolve => {
+      let ov = $("choice-overlay");
+      if (!ov) { ov = document.createElement("div"); ov.id = "choice-overlay"; document.body.appendChild(ov); }
+      const btns = targets.map(idx => { const t = G.players[idx]; return `<button class="ch-btn" data-i="${idx}">${idx === p.idx ? "治疗自己（恢复 1）" : `治疗队友 ${t.name}（恢复 2 · +团队精神）`}</button>`; }).join("");
+      ov.innerHTML = `<div class="ch-panel"><div class="ch-title">选择治疗目标</div><div class="ch-btns">${btns}<button class="ch-btn cancel" data-i="">取消</button></div></div>`;
+      ov.style.display = "flex";
+      ov.querySelectorAll(".ch-btn").forEach(b => b.addEventListener("click", () => { ov.style.display = "none"; const v = b.dataset.i; resolve(v === "" ? null : +v); }));
+    });
+  }
   function animateHeal(roll) {
     if (!roll) return Promise.resolve();
     const p = G.players[roll.by];
@@ -642,8 +653,11 @@
     $("btn-end").addEventListener("click", endTurn);
     $("btn-heal").addEventListener("click", async () => {
       if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
-      const p = E.curP(G);
-      if (E.canHeal(G, p) && E.doHeal(G)) { render(); await animateHeal(G.lastRoll); }
+      const p = E.curP(G), targets = E.healTargets(G, p);
+      if (!targets.length) return;
+      let targetIdx = targets[0];
+      if (targets.length > 1) { targetIdx = await pickHealTarget(p, targets); if (targetIdx == null) return; } // let the player choose self vs teammate
+      if (E.doHeal(G, targetIdx)) { render(); await animateHeal(G.lastRoll); }
     });
     $("btn-barrier").addEventListener("click", () => act(p => { const e = barrierEdgeTowardEnemy(p); return e != null && E.doBuildBarrier(G, e); }));
     $("btn-hideout").addEventListener("click", () => act(p => E.canBuild(G, p) && E.doBuildHideout(G)));

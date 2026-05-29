@@ -126,6 +126,16 @@ button.small { padding: 4px 10px; font-size: 13px; cursor: pointer; }
 .dz-result.hit { color: #7CFC7C; }
 .dz-result.big { color: #ff6b6b; font-size: 18px; }
 
+/* ---- generic choice overlay (e.g. heal target) ---- */
+#choice-overlay { display: none; position: fixed; inset: 0; z-index: 70; align-items: center; justify-content: center;
+  background: rgba(8, 10, 14, 0.7); }
+.ch-panel { background: #161a22; border: 2px solid #2a2f3a; border-radius: 14px; padding: 18px 22px; min-width: 280px; text-align: center; }
+.ch-title { font-weight: 700; margin-bottom: 14px; color: #cdd2db; }
+.ch-btns { display: flex; flex-direction: column; gap: 8px; }
+.ch-btn { font: inherit; padding: 10px 12px; border-radius: 8px; border: 1px solid #3a6b4f; background: #234032; color: #d6ffe6; font-weight: 600; cursor: pointer; }
+.ch-btn:hover { filter: brightness(1.12); }
+.ch-btn.cancel { background: #232936; border-color: #3a4150; color: #aab0bc; }
+
 /* ---- mine / trap reveal close-up ---- */
 #trap-overlay { display: none; position: fixed; inset: 0; z-index: 65; align-items: center; justify-content: center;
   background: radial-gradient(ellipse at center, rgba(40,16,8,0.6), rgba(8,10,14,0.86)); }
