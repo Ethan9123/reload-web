@@ -260,17 +260,26 @@
     gainFame(state, p, "achievement", fame);                                    // may trigger Superstar — that's legal mid-game
     return true;
   }
+  // snapshot every player's value for each MOST metric currently in the display, taken BEFORE any
+  // award — so awarding achievement fame for one card can't skew a later card (e.g. "variety", which
+  // counts the achievement color). Returns metric -> array(playerIdx -> value).
+  function snapshotMostMetrics(state, mostSlots) {
+    const snap = {};
+    for (const slot of mostSlots) { const m = DATA.ACHIEVEMENT_BY_ID[slot.id].metric; if (!(m in snap)) snap[m] = state.players.map(p => mostMetric(state, p, m)); }
+    return snap;
+  }
   // MOST achievements: scored at End of Game (no Superstar can be triggered during awarding)
   function scoreMostAchievements(state) {
     const ac = state.achievements; if (!ac) return;
-    for (const slot of ac.board) {
-      const card = DATA.ACHIEVEMENT_BY_ID[slot.id]; if (card.type !== "most") continue;
-      const val = (p) => mostMetric(state, p, card.metric);
-      let best = -1; for (const p of state.players) best = Math.max(best, val(p));
+    const mostSlots = ac.board.filter(s => DATA.ACHIEVEMENT_BY_ID[s.id].type === "most");
+    const snap = snapshotMostMetrics(state, mostSlots);
+    for (const slot of mostSlots) {
+      const card = DATA.ACHIEVEMENT_BY_ID[slot.id], vals = snap[card.metric];
+      const best = Math.max(...vals);
       if (best <= 0) continue;                                                  // nobody qualifies
       const fame = slot.fameBelow || 1;
-      for (const w of state.players.filter(p => val(p) === best)) {             // ties: all tied players earn it
-        const got = Math.min(fame, state.fameSupply.achievement);
+      for (let i = 0; i < state.players.length; i++) if (vals[i] === best) {     // ties: all tied players earn it
+        const w = state.players[i], got = Math.min(fame, state.fameSupply.achievement);
         w.fame.achievement += got; state.fameSupply.achievement -= got; w.achievementsWon.push(card.id);
         log(state, `🏆 ${w.name} 获得「${card.cn}」成就 (+${got} 成就名望)`);
       }
@@ -279,12 +288,13 @@
   // Announcement event: MOST(1) award current leaders + NEXT(1) refresh, plus token top-ups
   function resolveAnnouncement(state) {
     const ac = state.achievements; if (!ac || !ac.board.length) return;
-    for (const slot of ac.board) {
-      const card = DATA.ACHIEVEMENT_BY_ID[slot.id]; if (card.type !== "most") continue;
-      const val = (p) => mostMetric(state, p, card.metric);
-      let best = -1; for (const p of state.players) best = Math.max(best, val(p));
+    const mostSlots = ac.board.filter(s => DATA.ACHIEVEMENT_BY_ID[s.id].type === "most");
+    const snap = snapshotMostMetrics(state, mostSlots);                          // freeze leaders before any award
+    for (const slot of mostSlots) {
+      const card = DATA.ACHIEVEMENT_BY_ID[slot.id], vals = snap[card.metric];
+      const best = Math.max(...vals);
       if (best <= 0) continue;
-      for (const w of state.players.filter(p => val(p) === best)) { log(state, `📣 战报：${w.name} 暂列「${card.cn}」领先 (+1 成就名望)`); gainFame(state, w, "achievement", 1); }
+      for (let i = 0; i < state.players.length; i++) if (vals[i] === best) { const w = state.players[i]; log(state, `📣 战报：${w.name} 暂列「${card.cn}」领先 (+1 成就名望)`); gainFame(state, w, "achievement", 1); }
     }
     ac.board[0].fameBelow = (ac.board[0].fameBelow || 0) + 1;                   // top up leftmost card
     const nextIdx = ac.board.findIndex(s => DATA.ACHIEVEMENT_BY_ID[s.id].type === "next");

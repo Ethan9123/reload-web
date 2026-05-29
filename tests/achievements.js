@@ -59,6 +59,17 @@ A(g5.players[0].achievementsWon.includes("predator"), "PREDATOR awarded to most 
 A(g5.players[1].achievementsWon.includes("treasure_hunter"), "TREASURE HUNTER awarded to most beacon fame");
 A(g5.players[0].achievementsWon.includes("collector"), "COLLECTOR awarded to most 3-star equipment");
 
+// 5b) MOST scoring is order-independent: awarding earlier cards must not change "variety" for Jack of All Trades
+const g5b = E.newGame({ numPlayers: 2, seed: 17, allAI: true });
+g5b.achievements.board = [{ id: "predator", fameBelow: 1 }, { id: "jack_of_all_trades", fameBelow: 1 }];
+g5b.players.forEach(p => { p.fame = { injury: 0, beacon: 0, teamSpirit: 0, reload: 0, trap: 0, achievement: 0 }; p.achievementsWon = []; });
+g5b.players[0].fame.reload = 3;                          // p0: 1 color (reload) -> wins Predator
+g5b.players[1].fame.beacon = 1; g5b.players[1].fame.injury = 1; // p1: 2 colors -> should win Jack of All Trades
+E.scoreMostAchievements(g5b);
+A(g5b.players[0].achievementsWon.includes("predator"), "PREDATOR to p0 (most reload)");
+A(g5b.players[1].achievementsWon.includes("jack_of_all_trades"), "JACK OF ALL TRADES to p1 (most variety, from snapshot)");
+A(!g5b.players[0].achievementsWon.includes("jack_of_all_trades"), "Predator's achievement fame did NOT inflate p0's variety for Jack of All Trades");
+
 // 6) Announcement: awards MOST leaders +1 and refreshes a NEXT card
 const g6 = E.newGame({ numPlayers: 2, seed: 8, allAI: true });
 g6.achievements.board = [{ id: "predator", fameBelow: 1 }, { id: "marksman", fameBelow: 1 }, { id: "treasure_hunter", fameBelow: 1 }];
