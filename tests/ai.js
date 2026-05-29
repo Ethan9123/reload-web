@@ -9,6 +9,7 @@ function prep(seed, opts) {
   const g = E.newGame(Object.assign({ numPlayers: 2, seed, allAI: true }, opts || {}));
   g.activePlayer = 0; g.phase = "action"; g.needsParachute = false;
   const p = g.players[0]; const tk = E.towerKey(g); setPos(g, p, tk);
+  p.persona = null;   // test the baseline (DEF) traits; persona-specific behavior is tested separately
   p.injuries = 0; p.actionDice = 5; p.defensePool = 5; p.combatLine = []; p.assignedDice = []; p.hasActed = false;
   // clear stray tokens so each scenario isolates one decision
   for (const k in g.board) g.board[k].tokens = [];

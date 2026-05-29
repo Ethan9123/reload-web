@@ -8,6 +8,10 @@
 (function (root) {
   "use strict";
 
+  // ---- persona traits (0..1) that bend the automa's decisions; missing keys fall back to DEF ----
+  const DEF = { aggression: .5, frag: .3, objective: .6, caution: .5, loot: .4, build: .2, diplomacy: .4, betray: .3, vendetta: .3, leaderHunt: .4, trash: .3 };
+  function T(p, k) { const t = p.persona && p.persona.traits; return (t && t[k] != null) ? t[k] : (DEF[k] != null ? DEF[k] : .5); }
+
   // ---- small helpers (operate via the engine API) ----
   function tokenHexes(E, state, kind) {
     const out = [];
@@ -88,24 +92,31 @@
     return false;
   }
 
-  // honor a truce unless we can finish the (near-)leader — then betrayal is worth the trust hit
+  // honor a truce — backstabbers ignore it, the loyal never break it, others only to finish the (near-)leader
   function attackable(E, state, p, idx) {
     if (!E.hasTruce || !E.hasTruce(state, p.idx, idx)) return true;
+    const betray = T(p, "betray");
+    if (betray >= 0.6) return true;
+    if (betray <= 0.05) return false;
     const leaderFame = Math.max(...state.players.map(x => E.totalFame(x)));
     return E.totalFame(state.players[idx]) >= leaderFame && state.players[idx].injuries >= E.INJURY_ZONE - 2;
   }
-  // among valid targets, honor an agreed focus pact, else hit the one nearest to RELOAD
-  function pickTarget(E, state, idxs) {
+  // choose a target by persona: vendetta > focus pact > leader-hunt > frag (nearest to RELOAD)
+  function pickTarget(E, state, p, idxs) {
     if (!idxs.length) return null;
+    if (T(p, "vendetta") >= 0.7 && p._lastAttacker != null && idxs.includes(p._lastAttacker)) return p._lastAttacker;
     const focus = state.diplomacy && state.diplomacy.focus;
     if (focus != null && idxs.includes(focus)) return focus;
+    if (T(p, "leaderHunt") >= 0.6) { let best = null, bf = -1; for (const i of idxs) { const f = E.totalFame(state.players[i]); if (f > bf) { bf = f; best = i; } } if (best != null) return best; }
     return pickByInjuries(state, idxs);
   }
-  // once-per-turn table talk: rally the table against the leader, or de-escalate with a rival
+  // once-per-turn table talk, scaled by the persona's diplomacy/trash traits
   function runDiplomacy(E, state, p) {
     const d = state.diplomacy;
     if (!d || !E.proposeTruce || state.players.length < 3 || state.gameOver) return;
-    if (state.rnd() > 0.35) return;                              // most turns, stay quiet
+    if (T(p, "trash") >= 0.7 && state.rnd() < 0.4 && E.dipTaunt) E.dipTaunt(state, p.idx);   // loudmouths run their mouth
+    const dip = T(p, "diplomacy");
+    if (dip < 0.35 || state.rnd() > 0.45 * dip + 0.1) return;    // loners stay silent; talkers speak more
     let leader = -1, lf = -1;
     for (const o of state.players) { if (o.idx === p.idx || E.sameTeam(p, o)) continue; const f = E.totalFame(o); if (f > lf) { lf = f; leader = o.idx; } }
     if (leader < 0) return;
@@ -119,40 +130,48 @@
     }
   }
 
+  // nearest on-map opponent hex (for rushers to push toward when idle)
+  function nearestEnemyHex(E, state, p) {
+    const keys = state.players.filter(o => o.pos && !E.sameTeam(p, o) && o.idx !== p.idx).map(o => E.hexKey(o.pos.q, o.pos.r));
+    return nearestTarget(E, state, p, keys);
+  }
+
   // ---- one action; returns "acted" | "stop" | "idle" ----
   function chooseAction(E, state, p) {
     if (tryFreeItems(E, state, p)) return "acted";
 
+    const aggr = T(p, "aggression"), caution = T(p, "caution");
     // respect truces (skip partners) unless betrayal finishes the leader; honor a focus pact when choosing
     const close = E.closeTargets(state, p).filter(i => attackable(E, state, p, i));
     const ranged = E.rangedTargets(state, p).filter(i => attackable(E, state, p, i));
     const nearDeath = (i) => state.players[i].injuries >= E.INJURY_ZONE - 2;
 
-    // 1) finish an opponent: close combat only when it likely RELOADs (it ends the turn)
-    const closeKill = close.filter(nearDeath);
-    if (closeKill.length) { E.doClose(state, pickTarget(E, state, closeKill)); return "stop"; }
-    // 2) ranged at the focus / enemy nearest to RELOAD (doesn't end the turn)
-    if (ranged.length) { E.doRanged(state, pickTarget(E, state, ranged), 3); return "acted"; }
-
-    // 3) heal when hurt and safe (in team mode this also heals an injured teammate sharing the hex)
+    // 0) cautious personas patch up before they're in danger (aggressive ones tough it out)
+    const healAt = Math.max(2, Math.round(4 - 2 * caution));    // caution 1 -> heal@2, caution 0 -> heal@4
     if (E.canHeal(state, p)) {
       const ht = E.healTargets(state, p);
-      const mate = ht.find(i => i !== p.idx && state.players[i].injuries >= 2);   // prioritise saving a teammate
+      const mate = ht.find(i => i !== p.idx && state.players[i].injuries >= 2);   // always try to save a teammate
       if (mate != null) { E.doHeal(state, mate); return "acted"; }
-      if (p.injuries >= 3) { E.doHeal(state, p.idx); return "acted"; }
+      if (p.injuries >= healAt) { E.doHeal(state, p.idx); return "acted"; }
     }
 
-    // 4) upload carried beacons at the tower
+    // 1) finish an opponent: close combat that likely RELOADs (ends the turn) — everyone takes the kill
+    const closeKill = close.filter(nearDeath);
+    if (closeKill.length) { E.doClose(state, pickTarget(E, state, p, closeKill)); return "stop"; }
+    // 2) proactive ranged: aggressive personas always; cautious ones only when it's a (near-)kill
+    if (ranged.length && (aggr >= 0.35 || ranged.some(nearDeath))) { E.doRanged(state, pickTarget(E, state, p, ranged), 3); return "acted"; }
+
+    // 3) upload carried beacons at the tower
     if (p.carryingBeacons > 0 && E.canUpload(state, p)) { E.doActivate(state); return "acted"; }
 
-    // 5) loot a beacon / supply box on this hex
+    // 4) loot a beacon / supply box on this hex (loot goblins also grab supplies eagerly)
     const loot = E.lootOptions(state, p);
     if (loot.length) {
       const bi = loot.findIndex(t => t.kind === "beacon");
       E.doLoot(state, bi >= 0 ? bi : 0); return "acted";
     }
 
-    // 6) move toward the best objective
+    // 5) move toward the best objective
     const tower = E.towerKey(state);
     if (p.carryingBeacons > 0) { if (stepToward(E, state, p, tower)) return "acted"; }
     const beacons = tokenHexes(E, state, "beacon");
@@ -160,11 +179,15 @@
     const supplies = tokenHexes(E, state, "supply");
     if (supplies.length) { if (stepToward(E, state, p, nearestTarget(E, state, p, supplies))) return "acted"; }
 
-    // 7) nothing pressing: a weak close attack is still progress (chip damage / injury fame)
-    if (close.length) { E.doClose(state, pickTarget(E, state, close)); return "stop"; }
+    // 6) aggressive personas would rather a weak close attack (or a push) than sit still
+    if (aggr >= 0.5 && close.length) { E.doClose(state, pickTarget(E, state, p, close)); return "stop"; }
+    if (aggr >= 0.7) { if (stepToward(E, state, p, nearestEnemyHex(E, state, p))) return "acted"; }   // rush the nearest enemy
 
-    // 8) idle building: set a hideout (end-phase die back + toxin safety) when safe and none yet
-    if (E.canBuild(state, p) && !p.hideout) { if (E.doBuildHideout(state)) return "acted"; }
+    // 7) builders fortify when idle and safe (Architect / Map Controller)
+    if (E.canBuild(state, p)) {
+      if (T(p, "build") >= 0.7 && p.pos && state.board[E.hexKey(p.pos.q, p.pos.r)].trap == null && p.trapsUsed < 6) { if (E.doBuildTrap(state)) return "acted"; }
+      if (!p.hideout) { if (E.doBuildHideout(state)) return "acted"; }
+    }
 
     // 9) no objective to pursue — stop and keep the remaining dice (they become combat-line defense
     //    dice at End Phase, which is better than wandering them away).
