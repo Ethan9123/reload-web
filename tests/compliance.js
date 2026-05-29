@@ -166,9 +166,20 @@ A(E.equipItem(geq, peq, "combat_shotgun") && peq.equipped.hand.includes("combat_
 A(!E.equipItem(geq, peq, "survival_knife"), "two-handed weapon fills both hands — second hand item rejected");
 A(E.unequipItem(geq, peq, "combat_shotgun") && peq.equipped.hand.length === 0, "unequip frees the hand slots");
 A(E.equipItem(geq, peq, "bow_arrow") && E.equipItem(geq, peq, "survival_knife") && peq.equipped.hand.length === 2, "two single-hand weapons fit");
-peq.assigned = 1;  // a die has now been assigned this turn
+peq.assigned = 1; peq.hasActed = true;  // a die has now been spent on an action this turn
 A(!E.canEquip(geq, peq), "equipment locks once an action die is assigned");
 A(!E.equipItem(geq, peq, "light_helmet"), "equip rejected after a die is assigned");
+// edge case: spend the last die on an action, then an injury pops it (assigned -> 0). Equipment must stay locked.
+const gel = E.newGame({ numPlayers: 2, seed: 22, allAI: true });
+const pel = gel.players[0], tel = gel.players[1];
+const tkl = E.towerKey(gel), tcl = gel.board[tkl];
+pel.pos = { q: tcl.q, r: tcl.r }; gel.activePlayer = 0; gel.phase = "action";
+pel.injuries = 0; pel.actionDice = 1; pel.defensePool = 1; pel.assignedDice = []; pel.combatLine = []; pel.hasActed = false;
+pel.backpack = ["light_helmet"]; pel.equipped = { head: null, torso: null, hand: [] };
+const run = E.legalRuns(gel, pel)[0]; E.doRun(gel, run);     // spend the only die on a Run -> hasActed
+E.takeInjuries(gel, pel, 1);                                 // injury pops the spent die: assigned back to 0
+A(pel.assigned === 0, "precondition: injury reset assigned to 0");
+A(!E.canEquip(gel, pel), "equipment stays locked after a spent die is removed by injury");
 
 // 11) regression — all-AI games with the new combat/parachute rules still complete
 let crashed = 0;
