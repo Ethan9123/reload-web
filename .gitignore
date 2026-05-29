@@ -9,6 +9,22 @@ assets/characters/*
 # but not the misc unnamed single-card decks that also end in _card
 assets/characters/deck_*_card.png
 
+# map token art used on the board (small set)
+!assets/tokens/
+assets/tokens/*
+!assets/tokens/Beacon_Fame.png
+!assets/tokens/2-Star_Supply.png
+!assets/tokens/Toxin.png
+!assets/tokens/Dome.png
+!assets/tokens/Blue_Hideout.png
+!assets/tokens/Green_Hideout.png
+!assets/tokens/Purple_Hideout.png
+!assets/tokens/Yellow_Hideout.png
+# portal tile art lives under hexes/
+!assets/hexes/
+assets/hexes/*
+!assets/hexes/Portal.png
+
 # Editor / OS / runtime
 .DS_Store
 Thumbs.db

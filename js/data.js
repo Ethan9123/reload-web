@@ -90,8 +90,10 @@
                  text: "End Phase: place the bottom die of Dax's combat line into his defense pool." },
       mini: "assets/characters/Dax_2.png",   card: "assets/characters/Dax_card.png" },
     { id: "blitz", name: "Blitz", color: "#e0c93a",
+      // Full card text. In our simplified dice model Run is already die-gated for everyone,
+      // so this character-action Run has no distinct mechanical effect yet (impl:false).
       ability: { id: "fastest_there_is", name: "Fastest There Is", impl: false,
-                 text: "Character action: assign an action die to take a Run action (figure-specific)." },
+                 text: "Character action: assign an action die to take a Run action." },
       mini: "assets/characters/Blitz_2.png", card: "assets/characters/Blitz_card.png" },
   ];
 
@@ -175,9 +177,22 @@
     traps: 6,   // per player
   };
 
+  // ---- Map token / hideout art (from the TTS mod) ----
+  const TOKEN_ART = {
+    beacon: "assets/tokens/Beacon_Fame.png",
+    supply: "assets/tokens/2-Star_Supply.png",
+    portal: "assets/hexes/Portal.png",
+    toxin:  "assets/tokens/Toxin.png",
+    dome:   "assets/tokens/Dome.png",
+  };
+  const HIDEOUT_ART = {
+    korat: "assets/tokens/Blue_Hideout.png", duke: "assets/tokens/Green_Hideout.png",
+    dax:   "assets/tokens/Purple_Hideout.png", blitz: "assets/tokens/Yellow_Hideout.png",
+  };
+
   const DATA = {
     DIE_FACES, DICE, START_ACTION_DICE, TERRAIN, ARCADIA, HEX_DIRS,
-    CHARACTERS, FAME, SLOTS, EQUIPMENT, ACTIONS, SETUP,
+    CHARACTERS, FAME, SLOTS, EQUIPMENT, ACTIONS, SETUP, TOKEN_ART, HIDEOUT_ART,
     EQUIP_BY_ID: Object.fromEntries(EQUIPMENT.map(e => [e.id, e])),
   };
 

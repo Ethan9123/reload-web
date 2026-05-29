@@ -20,6 +20,12 @@
     for (const k in attrs) e.setAttribute(k, attrs[k]);
     return e;
   }
+  function svgImg(href, x, y, w, h, opacity) {
+    const im = svgEl("image", { x, y, width: w, height: h, preserveAspectRatio: "xMidYMid meet", "pointer-events": "none" });
+    if (opacity != null) im.setAttribute("opacity", opacity);
+    im.setAttributeNS("http://www.w3.org/1999/xlink", "href", href); im.setAttribute("href", href);
+    return im;
+  }
   const hexToPixel = (q, r) => ({ x: HEX * Math.sqrt(3) * (q + r / 2), y: HEX * 1.5 * r });
   function hexCorners(cx, cy) {
     const pts = [];
@@ -68,11 +74,15 @@
       else if (hl.run.has(key)) { poly.setAttribute("stroke", "#5fd0e0"); poly.setAttribute("stroke-width", "3"); }
       else if (key === curKey) { poly.setAttribute("stroke", "#fff"); poly.setAttribute("stroke-width", "3"); }
       poly.addEventListener("click", () => onHex(key));
+      bindTip(poly, () => hexTip(c));
       svg.appendChild(poly);
       svg.appendChild(Object.assign(svgEl("text", { x, y: y + 30, class: "hex-label" }), { textContent: c.terrain === "tower" ? "TOWER" : c.terrain.toUpperCase().slice(0, 4) }));
-      if (c.tokens.some(k => k.kind === "beacon")) svg.appendChild(svgEl("circle", { cx: x, cy: y - 8, r: 9, class: "tok-beacon" }));
-      if (c.tokens.some(k => k.kind === "supply")) svg.appendChild(svgEl("rect", { x: x - 9, y: y - 17, width: 18, height: 18, rx: 3, class: "tok-supply" }));
-      if (c.portal) svg.appendChild(svgEl("circle", { cx: x, cy: y, r: HEX * 0.55, class: "tok-portal" }));
+      // map token art (portal/toxin under, beacon/supply on top)
+      if (c.toxin && D.TOKEN_ART.toxin) svg.appendChild(svgImg(D.TOKEN_ART.toxin, x - HEX * 0.7, y - HEX * 0.7, HEX * 1.4, HEX * 1.4, 0.5));
+      if (c.portal) svg.appendChild(svgImg(D.TOKEN_ART.portal, x - 23, y - 23, 46, 46, 0.92));
+      if (c.dome && D.TOKEN_ART.dome) svg.appendChild(svgImg(D.TOKEN_ART.dome, x - 22, y - 22, 44, 44, 0.9));
+      if (c.tokens.some(k => k.kind === "beacon")) svg.appendChild(svgImg(D.TOKEN_ART.beacon, x - 13, y - 21, 26, 26));
+      if (c.tokens.some(k => k.kind === "supply")) svg.appendChild(svgImg(D.TOKEN_ART.supply, x - 14, y - 23, 28, 28));
     }
     // walls/barriers (neutral gray, player-owned colored) + trap/hideout markers
     for (const { c, x, y } of pix) {
@@ -83,7 +93,7 @@
           stroke: o === "n" ? "#9aa0ac" : (G.players[o] ? G.players[o].color : "#9aa0ac"), "stroke-width": 5, "stroke-linecap": "round" }));
       }
       if (c.trap != null) svg.appendChild(Object.assign(svgEl("text", { x: x - 18, y: y + 20, "font-size": "14", fill: "#e3424b" }), { textContent: "⚠" }));
-      if (c.hideouts.length) svg.appendChild(Object.assign(svgEl("text", { x: x + 8, y: y + 20, "font-size": "14", fill: "#fff" }), { textContent: "⌂" }));
+      c.hideouts.forEach((ownerIdx, hi) => { const op = G.players[ownerIdx], art = op && D.HIDEOUT_ART[op.character]; if (art) svg.appendChild(svgImg(art, x + 2 + hi * 5, y - 4, 22, 22)); });
     }
     // minis — character figurine standees (fall back to a colored disc if art is missing)
     for (const c of cells) {
@@ -124,8 +134,9 @@
         `<div class="pstat">名望 ${E.totalFame(p)} · 伤害 ${p.injuries} · 防御区 ${p.defensePool}/${p.actionDice}${assigned}${combat} · 背包 ${p.backpack.length}` +
         (p.carryingBeacons ? ` · 携带信标 ${p.carryingBeacons}` : "") +
         ` · ${p.pos ? "在场" : "待跳伞"}</div></div></div>`;
-      d.style.cursor = "pointer"; d.title = "点击查看角色板";
+      d.style.cursor = "pointer";
       d.addEventListener("click", () => openCharBoard(p.idx));
+      bindTip(d, () => playerTip(p));
       box.appendChild(d);
     }
   }
@@ -329,6 +340,59 @@
     })(performance.now());
   }
 
+  // ---- hover tooltips (semi-transparent floating help) ----
+  function ensureTip() { let t = $("tooltip"); if (!t) { t = document.createElement("div"); t.id = "tooltip"; document.body.appendChild(t); } return t; }
+  function positionTip(x, y) {
+    const t = $("tooltip"); if (!t) return; const r = t.getBoundingClientRect(), pad = 14;
+    let nx = x + pad, ny = y + pad;
+    if (nx + r.width > innerWidth - 8) nx = x - r.width - pad;
+    if (ny + r.height > innerHeight - 8) ny = y - r.height - pad;
+    t.style.left = Math.max(4, nx) + "px"; t.style.top = Math.max(4, ny) + "px";
+  }
+  function showTip(html, x, y) { if (!html) return; const t = ensureTip(); t.innerHTML = html; t.style.display = "block"; positionTip(x, y); }
+  function hideTip() { const t = $("tooltip"); if (t) t.style.display = "none"; }
+  function bindTip(el, content) {
+    el.addEventListener("mouseenter", e => showTip(typeof content === "function" ? content() : content, e.clientX, e.clientY));
+    el.addEventListener("mousemove", e => positionTip(e.clientX, e.clientY));
+    el.addEventListener("mouseleave", hideTip);
+  }
+  const ttSub = (s) => `<div class="tt-sub">${s}</div>`;
+  function hexTip(c) {
+    const t = D.TERRAIN[c.terrain];
+    let h = `<h5>${t.name}</h5>`; const lines = [];
+    if (c.terrain === "tower") lines.push("在此 <b>Activate</b> 上缴携带的信标 → 换名望");
+    if (c.terrain === "mountain") lines.push("进入需要 <b>2</b> 个移动骰");
+    if (c.tokens.some(k => k.kind === "beacon")) lines.push("🔆 信标：<b>Loot</b> 拾取，带到中央塔上缴 +1 名望");
+    if (c.tokens.some(k => k.kind === "supply")) lines.push("📦 2★补给箱：<b>Loot</b> 开箱，抽 2 张装备留 1");
+    if (c.portal) lines.push("🌀 传送门：花 1 移动骰在任意两传送门间穿梭");
+    if (c.toxin) lines.push("☣ 毒气：回合末停留且无藏身处/穹顶 → 受 1 伤");
+    if (c.trap != null) lines.push("⚠ 陷阱（隐藏）：踩入需与陷阱猜拳");
+    for (const oi of (c.hideouts || [])) { const op = G.players[oi]; if (op) lines.push(`⌂ ${op.name} 藏身处：回合在此结束→最低战斗列骰回防御、免疫毒气`); }
+    const wn = Object.values(c.walls).filter(o => o === "n").length, wp = Object.keys(c.walls).length - wn;
+    if (wn || wp) lines.push(`🧱 墙 ${wn ? "中立×" + wn : ""}${wp ? " 玩家×" + wp : ""}：阻挡移动/视线`);
+    if (lines.length) h += ttSub(lines.join("<br>"));
+    const here = E.playersOnHex(G, c.q, c.r);
+    if (here.length) h += ttSub("👤 " + here.map(p => `<b style="color:${p.color}">${p.name}</b>(伤${p.injuries})`).join("、"));
+    return h;
+  }
+  function playerTip(p) {
+    const ch = CHAR[p.character];
+    let h = `<h5 style="color:${p.color}">${p.name}${p.human ? "（你）" : "（AI）"} · ${ch ? ch.name : p.character}</h5>`;
+    if (ch && ch.ability) h += `<div><b>${ch.ability.name}</b>：${ch.ability.text}</div>`;
+    h += ttSub(`名望 <b>${E.totalFame(p)}</b>（信标${p.fame.beacon}/受伤${p.fame.injury}/重整${p.fame.reload}/陷阱${p.fame.trap || 0}）<br>` +
+      `伤害 ${p.injuries}/${E.INJURY_ZONE} · 行动骰 ${p.defensePool}/${p.actionDice}${p.carryingBeacons ? ` · 携带信标 ${p.carryingBeacons}` : ""}<br>` +
+      `装备 ${[p.equipped.head, p.equipped.torso, ...(p.equipped.hand || [])].filter(Boolean).length} · 背包 ${p.backpack.length} · ${p.pos ? "在场" : (p.reloadZone ? "待重新跳伞" : "待跳伞")}`);
+    return h + `<div class="tt-hint">点击查看完整角色板</div>`;
+  }
+  const BTN_TIP = {
+    "btn-heal": "治疗：消耗 1 行动骰掷骰，恢复 1 点伤（骷髅+1）。同格有敌人时不可用。",
+    "btn-barrier": "屏障：消耗 1 行动骰，在当前格空边放置自己的屏障（挡移动/视线，自己可穿）。同格有敌人时不可用。",
+    "btn-hideout": "藏身处：消耗 1 行动骰，在当前格放藏身处（回合在此结束有好处、免疫毒气）。",
+    "btn-trap": "陷阱：消耗 1 行动骰，在当前格埋隐藏陷阱，敌人踩入需猜拳。",
+    "btn-end": "结束回合：已用骰子进战斗列，进入结束阶段并轮到下一位。",
+    "btn-restart": "重新开始游戏。",
+  };
+
   function init() {
     $("btn-start").addEventListener("click", startGame);
     $("btn-restart").addEventListener("click", () => location.reload());
@@ -341,6 +405,7 @@
     $("btn-barrier").addEventListener("click", () => act(p => { const e = barrierEdgeTowardEnemy(p); return e != null && E.doBuildBarrier(G, e); }));
     $("btn-hideout").addEventListener("click", () => act(p => E.canBuild(G, p) && E.doBuildHideout(G)));
     $("btn-trap").addEventListener("click", () => act(() => E.doBuildTrap(G)));
+    Object.keys(BTN_TIP).forEach(id => { const b = $(id); if (b) bindTip(b, BTN_TIP[id]); });
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();

@@ -108,3 +108,12 @@ button.small { padding: 4px 10px; font-size: 13px; cursor: pointer; }
 .dz-result { margin-top: 14px; font-weight: 700; min-height: 20px; }
 .dz-result.hit { color: #7CFC7C; }
 .dz-result.big { color: #ff6b6b; font-size: 18px; }
+
+/* ---- hover tooltip (semi-transparent floating help) ---- */
+#tooltip { position: fixed; z-index: 80; display: none; max-width: 290px; pointer-events: none;
+  background: rgba(18, 22, 30, 0.93); border: 1px solid #3a4150; border-radius: 8px;
+  padding: 8px 11px; font-size: 12px; line-height: 1.45; color: #e6e8ec;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.55); }
+#tooltip h5 { margin: 0 0 5px; font-size: 13px; }
+#tooltip .tt-sub { color: #aab0bc; margin-top: 5px; }
+#tooltip .tt-hint { color: #f4d03f; margin-top: 6px; }
