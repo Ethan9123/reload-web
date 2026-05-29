@@ -259,13 +259,14 @@
       .map(f => `<div class="dip-line"><b style="color:${G.players[f.from] ? G.players[f.from].color : "#ccc"}">${G.players[f.from] ? G.players[f.from].name : "?"}</b>：${f.line}</div>`).join("");
     box.innerHTML = `<h4>外交 / 喊话</h4>${offerHtml}<div class="dip-list">${rows}</div>${feed ? `<div class="dip-feed">${feed}</div>` : ""}`;
     box.querySelectorAll(".dip-b[data-act]").forEach(b => b.addEventListener("click", () => {
-      if (!E.isHumanTurn(G)) return;
+      if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;   // only on your own turn, not during AI autoplay
       const to = +b.dataset.to;
-      if (b.dataset.act === "truce") { const r = E.proposeTruce(G, me.idx, to, 3); }
+      if (b.dataset.act === "truce") E.proposeTruce(G, me.idx, to, 3);
       else E.proposeFocus(G, me.idx, to);
       render();
     }));
     box.querySelectorAll(".dip-b[data-offer]").forEach(b => b.addEventListener("click", () => {
+      if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;   // answer offers only on your turn
       E.respondToOffer(G, +b.dataset.offer, b.dataset.ok === "1"); render();
     }));
   }
