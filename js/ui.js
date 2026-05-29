@@ -8,6 +8,7 @@
   "use strict";
   const E = RL.engine, D = RL.data;
   const CHAR = Object.fromEntries(D.CHARACTERS.map(c => [c.id, c]));  // id -> character (mini/card/color)
+  const EQ = D.EQUIP_BY_ID;                                          // equipment id -> data
   const $ = (id) => document.getElementById(id);
   const SVGNS = "http://www.w3.org/2000/svg";
   const HEX = 46;
@@ -123,6 +124,8 @@
         `<div class="pstat">名望 ${E.totalFame(p)} · 伤害 ${p.injuries} · 防御区 ${p.defensePool}/${p.actionDice}${assigned}${combat} · 背包 ${p.backpack.length}` +
         (p.carryingBeacons ? ` · 携带信标 ${p.carryingBeacons}` : "") +
         ` · ${p.pos ? "在场" : "待跳伞"}</div></div></div>`;
+      d.style.cursor = "pointer"; d.title = "点击查看角色板";
+      d.addEventListener("click", () => openCharBoard(p.idx));
       box.appendChild(d);
     }
   }
@@ -211,6 +214,58 @@
     }
     return best;
   }
+  // ---- character board overlay (real character card + dice + equipment cards) ----
+  const STAR_COLOR = { 1: "#3aa84b", 2: "#3b82c4", 3: "#b06bd6" };
+  const SLOT_CN = { head: "头部", torso: "躯干", hand: "手持", special: "道具" };
+  function equipCardHTML(e) {
+    if (!e) return "";
+    const sc = STAR_COLOR[e.star] || "#888";
+    let stats = "";
+    if (e.combat === "ranged") stats = `远程 · 射程${e.range[0]}-${e.range[1]} · ${e.dice}白骰` + (e.bonus ? ` · 命中bonus:${e.bonus.amount}${e.bonus.type === "injury" ? "伤" : "轻伤"}` : "");
+    else if (e.combat === "close") stats = "近战";
+    else if (e.armor) stats = "护甲" + (e.armor.skullReduce ? ` 骷髅-${e.armor.skullReduce}` : "") + (e.armor.smallInjuryReduce ? ` 轻伤-${e.armor.smallInjuryReduce}` : "");
+    return `<div class="ecard" style="border-top-color:${sc}">
+      <div class="ecard-h"><span class="ecard-name">${e.name}</span><span class="ecard-star" style="color:${sc}">${"★".repeat(e.star)}</span></div>
+      <div class="ecard-meta">${SLOT_CN[e.slot] || e.slot}${stats ? " · " + stats : ""}</div>
+      <div class="ecard-eff">${e.effect || ""}</div></div>`;
+  }
+  function dieSpan(v, cls) { return `<span class="die ${cls}">${v == null ? "" : v}</span>`; }
+  function diceRowsHTML(p) {
+    const def = Array.from({ length: p.defensePool }, () => dieSpan("", "def")).join("");
+    const line = (p.combatLine || []).map(v => dieSpan(v, "line")).join("");
+    const inj = Array.from({ length: p.injuries }, () => dieSpan("✕", "inj")).join("");
+    const row = (label, html) => `<div class="cb-dice"><span class="cb-dl">${label}</span>${html || '<i class="muted">—</i>'}</div>`;
+    return row(`防御区(${p.defensePool})`, def) + row(`战斗列`, line) + row(`伤害区(${p.injuries}/${E.INJURY_ZONE})`, inj);
+  }
+  function openCharBoard(idx) {
+    const p = G.players[idx], ch = CHAR[p.character];
+    let ov = $("char-overlay");
+    if (!ov) { ov = document.createElement("div"); ov.id = "char-overlay"; ov.addEventListener("click", (e) => { if (e.target === ov) closeCharBoard(); }); document.body.appendChild(ov); }
+    const equippedIds = [p.equipped.head, p.equipped.torso, ...(p.equipped.hand || [])].filter(Boolean);
+    const eqHTML = equippedIds.map(id => equipCardHTML(EQ[id])).join("") || '<span class="muted">无</span>';
+    const packLeft = (p.backpack || []).slice();                 // backpack minus currently-equipped instances
+    for (const id of equippedIds) { const i = packLeft.indexOf(id); if (i >= 0) packLeft.splice(i, 1); }
+    const packHTML = packLeft.map(id => equipCardHTML(EQ[id])).join("") || '<span class="muted">空</span>';
+    const f = p.fame;
+    ov.innerHTML = `<div class="cb-panel" style="border-color:${p.color}">
+      <button class="cb-close" title="关闭">✕</button>
+      <div class="cb-top">
+        <img class="cb-card" src="${ch.card}" alt="${p.name}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'cb-cardfallback',textContent:'${p.name}'}))">
+        <div class="cb-info">
+          <h2 style="color:${p.color}">${p.name}${p.human ? " (你)" : ""}</h2>
+          ${ch.ability ? `<div class="cb-ability"><b>${ch.ability.name}</b><div>${ch.ability.text}</div></div>` : '<div class="muted">（角色能力见左侧卡牌）</div>'}
+          <div class="cb-fame">名望 <b>${E.totalFame(p)}</b> ＝ 信标${f.beacon}·受伤${f.injury}·重整${f.reload}·陷阱${f.trap || 0}${p.carryingBeacons ? `　｜　携带信标 ${p.carryingBeacons}（需到中央塔上缴）` : ""}</div>
+          ${diceRowsHTML(p)}
+        </div>
+      </div>
+      <div class="cb-sec"><h3>已装备（${SLOT_CN.head}1 / ${SLOT_CN.torso}1 / ${SLOT_CN.hand}2）</h3><div class="ecards">${eqHTML}</div></div>
+      <div class="cb-sec"><h3>背包（${p.backpack.length}）</h3><div class="ecards">${packHTML}</div></div>
+    </div>`;
+    ov.querySelector(".cb-close").addEventListener("click", closeCharBoard);
+    ov.style.display = "flex";
+  }
+  function closeCharBoard() { const ov = $("char-overlay"); if (ov) ov.style.display = "none"; }
+
   function init() {
     $("btn-start").addEventListener("click", startGame);
     $("btn-restart").addEventListener("click", () => location.reload());

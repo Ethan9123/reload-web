@@ -1,10 +1,18 @@
-# Copyrighted art ripped from the Tabletop Simulator mod — NOT redistributed.
-# The board currently renders by terrain color; the code does not use these yet.
-# To regenerate locally, re-run the TTS extraction (see project notes).
-assets/
+# Copyrighted art ripped from the Tabletop Simulator mod — most NOT redistributed.
+# (The board renders by terrain color; equipment shown as data-driven cards.)
+assets/*
+# ...except the character figurine standees + reference cards used by the UI (small set).
+!assets/characters/
+assets/characters/*
+!assets/characters/*_2.png
+!assets/characters/*_card.png
+# but not the misc unnamed single-card decks that also end in _card
+assets/characters/deck_*_card.png
 
 # Editor / OS / runtime
 .DS_Store
 Thumbs.db
 *.log
 node_modules/
+# debug contact-sheets generated during dev
+_*.png
