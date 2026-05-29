@@ -104,6 +104,10 @@ button.small { padding: 4px 10px; font-size: 13px; cursor: pointer; }
 .adie.rolling { background: #cfd6e0; animation: dz-shake 0.16s infinite; }
 .adie.settled { box-shadow: inset 0 0 0 2px #3a4150; }
 .adie.skull { background: #7a2230; color: #ffd0d6; }
+.adie.cmp { outline: 2px solid #f4d03f; outline-offset: 1px; }
+.adie.win { background: #2e7d32; color: #eaffea; }
+.adie.lose { background: #7a2230; color: #ffd0d6; }
+.dz-cap { font-size: 11px; color: #aab0bc; font-weight: 400; }
 @keyframes dz-shake { 0% { transform: translateY(-2px) rotate(-7deg); } 50% { transform: translateY(2px) rotate(7deg); } 100% { transform: translateY(-2px) rotate(-7deg); } }
 .dz-result { margin-top: 14px; font-weight: 700; min-height: 20px; }
 .dz-result.hit { color: #7CFC7C; }

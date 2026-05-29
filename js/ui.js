@@ -319,15 +319,57 @@
     rEl.textContent = resultText || ""; if (resultClass) rEl.classList.add(resultClass);
     await sleep(850); ov.style.display = "none";
   }
-  function animateCombat(rep) {
-    if (!rep) return Promise.resolve();
+  // multi-phase combat: roll -> skull compare -> combat-line row-by-row -> result
+  async function animateCombat(rep) {
+    if (!rep) return;
     const A = G.players[rep.a], T = G.players[rep.t];
-    const groups = [
-      { label: `${A.name}（攻）`, color: A.color, values: rep.shooter || [] },
-      { label: `${T.name}（守）`, color: T.color, values: rep.defender || [] },
-    ];
-    const res = rep.reload ? `💥 ${T.name} 被迫 RELOAD！` : (rep.dealt > 0 ? `命中！造成 ${rep.dealt} 点伤` : "未造成伤害");
-    return animateRoll(`${A.name} ${rep.type === "ranged" ? "🔫 远程" : "🗡 近战"} ${T.name}`, groups, res, rep.reload ? "big" : (rep.dealt > 0 ? "hit" : ""));
+    const ov = ensureDiceOverlay();
+    ov.querySelector(".dz-title").textContent = `${A.name} ${rep.type === "ranged" ? "🔫 远程" : "🗡 近战"} ${T.name}`;
+    const rEl = ov.querySelector(".dz-result"); rEl.textContent = ""; rEl.className = "dz-result";
+    const body = ov.querySelector(".dz-body");
+    body.innerHTML =
+      `<div class="dz-side"><div class="dz-who" style="color:${A.color}">${A.name}（攻）</div><div class="dz-dice" id="dzA"></div></div>` +
+      `<div class="dz-vs" id="dzMid">掷骰…</div>` +
+      `<div class="dz-side"><div class="dz-who" style="color:${T.color}">${T.name}（守）</div><div class="dz-dice" id="dzD"></div></div>`;
+    ov.style.display = "flex";
+    const aWrap = ov.querySelector("#dzA"), dWrap = ov.querySelector("#dzD"), mid = ov.querySelector("#dzMid");
+    const aArr = rep.shooter || [], dArr = rep.defender || [];
+    const fill = (wrap, arr) => { wrap.innerHTML = arr.map(() => '<span class="adie rolling">?</span>').join("") || '<i class="muted">无骰</i>'; return [...wrap.querySelectorAll(".adie")]; };
+    const all = [];
+    fill(aWrap, aArr).forEach((el, i) => all.push({ el, v: aArr[i] }));
+    fill(dWrap, dArr).forEach((el, i) => all.push({ el, v: dArr[i] }));
+    // PHASE 1 — roll (tumble -> settle), skulls marked
+    const t0 = Date.now();
+    await new Promise(res => { const iv = setInterval(() => { all.forEach(d => { if (!d.el.classList.contains("settled")) d.el.textContent = rollFace(); }); if (Date.now() - t0 > 600) { clearInterval(iv); res(); } }, 70); });
+    for (const d of all) { d.el.textContent = DFACE(d.v); d.el.classList.remove("rolling"); d.el.classList.add("settled"); if (d.v === "skull") d.el.classList.add("skull"); }
+    await sleep(450);
+    // PHASE 2 — skull step
+    const aS = rep.aSkulls || 0, dS = rep.dSkulls || 0;
+    const skTxt = aS > dS ? `攻方多 ${aS - dS}` : dS > aS ? `守方多 ${dS - aS}` : "持平";
+    mid.innerHTML = `💀 ${aS} : ${dS}<br><span class="dz-cap">${skTxt}</span>`;
+    await sleep(950);
+    // PHASE 3 — combat line, row by row (numeric, high->low)
+    const aNum = aArr.filter(v => v !== "skull").sort((x, y) => y - x), dNum = dArr.filter(v => v !== "skull").sort((x, y) => y - x);
+    // mirror engine skull step: in ranged combat a defender skull-excess removes that many
+    // of the attacker's lowest shooting dice BEFORE the line comparison (doRanged sh.line.splice),
+    // so drop them here too — otherwise the overlay shows wins for dice the engine discarded.
+    if (rep.type === "ranged" && dS > aS) aNum.splice(Math.max(0, aNum.length - (dS - aS)), dS - aS);
+    mid.innerHTML = `逐列比对 ▶`;
+    aWrap.innerHTML = aNum.map(v => `<span class="adie settled">${v}</span>`).join("") || '<i class="muted">—</i>';
+    dWrap.innerHTML = dNum.map(v => `<span class="adie settled">${v}</span>`).join("") || '<i class="muted">—</i>';
+    const aN = [...aWrap.querySelectorAll(".adie")], dN = [...dWrap.querySelectorAll(".adie")];
+    for (let i = 0; i < Math.max(aN.length, dN.length); i++) {
+      const av = aNum[i], dv = dNum[i];
+      if (aN[i]) aN[i].classList.add("cmp"); if (dN[i]) dN[i].classList.add("cmp");
+      if (av != null && dv != null) { if (av > dv) { aN[i].classList.add("win"); dN[i].classList.add("lose"); } else if (dv > av) { dN[i].classList.add("win"); aN[i].classList.add("lose"); } }
+      else if (av != null) aN[i].classList.add("win"); else if (dv != null) dN[i].classList.add("win");
+      await sleep(420);
+    }
+    // PHASE 4 — result
+    rEl.className = "dz-result " + (rep.reload ? "big" : (rep.dealt > 0 ? "hit" : ""));
+    rEl.textContent = rep.reload ? `💥 ${T.name} 被迫 RELOAD！` : (rep.dealt > 0 ? `命中！造成 ${rep.dealt} 点伤` : "未造成伤害");
+    await sleep(1100);
+    ov.style.display = "none";
   }
   function animateHeal(roll) {
     if (!roll) return Promise.resolve();
