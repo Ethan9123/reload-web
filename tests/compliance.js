@@ -80,11 +80,29 @@ A(E.useSpecialItem(g7, "pain_killer"), "useSpecialItem(pain_killer) succeeds");
 A(p7.injuries === 1 && p7.defensePool === dpre + 1, "Pain Killer healed 1 injury and recovered a die");
 A(!p7.backpack.includes("pain_killer") && g7.decks.discard1.includes("pain_killer"), "Pain Killer discarded after use");
 
-// 8) Energy Drink — +1 action die this turn, discarded
+// 8) Energy Drink — +1 action die this turn, discarded; boost die NOT usable in combat or as injury
 const g8 = E.newGame({ numPlayers: 2, seed: 6, allAI: true });
 const p8 = E.curP(g8); p8.backpack = ["energy_drink"]; g8.phase = "action"; const d8 = p8.defensePool;
 A(E.useSpecialItem(g8, "energy_drink"), "useSpecialItem(energy_drink) succeeds");
-A(p8.defensePool === d8 + 1 && !p8.backpack.includes("energy_drink"), "Energy Drink +1 die and discarded");
+A(p8.defensePool === d8 + 1 && p8.boostDice === 1 && !p8.backpack.includes("energy_drink"), "Energy Drink +1 die and discarded");
+A(E.combatDice(p8) === d8, "combatDice excludes the boost die");
+// boost die alone cannot start combat
+const g8b = E.newGame({ numPlayers: 2, seed: 6, allAI: true });
+const tk8 = E.towerKey(g8b), tc8 = g8b.board[tk8];
+const a8 = g8b.players[0], t8 = g8b.players[1];
+a8.pos = { q: tc8.q, r: tc8.r }; t8.pos = { q: tc8.q, r: tc8.r }; t8.reloadZone = false;
+g8b.phase = "action"; g8b.activePlayer = 0;
+a8.defensePool = 0; a8.boostDice = 0; a8.backpack = []; E.autoEquip(a8);
+A(E.closeTargets(g8b, a8).length === 0, "no close target with 0 combat dice");
+a8.backpack = ["energy_drink"]; E.useSpecialItem(g8b, "energy_drink");
+A(a8.defensePool === 1 && a8.boostDice === 1, "drinking gave a boost die (pool 1, boost 1)");
+A(E.closeTargets(g8b, a8).length === 0, "boost die alone cannot start close combat");
+a8.defensePool = 2;  // 1 real + 1 boost
+A(E.closeTargets(g8b, a8).length === 1, "with a real die + boost, close combat is allowed");
+// boost die can't be taken as injury (it is reserved by the hierarchy)
+a8.defensePool = 1; a8.boostDice = 1; a8.combatLine = []; a8.assignedDice = []; a8.injuries = 0;
+E.takeInjuries(g8b, a8, 1);
+A(a8.defensePool === 1 && a8.injuries === 1, "injury did not consume the reserved boost die from the pool");
 
 // 9) Tactical Explosive — destroys an adjacent trap, then discarded
 const g9 = E.newGame({ numPlayers: 2, seed: 7, allAI: true });

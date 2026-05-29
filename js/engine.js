@@ -79,6 +79,8 @@
       combatLine: [],                  // numeric dice, high->low
       injuries: 0,                     // dice in injury zone; INJURY_ZONE => RELOAD
       boost: false,
+      boostDice: 0,                    // Energy Drink green boost dice this turn: spendable on actions, but NOT usable in combat or as injury
+
       fame: { injury: 0, beacon: 0, teamSpirit: 0, reload: 0, trap: 0 },
       fameTrackPos: 0,
       pos: null,                       // axial {q,r}; null = off-map (parachute)
@@ -211,7 +213,7 @@
   function beginTurn(state) {
     const p = curP(state);
     p.actionDice = START_ACTION_DICE - p.injuries;       // injuries reduce available dice
-    p.defensePool = p.actionDice; p.assigned = 0; p.assignedDice = []; p.boost = false; p.combatLine = [];
+    p.defensePool = p.actionDice; p.assigned = 0; p.assignedDice = []; p.boost = false; p.boostDice = 0; p.combatLine = [];
     p._closeEndedTurn = false; p._noMove = false;
     autoEquip(p);                                        // MVP: auto-equip best weapon/armor (no equip UI yet)
     // NOTE: carried beacons are NOT auto-scored. Per rules they stay in temp storage
@@ -270,10 +272,13 @@
   }
   const isNumericDie = (v) => typeof v === "number" && v >= 1 && v <= 5;
   function sortCombatLine(line) { return line.filter(isNumericDie).sort((a, b) => b - a); }
+  // dice available for COMBAT/injury = pool minus the Energy Drink boost dice (which can't be used in combat / as injury)
+  function combatDice(p) { return p.defensePool - (p.boostDice || 0); }
   function spendDice(state, p, n, face) {
     p.defensePool -= n; p.assigned += n;
     const f = face == null ? 1 : face;
     for (let i = 0; i < n; i++) p.assignedDice.push(f);
+    p.boostDice = Math.min(p.boostDice || 0, p.defensePool);   // boost die is consumed only once no real dice remain to absorb the spend
   }
   function moveAssignedDiceToCombatLine(p) {
     p.combatLine = sortCombatLine([...(p.combatLine || []), ...(p.assignedDice || [])]);
@@ -296,6 +301,7 @@
   function syncDiceCounts(p) {
     p.actionDice = START_ACTION_DICE - p.injuries;
     p.defensePool = Math.max(0, Math.min(p.defensePool, p.actionDice));
+    p.boostDice = Math.min(p.boostDice || 0, p.defensePool);
     p.assigned = p.assignedDice ? p.assignedDice.length : 0;
   }
   function doRun(state, toKey) {
@@ -483,8 +489,9 @@
       log(state, `💊 ${p.name} 使用止痛药，恢复 1 点伤`);
     } else if (itemId === "energy_drink") {
       if (state.phase !== "action") return false;
-      p.defensePool += 1; p._energyBoost = true;
-      log(state, `🥤 ${p.name} 喝下能量饮料，本回合 +1 行动骰`);
+      p.defensePool += 1; p.boostDice = (p.boostDice || 0) + 1;   // boost die: spendable on actions, not combat / injury
+      p.actionDice = Math.max(p.actionDice, p.defensePool);       // allow the extra die to exist beyond the injury-reduced base
+      log(state, `🥤 ${p.name} 喝下能量饮料，本回合 +1 行动骰（不可用于战斗/承伤）`);
     } else if (itemId === "tactical_explosive") {
       if (state.phase !== "action" || !target) return false;
       const c = state.board[target.key]; if (!c) return false;
@@ -644,7 +651,7 @@
   }
   function rangedTargets(state, A) {
     const w = equippedRanged(A);
-    if (!w || !A.pos || A.defensePool < 1 || state.phase !== "action") return [];
+    if (!w || !A.pos || combatDice(A) < 1 || state.phase !== "action") return [];   // boost die can't be used in combat
     const out = [];
     for (const t of state.players) {
       if (t === A || !t.pos || t.reloadZone) continue;
@@ -657,14 +664,14 @@
     return out;
   }
   function closeTargets(state, A) {
-    if (!A.pos || A.defensePool < 1 || state.phase !== "action") return [];
+    if (!A.pos || combatDice(A) < 1 || state.phase !== "action") return [];   // boost die can't be used in combat
     return state.players.filter(t => t !== A && t.pos && !t.reloadZone && t.pos.q === A.pos.q && t.pos.r === A.pos.r).map(t => t.idx);
   }
 
   function takeInjuryDieByHierarchy(p) {
     p.combatLine = sortCombatLine(p.combatLine || []);
     if (p.combatLine.length) { p.combatLine.pop(); return "combatLine"; }
-    if (p.defensePool > 0) { p.defensePool -= 1; return "defensePool"; }
+    if (combatDice(p) > 0) { p.defensePool -= 1; return "defensePool"; }   // boost dice can't be taken as injury
     if (p.assignedDice && p.assignedDice.length) { p.assignedDice.pop(); p.assigned = p.assignedDice.length; return "assigned"; }
     return "none";
   }
@@ -799,7 +806,7 @@
     // build/heal API
     canHeal, doHeal, canBuild, emptyEdges, doBuildBarrier, doDemolish, doBuildHideout, doDemolishHideout, doBuildTrap,
     // special-item API
-    specialItems, usableSpecials, explosiveTargets, useSpecialItem,
+    specialItems, usableSpecials, explosiveTargets, useSpecialItem, combatDice,
     // combat API
     INJURY_ZONE, ownedDice, autoEquip, equippedRanged, equippedClose, armorOf, hasLOS, hasStealth,
     moveAssignedDiceToCombatLine, resolveHideoutBenefit, hasFriendlyHideout,
