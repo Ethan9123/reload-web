@@ -158,7 +158,8 @@
     else if (!p.human) hint = `${p.name}（AI）行动中…`;
     else if (G.needsParachute) hint = "跳伞：点击中央塔或相邻格";
     else { const h = highlightSet(); hint = `你的回合：点相邻格移动${h.loot ? " · 点当前格拾取" : ""}${E.canUpload(G, p) ? " · 点中央塔上缴信标" : ""}${h.atk.size ? " · 点红框敌人攻击" : ""} · 或结束回合`; }
-    $("game-info").textContent = `Arcadia · ${G.numPlayers}人 · 第${G.round}回合 · 事件${G.eventsResolved}/${G.eventTotal} — ${hint}`;
+    const le = (G.lastEvent && D.EVENTS[G.lastEvent]) ? ` · ⚡${D.EVENTS[G.lastEvent].name}` : "";
+    $("game-info").textContent = `Arcadia · ${G.numPlayers}人 · 第${G.round}回合 · 事件${G.eventsResolved}/${G.eventTotal}${le} — ${hint}`;
     const human = !G.gameOver && p.human, showAct = human && !G.needsParachute;
     const setBtn = (id, ok) => { const bt = $(id); if (!bt) return; bt.disabled = !ok; bt.classList.toggle("hidden", !human); };
     setBtn("btn-end", human && !G.needsParachute);

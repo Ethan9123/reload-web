@@ -59,6 +59,14 @@
     }
     return shuffle(deck, rnd);
   }
+  // event deck = 2 guaranteed Supply Drops + N random (from the event pool), per rulebook
+  function buildEventDeck(numPlayers, rnd) {
+    const randomN = SETUP.eventRandom[numPlayers] || 16;
+    const pool = [];
+    for (const id in DATA.EVENTS) { let n = DATA.EVENTS[id].count; if (id === "supply_drop") n -= 2; for (let i = 0; i < n; i++) pool.push(id); }
+    shuffle(pool, rnd);
+    return shuffle(pool.slice(0, randomN).concat(["supply_drop", "supply_drop"]), rnd);
+  }
 
   function newPlayer(idx, character, human) {
     return {
@@ -121,7 +129,7 @@
       equip1: buildEquipDeck(1, rnd),
       equip2: buildEquipDeck(2, rnd),
       equip3: buildEquipDeck(3, rnd),
-      event: shuffle(Array.from({ length: eventCount }, (_, i) => "event_" + i), rnd), // TODO real events
+      event: buildEventDeck(numPlayers, rnd),
       discard1: [], discard2: [], discard3: [],
     };
 
@@ -410,6 +418,37 @@
     else { gainFame(state, owner, "trap", 1); const rl = takeInjuries(state, walker, 1); if (rl) reloadPlayer(state, walker, owner); else gainFame(state, owner, "injury", 1); log(state, `陷阱：${walker.name} 踩中 ${owner.name} 的陷阱受伤`); }
   }
 
+  function ringFromTower(state, cell) { const tc = state.board[towerKey(state)]; return hexDistance(cell, tc); }
+  function resolveEvent(state, id) {
+    state.lastEvent = id;
+    const ev = DATA.EVENTS[id] || { name: id };
+    log(state, `⚡ 事件：${ev.name}`);
+    if (id === "contamination") {
+      if (state._toxinFrontier == null) state._toxinFrontier = 2;   // spread outermost ring inward (battle-royale storm)
+      const fr = state._toxinFrontier; let n = 0;
+      for (const k in state.board) { const c = state.board[k]; if (!c.toxin && !c.dome && ringFromTower(state, c) === fr) { c.toxin = true; n++; } }
+      state._toxinFrontier = Math.max(0, fr - 1);
+      log(state, `　毒气扩张：${n} 格被污染`);
+    } else if (id === "supply_drop" || id === "ex_tech") {
+      const star = id === "ex_tech" ? 3 : 2; let n = 0;
+      for (const k of shuffle(Object.keys(state.board), state.rnd)) {
+        if (n >= 2) break; const c = state.board[k];
+        if (!c.hasTower && !(id === "supply_drop" && c.tokens.some(t => t.kind === "supply"))) { c.tokens.push({ kind: "supply", star }); n++; }
+      }
+      log(state, `　空投：${n} 个 ${star}★ 补给箱`);
+    } else if (id === "dome") {
+      state.board[towerKey(state)].dome = true; log(state, "　穹顶降临中央塔（安全区）");
+    } else if (id === "gift_fans") {
+      for (const p of state.players) { const c = state.decks.equip1.pop(); if (c) p.backpack.push(c); }
+      log(state, "　每位玩家抽 1 张 1★ 装备");
+    } else if (id === "gift_producers") {
+      let lo = state.players[0]; for (const p of state.players) if (totalFame(p) < totalFame(lo)) lo = p;
+      const c = state.decks.equip2.pop(); if (c) lo.backpack.push(c); log(state, `　落后的 ${lo.name} 抽 1 张 2★ 装备`);
+    } else if (id === "gift_sponsors") {
+      for (const p of state.players) p.carryingBeacons += 1; log(state, "　每位玩家 +1 携带信标");
+    }
+  }
+
   function endGame(state) {
     state.gameOver = true;
     // tie-break: total fame, then RELOAD fame count (most prestigious source)
@@ -440,7 +479,7 @@
     const isLastInRound = state.activePlayer === (state.firstPlayer + state.numPlayers - 1) % state.numPlayers;
     if (state._turnsTaken >= state.numPlayers && !state._eventsDone) { // events start after first full round
       if (state.decks.event.length > 0) {
-        state.decks.event.pop(); state.eventsResolved++;
+        resolveEvent(state, state.decks.event.pop()); state.eventsResolved++;
         if (state.decks.event.length === 0) state._eventsDone = true;
       } else state._eventsDone = true;
     }
@@ -653,7 +692,7 @@
     // turn/action API
     SUPERSTAR_FAME, curP, isHumanTurn, legalParachute, parachute,
     legalRuns, doRun, lootOptions, doLoot, endTurn, beginTurn, towerKey,
-    canUpload, doActivate, bfsStep,
+    canUpload, doActivate, bfsStep, resolveEvent,
     // build/heal API
     canHeal, doHeal, canBuild, emptyEdges, doBuildBarrier, doDemolish, doBuildHideout, doDemolishHideout, doBuildTrap,
     // combat API

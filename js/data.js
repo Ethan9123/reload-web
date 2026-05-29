@@ -196,9 +196,20 @@
     village: "assets/hexes/tile_village.png",
   };
 
+  // ---- Event cards (counts from rulebook p.12; effects are faithful interpretations) ----
+  const EVENTS = {
+    contamination:  { name: "Contamination 污染", count: 12, desc: "毒气向中心扩张一圈" },
+    supply_drop:    { name: "Supply Drop 补给空投", count: 3,  desc: "在 2 个空格补充 2★ 补给箱" },
+    dome:           { name: "The Dome 穹顶", count: 2, desc: "在中央塔降下穹顶（安全区，免疫毒气）" },
+    ex_tech:        { name: "Ex-Tech Drop 高科技空投", count: 2, desc: "投放 2 个 3★ 补给箱" },
+    gift_fans:      { name: "Gift from the Fans 粉丝馈赠", count: 1, desc: "每位玩家抽 1 张 1★ 装备" },
+    gift_producers: { name: "Gift from the Producers 制作人馈赠", count: 1, desc: "名望最低者抽 1 张 2★ 装备" },
+    gift_sponsors:  { name: "Gift from the Sponsors 赞助商馈赠", count: 1, desc: "每位玩家 +1 携带信标" },
+  };
+
   const DATA = {
     DIE_FACES, DICE, START_ACTION_DICE, TERRAIN, ARCADIA, HEX_DIRS,
-    CHARACTERS, FAME, SLOTS, EQUIPMENT, ACTIONS, SETUP, TOKEN_ART, HIDEOUT_ART, TILE_ART,
+    CHARACTERS, FAME, SLOTS, EQUIPMENT, ACTIONS, SETUP, TOKEN_ART, HIDEOUT_ART, TILE_ART, EVENTS,
     EQUIP_BY_ID: Object.fromEntries(EQUIPMENT.map(e => [e.id, e])),
   };
 
