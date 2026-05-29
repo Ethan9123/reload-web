@@ -139,13 +139,13 @@
     { id: "tool_kit", name: "Tool Kit", star: 1, slot: "special",
       effect: "When taking a Build action, increase the die value by 1." },
     // --- a few 2-star for real combat variety ---
-    { id: "combat_shotgun", name: "Combat Shotgun", star: 2, slot: "hand",
+    { id: "combat_shotgun", name: "Combat Shotgun", star: 2, slot: "hand", hands: 2,
       combat: "ranged", range: [0, 1], dice: 3,
       bonus: { type: "injury", amount: 1 }, effect: "Ranged same/adjacent; each match = 1 injury." },
-    { id: "assault_rifle", name: "Assault Rifle", star: 2, slot: "hand",
+    { id: "assault_rifle", name: "Assault Rifle", star: 2, slot: "hand", hands: 2,
       combat: "ranged", range: [0, 1], dice: 3, verify: true,
       bonus: { type: "smallInjury", amount: 1 }, effect: "Ranged same/adjacent; each match = 1 small injury." },
-    { id: "sniper_rifle", name: "Sniper Rifle", star: 2, slot: "hand",
+    { id: "sniper_rifle", name: "Sniper Rifle", star: 2, slot: "hand", hands: 2,
       combat: "ranged", range: [0, 2], dice: 2, verify: true, needsLOS: true,
       bonus: { type: "injury", amount: 2 }, effect: "Ranged up to 2 hexes w/ LOS; each match = 2 injuries." },
     { id: "survival_knife", name: "Survival Knife", star: 2, slot: "hand",
@@ -156,6 +156,10 @@
       armor: { skullReduce: 1 }, effect: "Reduces injuries from skulls by 1." },
     { id: "medkit", name: "Medkit", star: 2, slot: "hand",
       heal: { skullUpgrade: true }, effect: "Heal action: turn rolled die into skull to heal twice." },
+    // --- 3-star ---
+    { id: "active_camo", name: "Active Camouflage", star: 3, slot: "hand",
+      combat: "close", modify: "fourToFive", stealth: true,
+      effect: "Close combat: turn a rolled 4 into 5. Stealth — you can only be targeted by ranged attacks from the same hex." },
   ];
 
   // ---- Actions ----
