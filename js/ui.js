@@ -45,6 +45,8 @@
       "tip.heal": "治疗：消耗 1 行动骰掷骰，恢复 1 点伤（骷髅+1）。同格有敌人时不可用。", "tip.barrier": "屏障：消耗 1 行动骰，在当前格空边放置自己的屏障（挡移动/视线，自己可穿）。同格有敌人时不可用。", "tip.hideout": "藏身处：消耗 1 行动骰，在当前格放藏身处（回合在此结束有好处、免疫毒气）。", "tip.trap": "陷阱：消耗 1 行动骰，在当前格埋隐藏陷阱，敌人踩入需猜拳。", "tip.end": "结束回合：已用骰子进战斗列，进入结束阶段并轮到下一位。", "tip.restart": "重新开始游戏。",
       "tut.title": "📖 新手教学", "tut.prev": "上一步", "tut.next": "下一步 ▶", "tut.done": "完成 ✓", "tut.exit": "结束教学",
       "ach.next": "⚡即时", "ach.most": "🏆比拼", "ach.instantTip": "⚡ 即时：下一位达成者立即获得卡片及其名望", "ach.contestTip": "🏆 比拼：游戏结束结算 · 当前领先：{leader}", "ach.unlocked": "⚡ 达成成就", "ach.famefx": "成就名望",
+      "eq.ranged": "远程", "eq.range": "射程", "eq.dice": "白骰", "eq.twohand": "双手", "eq.hitbonus": "命中bonus", "eq.injury": "伤", "eq.light": "轻伤", "eq.close": "近战", "eq.armor": "护甲", "eq.skull": "骷髅", "eq.equip": "＋装备", "eq.unequip": "－卸下",
+      "slotcn.head": "头部", "slotcn.torso": "躯干", "slotcn.hand": "手持", "slotcn.special": "道具",
     },
     en: {
       "legend.move": "Move/Reach", "legend.atk": "Attackable", "legend.you": "You", "legend.loot": "✋ Loot here",
@@ -74,6 +76,8 @@
       "tip.heal": "Heal: spend 1 action die to roll and recover 1 damage (skull +1). Unavailable with an enemy on your hex.", "tip.barrier": "Barrier: spend 1 action die to place your barrier on an empty edge (blocks move/LOS, you may pass). Not with an enemy here.", "tip.hideout": "Hideout: spend 1 action die to place a hideout on your hex (ending your turn here has perks; immune to toxin).", "tip.trap": "Trap: spend 1 action die to bury a hidden trap; an enemy stepping in plays rock-paper-scissors.", "tip.end": "End turn: unused dice join your combat line, then the End Phase resolves and play passes on.", "tip.restart": "Restart the game.",
       "tut.title": "📖 Tutorial", "tut.prev": "Back", "tut.next": "Next ▶", "tut.done": "Done ✓", "tut.exit": "Exit tutorial",
       "ach.next": "⚡ Instant", "ach.most": "🏆 Contest", "ach.instantTip": "⚡ Instant: the next player to unlock it immediately gains the card and its fame", "ach.contestTip": "🏆 Contest: scored at game end · leader: {leader}", "ach.unlocked": "⚡ Achievement unlocked", "ach.famefx": "achievement fame",
+      "eq.ranged": "Ranged", "eq.range": "Rng ", "eq.dice": " white", "eq.twohand": "2-handed", "eq.hitbonus": "hit bonus", "eq.injury": "injury", "eq.light": "light", "eq.close": "Melee", "eq.armor": "Armor", "eq.skull": "skull", "eq.equip": "＋Equip", "eq.unequip": "－Unequip",
+      "slotcn.head": "Head", "slotcn.torso": "Torso", "slotcn.hand": "Hand", "slotcn.special": "Item",
     },
     fr: {
       "legend.move": "Déplacer/Portée", "legend.atk": "Attaquable", "legend.you": "Vous", "legend.loot": "✋ Ramasser ici",
@@ -103,6 +107,8 @@
       "tip.heal": "Soigner : dépensez 1 dé d'action pour lancer et récupérer 1 dégât (crâne +1). Indisponible si un ennemi est sur votre case.", "tip.barrier": "Barrière : dépensez 1 dé d'action pour poser votre barrière sur un bord vide (bloque déplacement/vue, vous passez). Pas si un ennemi est là.", "tip.hideout": "Cachette : dépensez 1 dé d'action pour poser une cachette sur votre case (avantages en y finissant ; immunisé au gaz).", "tip.trap": "Piège : dépensez 1 dé d'action pour enterrer un piège ; un ennemi qui marche dessus joue à pierre-feuille-ciseaux.", "tip.end": "Fin du tour : les dés inutilisés rejoignent la ligne de combat, puis la phase de fin se résout.", "tip.restart": "Recommencer la partie.",
       "tut.title": "📖 Tutoriel", "tut.prev": "Précédent", "tut.next": "Suivant ▶", "tut.done": "Terminé ✓", "tut.exit": "Quitter",
       "ach.next": "⚡ Immédiat", "ach.most": "🏆 Concours", "ach.instantTip": "⚡ Immédiat : le prochain joueur qui le réussit gagne aussitôt la carte et sa renommée", "ach.contestTip": "🏆 Concours : décompté en fin de partie · en tête : {leader}", "ach.unlocked": "⚡ Succès débloqué", "ach.famefx": "renommée de succès",
+      "eq.ranged": "Distance", "eq.range": "Port. ", "eq.dice": " dés", "eq.twohand": "2 mains", "eq.hitbonus": "bonus", "eq.injury": "blessure", "eq.light": "légère", "eq.close": "Mêlée", "eq.armor": "Armure", "eq.skull": "crâne", "eq.equip": "＋Équiper", "eq.unequip": "－Retirer",
+      "slotcn.head": "Tête", "slotcn.torso": "Torse", "slotcn.hand": "Main", "slotcn.special": "Objet",
     },
     es: {
       "legend.move": "Mover/Alcance", "legend.atk": "Atacable", "legend.you": "Tú", "legend.loot": "✋ Saquear aquí",
@@ -132,6 +138,8 @@
       "tip.heal": "Curar: gasta 1 dado de acción para tirar y recuperar 1 de daño (calavera +1). No disponible con un enemigo en tu casilla.", "tip.barrier": "Barrera: gasta 1 dado de acción para colocar tu barrera en un borde vacío (bloquea movimiento/visión, tú pasas). No con un enemigo aquí.", "tip.hideout": "Refugio: gasta 1 dado de acción para colocar un refugio en tu casilla (ventajas al terminar aquí; inmune al gas).", "tip.trap": "Trampa: gasta 1 dado de acción para enterrar una trampa oculta; un enemigo que entre juega piedra-papel-tijera.", "tip.end": "Terminar turno: los dados sin usar se unen a tu línea de combate y se resuelve la fase final.", "tip.restart": "Reiniciar el juego.",
       "tut.title": "📖 Tutorial", "tut.prev": "Atrás", "tut.next": "Siguiente ▶", "tut.done": "Listo ✓", "tut.exit": "Salir",
       "ach.next": "⚡ Instantáneo", "ach.most": "🏆 Concurso", "ach.instantTip": "⚡ Instantáneo: el próximo jugador que lo logre obtiene al instante la carta y su fama", "ach.contestTip": "🏆 Concurso: se calcula al final · líder: {leader}", "ach.unlocked": "⚡ Logro desbloqueado", "ach.famefx": "fama de logro",
+      "eq.ranged": "Distancia", "eq.range": "Alc. ", "eq.dice": " dados", "eq.twohand": "2 manos", "eq.hitbonus": "bono", "eq.injury": "daño", "eq.light": "leve", "eq.close": "Cuerpo", "eq.armor": "Armadura", "eq.skull": "calavera", "eq.equip": "＋Equipar", "eq.unequip": "－Quitar",
+      "slotcn.head": "Cabeza", "slotcn.torso": "Torso", "slotcn.hand": "Mano", "slotcn.special": "Objeto",
     },
   };
   let lang = (typeof localStorage !== "undefined" && localStorage.getItem("rl-lang")) || "zh";
@@ -710,20 +718,19 @@
   }
   // ---- character board overlay (real character card + dice + equipment cards) ----
   const STAR_COLOR = { 1: "#3aa84b", 2: "#3b82c4", 3: "#b06bd6" };
-  const SLOT_CN = { head: "头部", torso: "躯干", hand: "手持", special: "道具" };
   function equipCardHTML(e, action) {
     if (!e) return "";
     const sc = STAR_COLOR[e.star] || "#888";
     let stats = "";
-    if (e.combat === "ranged") stats = `远程 · 射程${e.range[0]}-${e.range[1]} · ${e.dice}白骰` + (e.hands === 2 ? " · 双手" : "") + (e.bonus ? ` · 命中bonus:${e.bonus.amount}${e.bonus.type === "injury" ? "伤" : "轻伤"}` : "");
-    else if (e.combat === "close") stats = "近战" + (e.hands === 2 ? " · 双手" : "");
-    else if (e.armor) stats = "护甲" + (e.armor.skullReduce ? ` 骷髅-${e.armor.skullReduce}` : "") + (e.armor.smallInjuryReduce ? ` 轻伤-${e.armor.smallInjuryReduce}` : "");
+    if (e.combat === "ranged") stats = `${T("eq.ranged")} · ${T("eq.range")}${e.range[0]}-${e.range[1]} · ${e.dice}${T("eq.dice")}` + (e.hands === 2 ? ` · ${T("eq.twohand")}` : "") + (e.bonus ? ` · ${T("eq.hitbonus")}:${e.bonus.amount}${e.bonus.type === "injury" ? T("eq.injury") : T("eq.light")}` : "");
+    else if (e.combat === "close") stats = T("eq.close") + (e.hands === 2 ? ` · ${T("eq.twohand")}` : "");
+    else if (e.armor) stats = T("eq.armor") + (e.armor.skullReduce ? ` ${T("eq.skull")}-${e.armor.skullReduce}` : "") + (e.armor.smallInjuryReduce ? ` ${T("eq.light")}-${e.armor.smallInjuryReduce}` : "");
     const clk = action ? ` ecard-clk" data-eq="${e.id}" data-act="${action}` : "";
-    const tag = action === "equip" ? `<span class="ecard-act eq">＋装备</span>` : action === "unequip" ? `<span class="ecard-act un">－卸下</span>` : "";
+    const tag = action === "equip" ? `<span class="ecard-act eq">${T("eq.equip")}</span>` : action === "unequip" ? `<span class="ecard-act un">${T("eq.unequip")}</span>` : "";
     return `<div class="ecard${clk}" style="border-top-color:${sc}">
-      <div class="ecard-h"><span class="ecard-name">${e.name}</span><span class="ecard-star" style="color:${sc}">${"★".repeat(e.star)}</span></div>
-      <div class="ecard-meta">${SLOT_CN[e.slot] || e.slot}${stats ? " · " + stats : ""}</div>
-      <div class="ecard-eff">${e.effect || ""}</div>${tag}</div>`;
+      <div class="ecard-h"><span class="ecard-name">${TC("equip." + e.id + ".name", e.name)}</span><span class="ecard-star" style="color:${sc}">${"★".repeat(e.star)}</span></div>
+      <div class="ecard-meta">${T("slotcn." + e.slot)}${stats ? " · " + stats : ""}</div>
+      <div class="ecard-eff">${TC("equip." + e.id + ".effect", e.effect || "")}</div>${tag}</div>`;
   }
   function dieSpan(v, cls) { return `<span class="die ${cls}">${v == null ? "" : v}</span>`; }
   function diceRowsHTML(p) {
