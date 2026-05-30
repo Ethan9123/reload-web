@@ -170,6 +170,7 @@
     if (!fmt) return e.s;                                   // no template for this language → source (zh)
     const p = Object.assign({}, e.p);
     if (p.terrain != null) p.terrain = T("terr." + p.terrain);
+    if (e.k === "event" && p.id != null) p.name = TC("event." + p.id, p.name);
     if (p.achId != null) p.ach = ACH[p.achId] ? achName(ACH[p.achId]) : p.achId;
     if (p.kind != null) p.kind = p.kind === "trap" ? T("btn.trap") : p.kind === "wall" ? T("btn.barrier") : T("btn.hideout");
     let s = fmt; for (const k in p) s = s.split("{" + k + "}").join(p[k]);

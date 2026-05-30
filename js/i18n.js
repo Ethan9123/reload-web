@@ -57,6 +57,7 @@
       "tut.9": "<b>End turn</b>: click 'End turn' — unused dice become <b>defense</b>, then an <b>event card</b> is flipped.",
       "tut.10": "<b>Events / Toxin</b>: the <b>event log</b> is bottom-right. Toxin spreads inward from the rim — <b>don't end your turn standing in it</b> (unless you're under a dome or in your own hideout).",
       "tut.11": "<b>Winning</b>: when the event deck runs out the game ends, and the <b>highest Fame wins</b>. Tutorial complete — start your first game!",
+      "event.contamination": "Contamination", "event.supply_drop": "Supply Drop", "event.dome": "The Dome", "event.ex_tech": "Ex-Tech Drop", "event.gift_fans": "Gift from the Fans", "event.gift_producers": "Gift from the Producers", "event.gift_sponsors": "Gift from the Sponsors", "event.announcement": "Announcement",
     },
     fr: {
       // abilities
@@ -138,6 +139,7 @@
       "tut.9": "<b>Fin du tour</b> : cliquez « Fin du tour » — les dés inutilisés deviennent de la <b>défense</b>, puis une <b>carte Événement</b> est révélée.",
       "tut.10": "<b>Événements / Gaz</b> : le <b>journal des événements</b> est en bas à droite. Le gaz se propage du bord vers l'intérieur — <b>ne finissez pas votre tour dedans</b> (sauf sous un dôme ou dans votre propre cachette).",
       "tut.11": "<b>Victoire</b> : quand la pioche d'événements est épuisée, la partie se termine et la <b>plus haute Renommée gagne</b>. Tutoriel terminé — lancez votre première partie !",
+      "event.contamination": "Contamination", "event.supply_drop": "Largage de ravitaillement", "event.dome": "Le Dôme", "event.ex_tech": "Largage high-tech", "event.gift_fans": "Cadeau des fans", "event.gift_producers": "Cadeau des producteurs", "event.gift_sponsors": "Cadeau des sponsors", "event.announcement": "Bulletin",
     },
     es: {
       // abilities
@@ -219,6 +221,7 @@
       "tut.9": "<b>Terminar turno</b>: pulsa «Terminar turno» — los dados sin usar pasan a <b>defensa</b>, luego se voltea una <b>carta de Evento</b>.",
       "tut.10": "<b>Eventos / Gas</b>: el <b>registro de eventos</b> está abajo a la derecha. El gas se expande del borde hacia dentro — <b>no termines tu turno dentro</b> (salvo bajo una cúpula o en tu propio refugio).",
       "tut.11": "<b>Victoria</b>: cuando se acaba el mazo de eventos, la partida termina y gana la <b>mayor Fama</b>. ¡Tutorial completado — empieza tu primera partida!",
+      "event.contamination": "Contaminación", "event.supply_drop": "Suministro aéreo", "event.dome": "La Cúpula", "event.ex_tech": "Suministro de alta tecnología", "event.gift_fans": "Regalo de los fans", "event.gift_producers": "Regalo de los productores", "event.gift_sponsors": "Regalo de los patrocinadores", "event.announcement": "Comunicado",
     },
   };
   // ---- event-log templates: {param} placeholders; UI logLine() picks LOG_FMT[lang][key], else the engine's zh source ----
@@ -242,8 +245,44 @@
       "achNext": "⚡ {name} earned the「{ach}」achievement (+{fame} achievement fame)", "achMost": "🏆 {name} won the「{ach}」achievement (+{got} achievement fame)", "achLead": "📣 Report: {name} leads「{ach}」(+1 achievement fame)", "achRefresh": "📣 Report: a「Next」achievement was refreshed",
       "solarCharge": "☀ {name} charges at the solar array: +1 action die",
     },
-    fr: {},   // TODO
-    es: {},   // TODO
+    fr: {
+      "drift": "{name} heurte un front en descendant et dérive d'une case", "parachute": "{name} a sauté sur {terrain}",
+      "blitzStep": "⚡ {name} — Blitz : un pas de plus", "move": "{name} se déplace vers {terrain}", "portal": "{name} emprunte un portail vers {terrain}",
+      "lootBeacon": "{name} ramasse une balise (à livrer à la tour)", "openSupply": "{name} ouvre une caisse {star}★ — pioche {drew}, garde 1", "openSupplyGift": "{name} ouvre une caisse {star}★ — pioche {drew}, garde 1 (Cadeau du père)",
+      "droneBeacon": "🤖 le drone Buzz de {name} ramasse une balise", "droneSupply": "🤖 le drone Buzz de {name} ouvre une caisse {star}★",
+      "upload": "{name} livre {n} balise(s) à la tour → +{n} renommée",
+      "healMate": "{name} soigne son coéquipier {mate} : +{heal} (+1 esprit d'équipe)", "healSelf": "{name} se soigne : +{heal} PV",
+      "giveBeacon": "{name} donne 1 balise à son coéquipier {to}", "giveItem": "{name} donne {item} à son coéquipier {to}",
+      "buildBarrier": "{name} construit une barrière", "demolishBarrier": "{name} démolit une barrière", "buildHideout": "{name} installe une cachette", "demolishHideout": "{name} démolit une cachette", "buildTrap": "{name} pose un piège", "trapTeammate": "{name} pose une mine près d'un coéquipier +1 esprit d'équipe",
+      "trapTie": "Piège : {walker} égale le piège de {owner} ({owner} +1 renommée de piège, déplacement stoppé)", "trapDodge": "Piège : {walker} esquive le piège de {owner} (+1 renommée de piège)", "trapHit": "Piège : {walker} déclenche le piège de {owner} et subit des dégâts",
+      "explosive": "💣 {name} utilise un Explosif tactique et détruit : {kind}", "usePainkiller": "💊 {name} utilise un Antidouleur, récupère 1 dégât", "useEnergy": "🥤 {name} boit une Boisson énergisante : +1 dé d'action ce tour (pas en combat/blessure)",
+      "event": "⚡ Événement : {name}", "toxinSpread": "　Le gaz s'étend : {n} case(s) contaminée(s)", "supplyDrop": "　Largage : {n} × caisse(s) {star}★", "domeEvent": "　Un dôme descend sur la tour centrale (zone sûre)", "giftFans": "　Chaque joueur pioche 1× équipement 1★", "giftProducers": "　{name}, en retard, pioche 1× équipement 2★", "giftSponsors": "　Chaque joueur +1 balise transportée",
+      "gameOverTeam": "Fin de partie : l'équipe {n} gagne (renommée d'équipe {fame})", "gameOver": "Fin de partie : {name} gagne (renommée {fame})", "toxinDamage": "{name} est dans la zone de gaz et subit 1 dégât",
+      "reloadForced": "💥 {name} est forcé de RELOAD ! Lâche son équipement, retour à la zone de saut", "reloadFame": "{name} +1 renommée RELOAD", "reloadTeamSpirit": "{name} repousse un ennemi près d'un coéquipier +1 esprit d'équipe",
+      "shootHit": "🔫 {a} tire sur {t} avec {weapon} : {dealt} dégât(s) → +1 renommée de blessure", "shootMiss": "🔫 {a} tire sur {t} : aucun dégât", "melee": "🗡 Mêlée {a} vs {t} : inflige {aDealt} / subit {tDealt}",
+      "superstar": "★ {name} atteint Superstar — victoire immédiate !", "superstarTeam": "★ L'équipe {n} atteint Superstar — victoire immédiate !",
+      "achNext": "⚡ {name} réussit le succès「{ach}」(+{fame} renommée de succès)", "achMost": "🏆 {name} remporte le succès「{ach}」(+{got} renommée de succès)", "achLead": "📣 Bulletin : {name} est en tête de「{ach}」(+1 renommée de succès)", "achRefresh": "📣 Bulletin : un succès「Suivant」a été renouvelé",
+      "solarCharge": "☀ {name} se recharge sur le panneau solaire : +1 dé d'action",
+    },
+    es: {
+      "drift": "{name} choca con un frente al caer y se desvía una casilla", "parachute": "{name} saltó sobre {terrain}",
+      "blitzStep": "⚡ {name} — Blitz: un paso extra", "move": "{name} se mueve a {terrain}", "portal": "{name} usa un portal a {terrain}",
+      "lootBeacon": "{name} recoge una baliza (entrégala en la torre)", "openSupply": "{name} abre una caja {star}★ — roba {drew}, queda 1", "openSupplyGift": "{name} abre una caja {star}★ — roba {drew}, queda 1 (Regalo del padre)",
+      "droneBeacon": "🤖 el dron Buzz de {name} recoge una baliza", "droneSupply": "🤖 el dron Buzz de {name} abre una caja {star}★",
+      "upload": "{name} entrega {n} baliza(s) en la torre → +{n} fama",
+      "healMate": "{name} cura a su compañero {mate}: +{heal} (+1 espíritu de equipo)", "healSelf": "{name} se cura: +{heal} PV",
+      "giveBeacon": "{name} da 1 baliza a su compañero {to}", "giveItem": "{name} da {item} a su compañero {to}",
+      "buildBarrier": "{name} construye una barrera", "demolishBarrier": "{name} derriba una barrera", "buildHideout": "{name} monta un refugio", "demolishHideout": "{name} derriba un refugio", "buildTrap": "{name} coloca una trampa", "trapTeammate": "{name} coloca una mina junto a un compañero +1 espíritu de equipo",
+      "trapTie": "Trampa: {walker} empata la trampa de {owner} ({owner} +1 fama de trampa, movimiento detenido)", "trapDodge": "Trampa: {walker} esquiva la trampa de {owner} (+1 fama de trampa)", "trapHit": "Trampa: {walker} pisa la trampa de {owner} y recibe daño",
+      "explosive": "💣 {name} usa un Explosivo táctico y destruye: {kind}", "usePainkiller": "💊 {name} usa un Analgésico, recupera 1 de daño", "useEnergy": "🥤 {name} bebe una Bebida energética: +1 dado de acción este turno (no en combate/daño)",
+      "event": "⚡ Evento: {name}", "toxinSpread": "　El gas se expande: {n} casilla(s) contaminada(s)", "supplyDrop": "　Suministro aéreo: {n} × caja(s) {star}★", "domeEvent": "　Una cúpula desciende sobre la torre central (zona segura)", "giftFans": "　Cada jugador roba 1× equipo 1★", "giftProducers": "　{name}, rezagado, roba 1× equipo 2★", "giftSponsors": "　Cada jugador +1 baliza transportada",
+      "gameOverTeam": "Fin de la partida: el equipo {n} gana (fama de equipo {fame})", "gameOver": "Fin de la partida: {name} gana (fama {fame})", "toxinDamage": "{name} está en la zona de gas y recibe 1 de daño",
+      "reloadForced": "💥 ¡{name} es forzado a RELOAD! Suelta el equipo, vuelve a la zona de salto", "reloadFame": "{name} +1 fama RELOAD", "reloadTeamSpirit": "{name} repele a un enemigo junto a un compañero +1 espíritu de equipo",
+      "shootHit": "🔫 {a} dispara a {t} con {weapon}: {dealt} daño → +1 fama de herida", "shootMiss": "🔫 {a} dispara a {t}: sin daño", "melee": "🗡 Cuerpo a cuerpo {a} vs {t}: inflige {aDealt} / recibe {tDealt}",
+      "superstar": "★ ¡{name} alcanza Superstar — victoria inmediata!", "superstarTeam": "★ ¡El equipo {n} alcanza Superstar — victoria inmediata!",
+      "achNext": "⚡ {name} logra el logro「{ach}」(+{fame} fama de logro)", "achMost": "🏆 {name} gana el logro「{ach}」(+{got} fama de logro)", "achLead": "📣 Comunicado: {name} lidera「{ach}」(+1 fama de logro)", "achRefresh": "📣 Comunicado: se renovó un logro「Siguiente」",
+      "solarCharge": "☀ {name} se recarga en el panel solar: +1 dado de acción",
+    },
   };
   root.RL = Object.assign(root.RL || {}, { LANG_CONTENT: C, LOG_FMT: LF });
   if (typeof module !== "undefined" && module.exports) module.exports = C;
