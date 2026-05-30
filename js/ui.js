@@ -48,7 +48,7 @@
       "eq.ranged": "远程", "eq.range": "射程", "eq.dice": "白骰", "eq.twohand": "双手", "eq.hitbonus": "命中bonus", "eq.injury": "伤", "eq.light": "轻伤", "eq.close": "近战", "eq.armor": "护甲", "eq.skull": "骷髅", "eq.equip": "＋装备", "eq.unequip": "－卸下",
       "slotcn.head": "头部", "slotcn.torso": "躯干", "slotcn.hand": "手持", "slotcn.special": "道具",
       "terr.tower": "中央塔", "terr.jungle": "丛林", "terr.plains": "平原", "terr.mountain": "山地", "terr.village": "村庄", "terr.maze": "迷宫", "terr.solar": "太阳能阵列",
-      "cs.title": "选择你的角色", "cs.subtitle": "挑一个你喜欢的角色参战 · 出场顺位随机", "cs.back": "返回", "cs.start": "开始游戏",
+      "cs.title": "选择你的角色", "cs.subtitle": "挑一个你喜欢的角色参战 · 出场顺位随机", "cs.back": "返回", "cs.start": "开始游戏", "cs.record": "战绩",
       "over.superstar": "（超级巨星）", "over.playAgain": "换设置", "over.close": "查看棋盘", "over.rematch": "再战一局",
     },
     en: {
@@ -82,7 +82,7 @@
       "eq.ranged": "Ranged", "eq.range": "Rng ", "eq.dice": " white", "eq.twohand": "2-handed", "eq.hitbonus": "hit bonus", "eq.injury": "injury", "eq.light": "light", "eq.close": "Melee", "eq.armor": "Armor", "eq.skull": "skull", "eq.equip": "＋Equip", "eq.unequip": "－Unequip",
       "slotcn.head": "Head", "slotcn.torso": "Torso", "slotcn.hand": "Hand", "slotcn.special": "Item",
       "terr.tower": "Tower", "terr.jungle": "Jungle", "terr.plains": "Plains", "terr.mountain": "Mountain", "terr.village": "Village", "terr.maze": "Maze", "terr.solar": "Solar Array",
-      "cs.title": "Choose your character", "cs.subtitle": "Pick a character you like — turn order is random", "cs.back": "Back", "cs.start": "Start game",
+      "cs.title": "Choose your character", "cs.subtitle": "Pick a character you like — turn order is random", "cs.back": "Back", "cs.start": "Start game", "cs.record": "Record",
       "over.superstar": "(Superstar)", "over.playAgain": "New setup", "over.close": "View board", "over.rematch": "Rematch",
     },
     fr: {
@@ -116,7 +116,7 @@
       "eq.ranged": "Distance", "eq.range": "Port. ", "eq.dice": " dés", "eq.twohand": "2 mains", "eq.hitbonus": "bonus", "eq.injury": "blessure", "eq.light": "légère", "eq.close": "Mêlée", "eq.armor": "Armure", "eq.skull": "crâne", "eq.equip": "＋Équiper", "eq.unequip": "－Retirer",
       "slotcn.head": "Tête", "slotcn.torso": "Torse", "slotcn.hand": "Main", "slotcn.special": "Objet",
       "terr.tower": "Tour", "terr.jungle": "Jungle", "terr.plains": "Plaine", "terr.mountain": "Montagne", "terr.village": "Village", "terr.maze": "Labyrinthe", "terr.solar": "Panneaux solaires",
-      "cs.title": "Choisissez votre personnage", "cs.subtitle": "Choisissez un personnage qui vous plaît — l'ordre de jeu est aléatoire", "cs.back": "Retour", "cs.start": "Démarrer",
+      "cs.title": "Choisissez votre personnage", "cs.subtitle": "Choisissez un personnage qui vous plaît — l'ordre de jeu est aléatoire", "cs.back": "Retour", "cs.start": "Démarrer", "cs.record": "Bilan",
       "over.superstar": "(Superstar)", "over.playAgain": "Réglages", "over.close": "Voir le plateau", "over.rematch": "Revanche",
     },
     es: {
@@ -150,7 +150,7 @@
       "eq.ranged": "Distancia", "eq.range": "Alc. ", "eq.dice": " dados", "eq.twohand": "2 manos", "eq.hitbonus": "bono", "eq.injury": "daño", "eq.light": "leve", "eq.close": "Cuerpo", "eq.armor": "Armadura", "eq.skull": "calavera", "eq.equip": "＋Equipar", "eq.unequip": "－Quitar",
       "slotcn.head": "Cabeza", "slotcn.torso": "Torso", "slotcn.hand": "Mano", "slotcn.special": "Objeto",
       "terr.tower": "Torre", "terr.jungle": "Jungla", "terr.plains": "Llanura", "terr.mountain": "Montaña", "terr.village": "Pueblo", "terr.maze": "Laberinto", "terr.solar": "Panel solar",
-      "cs.title": "Elige tu personaje", "cs.subtitle": "Elige un personaje que te guste — el orden de turno es aleatorio", "cs.back": "Atrás", "cs.start": "Empezar",
+      "cs.title": "Elige tu personaje", "cs.subtitle": "Elige un personaje que te guste — el orden de turno es aleatorio", "cs.back": "Atrás", "cs.start": "Empezar", "cs.record": "Récord",
       "over.superstar": "(Superstar)", "over.playAgain": "Ajustes", "over.close": "Ver el tablero", "over.rematch": "Revancha",
     },
   };
@@ -599,6 +599,7 @@
     if (!G || !G.gameOver) { _overShown = false; if (ov0) ov0.style.display = "none"; return; }
     if (_overShown) return;                                  // built once; don't rebuild on every render tick
     _overShown = true;
+    recordResult();                                          // tally this game into the per-character win stats
     let ov = ov0; if (!ov) { ov = document.createElement("div"); ov.id = "over-overlay"; document.body.appendChild(ov); }
     const sstar = G.superstar ? " " + T("over.superstar") : "";
     const title = (G.isTeam && G.winnerTeam != null)
@@ -751,18 +752,30 @@
     if (!G.gameOver && !E.curP(G).human) await runAI();
   }
 
+  // ---- per-character win stats (localStorage), shown on the select cards ----
+  function loadStats() { try { return JSON.parse(localStorage.getItem("rl-stats") || "{}"); } catch (e) { return {}; } }
+  function recordResult() {                                  // called once at game over (human games only)
+    if (!G || !G.gameOver) return;
+    const me = G.players.find(p => p.human); if (!me) return;
+    const s = loadStats(), e = s[me.character] || { g: 0, w: 0 };
+    e.g++; if (G.isTeam ? (G.winnerTeam === me.team) : (G.winner === me.idx)) e.w++;
+    s[me.character] = e; try { localStorage.setItem("rl-stats", JSON.stringify(s)); } catch (x) { }
+  }
+
   // ---- character select: human picks one character; turn order is randomized in the engine ----
   let chosenChar = null;
   function showCharSelect() {
     chosenChar = null;
-    const grid = $("char-grid");
+    const grid = $("char-grid"), stats = loadStats();
     if (grid) {
       grid.innerHTML = D.CHARACTERS.map(ch => {
         const name = (lang === "zh" && ch.cn) ? ch.cn : ch.name;
         const ab = ch.ability ? `<div class="cs-ab"><b>${TC("ability." + ch.ability.id + ".name", ch.ability.name)}</b><span>${TC("ability." + ch.ability.id + ".text", ch.ability.text)}</span></div>` : "";
+        const st = stats[ch.id];
+        const rec = (st && st.g) ? `<div class="cs-rec">${T("cs.record")} 🏆 ${st.w}/${st.g}</div>` : "";
         return `<button class="cs-card" data-id="${ch.id}" style="--accent:${ch.color}">` +
           `<span class="cs-emb">${emblemSVG({ color: ch.color, character: ch.id }, ch, 56)}</span>` +
-          `<div class="cs-name">${name}</div>${ab}</button>`;
+          `<div class="cs-name">${name}</div>${ab}${rec}</button>`;
       }).join("");
       grid.querySelectorAll(".cs-card").forEach(b => b.addEventListener("click", () => {
         grid.querySelectorAll(".cs-card.sel").forEach(x => x.classList.remove("sel"));

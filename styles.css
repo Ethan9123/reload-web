@@ -36,6 +36,7 @@ select, button { font: inherit; padding: 6px 10px; border-radius: 6px; border: 1
 .cs-name { font-weight: 800; font-size: 16px; color: var(--accent); }
 .cs-ab { font-size: 12px; line-height: 1.35; color: #c2c7d0; }
 .cs-ab b { color: #e6e8ec; display: block; margin-bottom: 2px; }
+.cs-rec { margin-top: auto; font-size: 12px; color: #c9a23a; font-weight: 700; }
 .cs-bar { display: flex; gap: 12px; align-items: center; }
 #btn-cs-start { background: #f4d03f; color: #1b1f28; font-weight: 700; cursor: pointer; padding: 10px 22px; }
 #btn-cs-start:hover:not(:disabled) { filter: brightness(1.08); }
