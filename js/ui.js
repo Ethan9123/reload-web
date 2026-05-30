@@ -47,6 +47,7 @@
       "ach.next": "⚡即时", "ach.most": "🏆比拼", "ach.instantTip": "⚡ 即时：下一位达成者立即获得卡片及其名望", "ach.contestTip": "🏆 比拼：游戏结束结算 · 当前领先：{leader}", "ach.unlocked": "⚡ 达成成就", "ach.famefx": "成就名望",
       "eq.ranged": "远程", "eq.range": "射程", "eq.dice": "白骰", "eq.twohand": "双手", "eq.hitbonus": "命中bonus", "eq.injury": "伤", "eq.light": "轻伤", "eq.close": "近战", "eq.armor": "护甲", "eq.skull": "骷髅", "eq.equip": "＋装备", "eq.unequip": "－卸下",
       "slotcn.head": "头部", "slotcn.torso": "躯干", "slotcn.hand": "手持", "slotcn.special": "道具",
+      "terr.tower": "中央塔", "terr.jungle": "丛林", "terr.plains": "平原", "terr.mountain": "山地", "terr.village": "村庄", "terr.maze": "迷宫", "terr.solar": "太阳能阵列",
     },
     en: {
       "legend.move": "Move/Reach", "legend.atk": "Attackable", "legend.you": "You", "legend.loot": "✋ Loot here",
@@ -78,6 +79,7 @@
       "ach.next": "⚡ Instant", "ach.most": "🏆 Contest", "ach.instantTip": "⚡ Instant: the next player to unlock it immediately gains the card and its fame", "ach.contestTip": "🏆 Contest: scored at game end · leader: {leader}", "ach.unlocked": "⚡ Achievement unlocked", "ach.famefx": "achievement fame",
       "eq.ranged": "Ranged", "eq.range": "Rng ", "eq.dice": " white", "eq.twohand": "2-handed", "eq.hitbonus": "hit bonus", "eq.injury": "injury", "eq.light": "light", "eq.close": "Melee", "eq.armor": "Armor", "eq.skull": "skull", "eq.equip": "＋Equip", "eq.unequip": "－Unequip",
       "slotcn.head": "Head", "slotcn.torso": "Torso", "slotcn.hand": "Hand", "slotcn.special": "Item",
+      "terr.tower": "Tower", "terr.jungle": "Jungle", "terr.plains": "Plains", "terr.mountain": "Mountain", "terr.village": "Village", "terr.maze": "Maze", "terr.solar": "Solar Array",
     },
     fr: {
       "legend.move": "Déplacer/Portée", "legend.atk": "Attaquable", "legend.you": "Vous", "legend.loot": "✋ Ramasser ici",
@@ -109,6 +111,7 @@
       "ach.next": "⚡ Immédiat", "ach.most": "🏆 Concours", "ach.instantTip": "⚡ Immédiat : le prochain joueur qui le réussit gagne aussitôt la carte et sa renommée", "ach.contestTip": "🏆 Concours : décompté en fin de partie · en tête : {leader}", "ach.unlocked": "⚡ Succès débloqué", "ach.famefx": "renommée de succès",
       "eq.ranged": "Distance", "eq.range": "Port. ", "eq.dice": " dés", "eq.twohand": "2 mains", "eq.hitbonus": "bonus", "eq.injury": "blessure", "eq.light": "légère", "eq.close": "Mêlée", "eq.armor": "Armure", "eq.skull": "crâne", "eq.equip": "＋Équiper", "eq.unequip": "－Retirer",
       "slotcn.head": "Tête", "slotcn.torso": "Torse", "slotcn.hand": "Main", "slotcn.special": "Objet",
+      "terr.tower": "Tour", "terr.jungle": "Jungle", "terr.plains": "Plaine", "terr.mountain": "Montagne", "terr.village": "Village", "terr.maze": "Labyrinthe", "terr.solar": "Panneaux solaires",
     },
     es: {
       "legend.move": "Mover/Alcance", "legend.atk": "Atacable", "legend.you": "Tú", "legend.loot": "✋ Saquear aquí",
@@ -140,6 +143,7 @@
       "ach.next": "⚡ Instantáneo", "ach.most": "🏆 Concurso", "ach.instantTip": "⚡ Instantáneo: el próximo jugador que lo logre obtiene al instante la carta y su fama", "ach.contestTip": "🏆 Concurso: se calcula al final · líder: {leader}", "ach.unlocked": "⚡ Logro desbloqueado", "ach.famefx": "fama de logro",
       "eq.ranged": "Distancia", "eq.range": "Alc. ", "eq.dice": " dados", "eq.twohand": "2 manos", "eq.hitbonus": "bono", "eq.injury": "daño", "eq.light": "leve", "eq.close": "Cuerpo", "eq.armor": "Armadura", "eq.skull": "calavera", "eq.equip": "＋Equipar", "eq.unequip": "－Quitar",
       "slotcn.head": "Cabeza", "slotcn.torso": "Torso", "slotcn.hand": "Mano", "slotcn.special": "Objeto",
+      "terr.tower": "Torre", "terr.jungle": "Jungla", "terr.plains": "Llanura", "terr.mountain": "Montaña", "terr.village": "Pueblo", "terr.maze": "Laberinto", "terr.solar": "Panel solar",
     },
   };
   let lang = (typeof localStorage !== "undefined" && localStorage.getItem("rl-lang")) || "zh";
@@ -157,6 +161,20 @@
   }
   // achievement display name: Chinese uses cn (cn·name in tooltips); other languages use the English name
   function achName(a, full) { return lang === "zh" ? (full ? `${a.cn} · ${a.name}` : a.cn) : a.name; }
+  // format one structured engine-log entry per language. Plain strings (barks) pass through; objects
+  // {s,k,p} resolve via RL.LOG_FMT[lang][k] with {param} interpolation, falling back to the source string s.
+  function logLine(e) {
+    if (typeof e === "string") return e;
+    if (!e || !e.k) return (e && e.s) || "";
+    const fmt = RL.LOG_FMT && RL.LOG_FMT[lang] && RL.LOG_FMT[lang][e.k];
+    if (!fmt) return e.s;                                   // no template for this language → source (zh)
+    const p = Object.assign({}, e.p);
+    if (p.terrain != null) p.terrain = T("terr." + p.terrain);
+    if (p.achId != null) p.ach = ACH[p.achId] ? achName(ACH[p.achId]) : p.achId;
+    if (p.kind != null) p.kind = p.kind === "trap" ? T("btn.trap") : p.kind === "wall" ? T("btn.barrier") : T("btn.hideout");
+    let s = fmt; for (const k in p) s = s.split("{" + k + "}").join(p[k]);
+    return s;
+  }
   const SFX = (n) => { try { if (RL.sfx && RL.sfx[n]) RL.sfx[n](); } catch (e) { } };   // play a procedural sound (no-op if muted / unavailable)
   function shake(px) {   // brief screen-shake on the board (impact feedback)
     const el = $("board-wrap"); if (!el) return;
@@ -470,7 +488,7 @@
 
   function renderLog() {
     const l = $("log"); l.innerHTML = "";
-    for (const m of G.log.slice(0, 40)) { const d = document.createElement("div"); d.textContent = m; l.appendChild(d); }
+    for (const m of G.log.slice(0, 40)) { const d = document.createElement("div"); d.textContent = logLine(m); l.appendChild(d); }
   }
 
   // current leader name(s) for a MOST achievement metric (for the side-panel hint)
@@ -642,7 +660,7 @@
     return sleep(Math.max(420, aiDelay));
   }
   function summarizeTurn(p, newLines) {                 // build a one-line "what the AI did" from the new log
-    const mine = newLines.filter(l => l.includes(p.name)).reverse();   // chronological
+    const mine = newLines.map(logLine).filter(l => l.includes(p.name)).reverse();   // chronological
     const txt = mine.slice(0, 2).join(" · ") || T("banner.endTurn", { name: p.name });
     return txt.length > 64 ? txt.slice(0, 63) + "…" : txt;
   }

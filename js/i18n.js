@@ -221,6 +221,30 @@
       "tut.11": "<b>Victoria</b>: cuando se acaba el mazo de eventos, la partida termina y gana la <b>mayor Fama</b>. ¡Tutorial completado — empieza tu primera partida!",
     },
   };
-  root.RL = Object.assign(root.RL || {}, { LANG_CONTENT: C });
+  // ---- event-log templates: {param} placeholders; UI logLine() picks LOG_FMT[lang][key], else the engine's zh source ----
+  const LF = {
+    en: {
+      "drift": "{name} hits a front mid-drop and drifts one hex", "parachute": "{name} parachuted onto {terrain}",
+      "blitzStep": "⚡ {name} — Blitz: one extra step", "move": "{name} moved to {terrain}", "portal": "{name} took a portal to {terrain}",
+      "lootBeacon": "{name} picked up a beacon (deliver it to the tower)", "openSupply": "{name} opened a {star}★ supply box — drew {drew}, kept 1", "openSupplyGift": "{name} opened a {star}★ supply box — drew {drew}, kept 1 (Gift From Father)",
+      "droneBeacon": "🤖 {name}'s drone Buzz grabbed a beacon", "droneSupply": "🤖 {name}'s drone Buzz opened a {star}★ supply box",
+      "upload": "{name} uploaded {n} beacon(s) at the tower → +{n} fame",
+      "healMate": "{name} healed teammate {mate}: +{heal} (+1 team spirit)", "healSelf": "{name} healed: +{heal} HP",
+      "giveBeacon": "{name} gave 1 beacon to teammate {to}", "giveItem": "{name} gave {item} to teammate {to}",
+      "buildBarrier": "{name} built a barrier", "demolishBarrier": "{name} demolished a barrier", "buildHideout": "{name} set up a hideout", "demolishHideout": "{name} demolished a hideout", "buildTrap": "{name} laid a trap", "trapTeammate": "{name} laid a mine by a teammate +1 team spirit",
+      "trapTie": "Trap: {walker} tied {owner}'s trap ({owner} +1 trap fame, movement stopped)", "trapDodge": "Trap: {walker} dodged {owner}'s trap (+1 trap fame)", "trapHit": "Trap: {walker} hit {owner}'s trap and took damage",
+      "explosive": "💣 {name} used Tactical Explosive, destroying a {kind}", "usePainkiller": "💊 {name} used a Painkiller, recovering 1 damage", "useEnergy": "🥤 {name} drank an Energy Drink: +1 action die this turn (not for combat/injury)",
+      "event": "⚡ Event: {name}", "toxinSpread": "　Toxin spreads: {n} hex(es) contaminated", "supplyDrop": "　Airdrop: {n} × {star}★ supply box(es)", "domeEvent": "　A dome descends on the central tower (safe zone)", "giftFans": "　Each player draws 1× 1★ equipment", "giftProducers": "　The trailing {name} draws 1× 2★ equipment", "giftSponsors": "　Each player +1 carried beacon",
+      "gameOverTeam": "Game over: Team {n} wins (team fame {fame})", "gameOver": "Game over: {name} wins (fame {fame})", "toxinDamage": "{name} is in the toxin zone, taking 1 damage",
+      "reloadForced": "💥 {name} is forced to RELOAD! Drops gear, back to the drop zone", "reloadFame": "{name} +1 RELOAD fame", "reloadTeamSpirit": "{name} repelled a foe near a teammate +1 team spirit",
+      "shootHit": "🔫 {a} shot {t} with {weapon}: {dealt} dmg → +1 injury fame", "shootMiss": "🔫 {a} shot at {t}: no damage", "melee": "🗡 Melee {a} vs {t}: dealt {aDealt} / took {tDealt}",
+      "superstar": "★ {name} reached Superstar — instant win!", "superstarTeam": "★ Team {n} reached Superstar — instant win!",
+      "achNext": "⚡ {name} earned the「{ach}」achievement (+{fame} achievement fame)", "achMost": "🏆 {name} won the「{ach}」achievement (+{got} achievement fame)", "achLead": "📣 Report: {name} leads「{ach}」(+1 achievement fame)", "achRefresh": "📣 Report: a「Next」achievement was refreshed",
+      "solarCharge": "☀ {name} charges at the solar array: +1 action die",
+    },
+    fr: {},   // TODO
+    es: {},   // TODO
+  };
+  root.RL = Object.assign(root.RL || {}, { LANG_CONTENT: C, LOG_FMT: LF });
   if (typeof module !== "undefined" && module.exports) module.exports = C;
 })(typeof globalThis !== "undefined" ? globalThis : this);

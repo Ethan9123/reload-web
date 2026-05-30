@@ -340,7 +340,8 @@
   const SUPERSTAR_FAME = superstarThreshold("battleRoyale");  // 16 — Battle Royale standard track (3-4 players)
   const MOUNTAIN_RUN_COST = 2;
 
-  function log(state, msg) { state.log.unshift(msg); if (state.log.length > 120) state.log.pop(); }
+  // log entry = { s: source(zh) string, k: i18n key, p: params }; the UI formats k/p per language, falling back to s.
+  function log(state, msg, k, p) { state.log.unshift(k ? { s: msg, k, p } : msg); if (state.log.length > 120) state.log.pop(); }
   function curP(state) { return state.players[state.activePlayer]; }
   function isHumanTurn(state) { return !state.gameOver && curP(state).human; }
 
@@ -360,7 +361,7 @@
     }
     if (scoreFor(state, p) >= (state.superstarFame || SUPERSTAR_FAME) && !state.gameOver) {
       state.gameOver = true; state.winner = p.idx; state.winnerTeam = p.team; state.superstar = true;
-      log(state, `★ ${p.team != null ? `队伍 ${p.team + 1}` : p.name} 达到 Superstar，立即获胜！`);
+      log(state, `★ ${p.team != null ? `队伍 ${p.team + 1}` : p.name} 达到 Superstar，立即获胜！`, p.team != null ? "superstarTeam" : "superstar", { n: p.team + 1, name: p.name });
     }
   }
 
@@ -384,7 +385,7 @@
     state._achSeq = (state._achSeq || 0) + 1;
     if (ac.deck.length) ac.board[slot] = { id: ac.deck.pop(), fameBelow: 1 };   // replace from deck (new card starts with 1 token)
     else ac.board.splice(slot, 1);
-    log(state, `⚡ ${p.name} 达成成就「${card.cn}」(+${fame} 成就名望)`);
+    log(state, `⚡ ${p.name} 达成成就「${card.cn}」(+${fame} 成就名望)`, "achNext", { name: p.name, achId: card.id, fame });
     gainFame(state, p, "achievement", fame);                                    // may trigger Superstar — that's legal mid-game
     return true;
   }
@@ -409,7 +410,7 @@
       for (let i = 0; i < state.players.length; i++) if (vals[i] === best) {     // ties: all tied players earn it
         const w = state.players[i], got = Math.min(fame, state.fameSupply.achievement);
         w.fame.achievement += got; state.fameSupply.achievement -= got; w.achievementsWon.push(card.id);
-        log(state, `🏆 ${w.name} 获得「${card.cn}」成就 (+${got} 成就名望)`);
+        log(state, `🏆 ${w.name} 获得「${card.cn}」成就 (+${got} 成就名望)`, "achMost", { name: w.name, achId: card.id, got });
       }
     }
   }
@@ -422,11 +423,11 @@
       const card = DATA.ACHIEVEMENT_BY_ID[slot.id], vals = snap[card.metric];
       const best = Math.max(...vals);
       if (best <= 0) continue;
-      for (let i = 0; i < state.players.length; i++) if (vals[i] === best) { const w = state.players[i]; log(state, `📣 战报：${w.name} 暂列「${card.cn}」领先 (+1 成就名望)`); gainFame(state, w, "achievement", 1); }
+      for (let i = 0; i < state.players.length; i++) if (vals[i] === best) { const w = state.players[i]; log(state, `📣 战报：${w.name} 暂列「${card.cn}」领先 (+1 成就名望)`, "achLead", { name: w.name, achId: card.id }); gainFame(state, w, "achievement", 1); }
     }
     ac.board[0].fameBelow = (ac.board[0].fameBelow || 0) + 1;                   // top up leftmost card
     const nextIdx = ac.board.findIndex(s => DATA.ACHIEVEMENT_BY_ID[s.id].type === "next");
-    if (nextIdx >= 0 && ac.deck.length) { ac.board[nextIdx] = { id: ac.deck.pop(), fameBelow: 1 }; log(state, `📣 战报：刷新一张「下一位」成就`); }
+    if (nextIdx >= 0 && ac.deck.length) { ac.board[nextIdx] = { id: ac.deck.pop(), fameBelow: 1 }; log(state, `📣 战报：刷新一张「下一位」成就`, "achRefresh", {}); }
     const last = ac.board[ac.board.length - 1]; if (last) last.fameBelow = (last.fameBelow || 0) + 1; // top up rightmost
   }
 
@@ -440,7 +441,7 @@
     state.lastAchievement = null;
     autoEquip(p);                                        // MVP: auto-equip best weapon/armor (no equip UI yet)
     // Solar Array terrain: starting your turn on it grants +1 boost die (energy — non-combat, like Energy Drink).
-    if (p.pos) { const _c = state.board[hexKey(p.pos.q, p.pos.r)]; if (_c && TERRAIN[_c.terrain].energy) { p.boostDice += 1; p.defensePool += 1; p.actionDice = Math.max(p.actionDice, p.defensePool); log(state, `☀ ${p.name} 在太阳能阵列充能 +1 行动骰`); } }
+    if (p.pos) { const _c = state.board[hexKey(p.pos.q, p.pos.r)]; if (_c && TERRAIN[_c.terrain].energy) { p.boostDice += 1; p.defensePool += 1; p.actionDice = Math.max(p.actionDice, p.defensePool); log(state, `☀ ${p.name} 在太阳能阵列充能 +1 行动骰`, "solarCharge", { name: p.name }); } }
     // NOTE: carried beacons are NOT auto-scored. Per rules they stay in temp storage
     // until the player Activates the Central Tower to upload them (see doActivate).
     state.needsParachute = (p.pos == null);
@@ -461,10 +462,10 @@
         const nk = hexKey(p.pos.q + HEX_DIRS[d].q, p.pos.r + HEX_DIRS[d].r);
         if (state.board[nk]) { p.pos = { q: state.board[nk].q, r: state.board[nk].r }; break; }
       }
-      log(state, `${p.name} 空降遇锋面，飘移一格`);
+      log(state, `${p.name} 空降遇锋面，飘移一格`, "drift", { name: p.name });
     }
     p.reloadZone = false; state.needsParachute = false; state.phase = "action";
-    log(state, `${p.name} 跳伞降落到 ${state.board[hexKey(p.pos.q, p.pos.r)].terrain}`);
+    log(state, `${p.name} 跳伞降落到 ${state.board[hexKey(p.pos.q, p.pos.r)].terrain}`, "parachute", { name: p.name, terrain: state.board[hexKey(p.pos.q, p.pos.r)].terrain });
     return true;
   }
 
@@ -557,10 +558,10 @@
     if (!legalRuns(state, p).includes(toKey)) return false;
     const cur = hexKey(p.pos.q, p.pos.r);
     const portalJump = state.board[cur].portal && state.board[toKey].portal && dirIndex(p.pos, state.board[toKey]) < 0;
-    if (blitzBonusStep(p)) { p._runBonus = false; p._runBonusUsed = true; p.hasActed = true; log(state, `⚡ ${p.name} 疾速：追加一步`); }  // free bonus hex
+    if (blitzBonusStep(p)) { p._runBonus = false; p._runBonusUsed = true; p.hasActed = true; log(state, `⚡ ${p.name} 疾速：追加一步`, "blitzStep", { name: p.name }); }  // free bonus hex
     else { spendDice(state, p, portalJump ? 1 : runCost(state, toKey, p), 1); if (p.character === "blitz" && !p._runBonusUsed) p._runBonus = true; } // a paid Run unlocks the bonus step
     const c = state.board[toKey]; p.pos = { q: c.q, r: c.r };
-    log(state, `${p.name} ${portalJump ? "穿越传送门到" : "移动到"} ${c.terrain}`);
+    log(state, `${p.name} ${portalJump ? "穿越传送门到" : "移动到"} ${c.terrain}`, portalJump ? "portal" : "move", { name: p.name, terrain: c.terrain });
     if (c.trap != null && c.trap !== p.idx) resolveTrap(state, p, c.trap, toKey); // step on enemy trap
     return true;
   }
@@ -575,13 +576,13 @@
     const cell = state.board[hexKey(p.pos.q, p.pos.r)], tok = cell.tokens[tokenIdx];
     if (!tok) return false;
     spendDice(state, p, 1, 1); cell.tokens.splice(tokenIdx, 1);
-    if (tok.kind === "beacon") { p.carryingBeacons += 1; log(state, `${p.name} 拾取信标（需带到中央塔上缴）`); }
+    if (tok.kind === "beacon") { p.carryingBeacons += 1; log(state, `${p.name} 拾取信标（需带到中央塔上缴）`, "lootBeacon", { name: p.name }); }
     else if (tok.kind === "supply") {
       const dk = "equip" + (tok.star || 2), xk = "discard" + (tok.star || 2);
       const draws = p.character === "korat" ? 3 : 2;        // Korat — Gift From Father: +1 card
       const got = []; for (let i = 0; i < draws; i++) { const c = state.decks[dk].pop(); if (c) got.push(c); }
       if (got.length) { p.backpack.push(got[0]); for (let i = 1; i < got.length; i++) state.decks[xk].push(got[i]); }
-      log(state, `${p.name} 开 ${tok.star || 2} 星补给箱，抽${got.length}留1${draws === 3 ? "（Gift From Father）" : ""}`);
+      log(state, `${p.name} 开 ${tok.star || 2} 星补给箱，抽${got.length}留1${draws === 3 ? "（Gift From Father）" : ""}`, draws === 3 ? "openSupplyGift" : "openSupply", { name: p.name, star: tok.star || 2, drew: got.length });
     }
     return true;
   }
@@ -601,12 +602,12 @@
     const cell = state.board[key]; if (!cell) return false;
     const tok = cell.tokens[tokenIdx]; if (!tok) return false;
     spendDice(state, p, 1, 1); cell.tokens.splice(tokenIdx, 1); p._droneUsed = true;
-    if (tok.kind === "beacon") { p.carryingBeacons += 1; log(state, `🤖 ${p.name} 的无人机巴兹拾取信标`); }
+    if (tok.kind === "beacon") { p.carryingBeacons += 1; log(state, `🤖 ${p.name} 的无人机巴兹拾取信标`, "droneBeacon", { name: p.name }); }
     else if (tok.kind === "supply") {
       const dk = "equip" + (tok.star || 2), xk = "discard" + (tok.star || 2);
       const a = state.decks[dk].pop(), b = state.decks[dk].pop();
       if (a) p.backpack.push(a); if (b) state.decks[xk].push(b);
-      log(state, `🤖 ${p.name} 的无人机巴兹开 ${tok.star || 2}★ 补给箱`);
+      log(state, `🤖 ${p.name} 的无人机巴兹开 ${tok.star || 2}★ 补给箱`, "droneSupply", { name: p.name, star: tok.star || 2 });
     }
     return true;
   }
@@ -620,7 +621,7 @@
     if (!canUpload(state, p)) return false;
     spendDice(state, p, 1, 1);
     const n = p.carryingBeacons;
-    log(state, `${p.name} 在中央塔上传 ${n} 个信标 → +${n} 名望`);
+    log(state, `${p.name} 在中央塔上传 ${n} 个信标 → +${n} 名望`, "upload", { name: p.name, n });
     gainFame(state, p, "beacon", n); p.carryingBeacons = 0;
     return true;
   }
@@ -665,8 +666,8 @@
     const heal = Math.min(target.injuries, base + (die === "skull" ? 1 : 0));   // skull +1
     spendDice(state, p, 1, die);
     target.injuries -= heal; target.actionDice = START_ACTION_DICE - target.injuries; target.defensePool += heal;
-    if (target !== p) { log(state, `${p.name} 治疗队友 ${target.name}：掷${die === "skull" ? "骷髅" : die}，恢复 ${heal} 点（+1 团队精神）`); gainFame(state, p, "teamSpirit", 1); }
-    else log(state, `${p.name} 治疗：掷${die === "skull" ? "骷髅(+2)" : die}，恢复 ${heal} 点伤`);
+    if (target !== p) { log(state, `${p.name} 治疗队友 ${target.name}：掷${die === "skull" ? "骷髅" : die}，恢复 ${heal} 点（+1 团队精神）`, "healMate", { name: p.name, mate: target.name, heal }); gainFame(state, p, "teamSpirit", 1); }
+    else log(state, `${p.name} 治疗：掷${die === "skull" ? "骷髅(+2)" : die}，恢复 ${heal} 点伤`, "healSelf", { name: p.name, heal });
     state.lastRoll = { kind: "heal", by: p.idx, target: target.idx, value: die, healed: heal };
     return true;
   }
@@ -677,7 +678,7 @@
     if (what === "beacon") { if (p.carryingBeacons < 1) return false; p.carryingBeacons--; to.carryingBeacons++; }
     else { const i = p.backpack.indexOf(what); if (i < 0) return false; p.backpack.splice(i, 1); to.backpack.push(what); }
     p._gaveThisTurn = true;
-    log(state, `${p.name} 将${what === "beacon" ? "1 信标" : (byId(what) || {}).name || "装备"}交给队友 ${to.name}`);
+    log(state, `${p.name} 将${what === "beacon" ? "1 信标" : (byId(what) || {}).name || "装备"}交给队友 ${to.name}`, what === "beacon" ? "giveBeacon" : "giveItem", { name: p.name, to: to.name, item: (byId(what) || {}).name || "" });
     return true;
   }
 
@@ -705,7 +706,7 @@
     if (!canBuild(state, p) || wallsUsed(state, p) >= SETUP_WALLS || !emptyEdges(state, p).includes(edge)) return false; // teams share the 6-wall limit
     payBuild(state, p);
     state.board[hexKey(p.pos.q, p.pos.r)].walls[edge] = p.idx; p.barriersUsed++;
-    log(state, `${p.name} 建造屏障`); return true;
+    log(state, `${p.name} 建造屏障`, "buildBarrier", { name: p.name }); return true;
   }
   function doDemolish(state, edge) {
     const p = curP(state); if (!canBuild(state, p)) return false;
@@ -713,7 +714,7 @@
     if (cell.walls[edge] == null) return false;
     const owner = cell.walls[edge]; delete cell.walls[edge];
     if (typeof owner === "number" && state.players[owner]) state.players[owner].barriersUsed = Math.max(0, state.players[owner].barriersUsed - 1);
-    payBuild(state, p); log(state, `${p.name} 拆除屏障`); return true;
+    payBuild(state, p); log(state, `${p.name} 拆除屏障`, "demolishBarrier", { name: p.name }); return true;
   }
   function doBuildHideout(state) {
     const p = curP(state); if (!canBuild(state, p)) return false;
@@ -721,7 +722,7 @@
     if (state.board[k].hideouts.length) return false;
     if (p.hideout && state.board[p.hideout]) state.board[p.hideout].hideouts = state.board[p.hideout].hideouts.filter(h => h !== p.idx);
     payBuild(state, p); state.board[k].hideouts.push(p.idx); p.hideout = k;
-    log(state, `${p.name} 设置藏身处`); return true;
+    log(state, `${p.name} 设置藏身处`, "buildHideout", { name: p.name }); return true;
   }
   function doDemolishHideout(state, ownerIdx) {
     const p = curP(state); if (!canBuild(state, p)) return false;
@@ -731,17 +732,17 @@
     if (idx < 0) return false;
     const owner = cell.hideouts.splice(idx, 1)[0];
     if (state.players[owner]) state.players[owner].hideout = null;
-    payBuild(state, p); log(state, `${p.name} 拆除藏身处`); return true;
+    payBuild(state, p); log(state, `${p.name} 拆除藏身处`, "demolishHideout", { name: p.name }); return true;
   }
   function doBuildTrap(state) {
     const p = curP(state); if (!canBuild(state, p) || p.trapsUsed >= SETUP_TRAPS) return false;
     const cell = state.board[hexKey(p.pos.q, p.pos.r)];
     if (cell.trap != null) return false;
     payBuild(state, p); cell.trap = p.idx; p.trapsUsed++;
-    log(state, `${p.name} 埋设陷阱`);
+    log(state, `${p.name} 埋设陷阱`, "buildTrap", { name: p.name });
     // Team Spirit: building a trap in the same hex as a teammate scores +1 (rules 002 modules)
     if (playersOnHex(state, p.pos.q, p.pos.r).some(x => x !== p && sameTeam(x, p))) {
-      gainFame(state, p, "teamSpirit", 1); log(state, `${p.name} 在队友身边埋雷 +1 团队精神`);
+      gainFame(state, p, "teamSpirit", 1); log(state, `${p.name} 在队友身边埋雷 +1 团队精神`, "trapTeammate", { name: p.name });
     }
     return true;
   }
@@ -752,9 +753,9 @@
     const wins = (a, b) => (a + 2) % 3 === b;            // a beats b: rock>scissor, paper>rock, scissor>paper
     const w = rps(Math.floor(state.rnd() * 6) + 1), t = rps(Math.floor(state.rnd() * 6) + 1);
     let outcome;
-    if (w === t) { outcome = "tie"; gainFame(state, owner, "trap", 1); walker._noMove = true; log(state, `陷阱：${walker.name} 与 ${owner.name} 的陷阱平手（${owner.name} +1陷阱名望，停止移动）`); }
-    else if (wins(w, t)) { outcome = "dodge"; gainFame(state, walker, "trap", 1); log(state, `陷阱：${walker.name} 闪过 ${owner.name} 的陷阱（+1陷阱名望）`); }
-    else { outcome = "hit"; gainFame(state, owner, "trap", 1); const rl = takeInjuries(state, walker, 1); if (rl) reloadPlayer(state, walker, owner); else gainFame(state, owner, "injury", 1); log(state, `陷阱：${walker.name} 踩中 ${owner.name} 的陷阱受伤`); }
+    if (w === t) { outcome = "tie"; gainFame(state, owner, "trap", 1); walker._noMove = true; log(state, `陷阱：${walker.name} 与 ${owner.name} 的陷阱平手（${owner.name} +1陷阱名望，停止移动）`, "trapTie", { walker: walker.name, owner: owner.name }); }
+    else if (wins(w, t)) { outcome = "dodge"; gainFame(state, walker, "trap", 1); log(state, `陷阱：${walker.name} 闪过 ${owner.name} 的陷阱（+1陷阱名望）`, "trapDodge", { walker: walker.name, owner: owner.name }); }
+    else { outcome = "hit"; gainFame(state, owner, "trap", 1); const rl = takeInjuries(state, walker, 1); if (rl) reloadPlayer(state, walker, owner); else gainFame(state, owner, "injury", 1); log(state, `陷阱：${walker.name} 踩中 ${owner.name} 的陷阱受伤`, "trapHit", { walker: walker.name, owner: owner.name }); }
     // expose the RPS reveal for the UI mine close-up (w/t: 0=rock,1=paper,2=scissor)
     state.lastTrap = { walker: walker.idx, owner: ownerIdx, w, t, outcome, key };
     state._trapSeq = (state._trapSeq || 0) + 1;
@@ -798,12 +799,12 @@
     if (itemId === "pain_killer") {
       if (p.injuries <= 0) return false;
       p.injuries -= 1; p.actionDice = START_ACTION_DICE - p.injuries; p.defensePool += 1;
-      log(state, `💊 ${p.name} 使用止痛药，恢复 1 点伤`);
+      log(state, `💊 ${p.name} 使用止痛药，恢复 1 点伤`, "usePainkiller", { name: p.name });
     } else if (itemId === "energy_drink") {
       if (state.phase !== "action") return false;
       p.defensePool += 1; p.boostDice = (p.boostDice || 0) + 1;   // boost die: spendable on actions, not combat / injury
       p.actionDice = Math.max(p.actionDice, p.defensePool);       // allow the extra die to exist beyond the injury-reduced base
-      log(state, `🥤 ${p.name} 喝下能量饮料，本回合 +1 行动骰（不可用于战斗/承伤）`);
+      log(state, `🥤 ${p.name} 喝下能量饮料，本回合 +1 行动骰（不可用于战斗/承伤）`, "useEnergy", { name: p.name });
     } else if (itemId === "tactical_explosive") {
       if (state.phase !== "action" || !target) return false;
       // enforce the same/adjacent range rule in the engine itself (don't trust the caller's target)
@@ -818,7 +819,7 @@
       else if (target.kind === "hideout") { const i = c.hideouts.indexOf(target.owner); if (i < 0) return false; const o = c.hideouts.splice(i, 1)[0]; if (state.players[o]) state.players[o].hideout = null; }
       else return false;
       const what = target.kind === "trap" ? "陷阱" : target.kind === "wall" ? "屏障" : "藏身处";
-      log(state, `💣 ${p.name} 使用战术炸药，摧毁了${what}`);
+      log(state, `💣 ${p.name} 使用战术炸药，摧毁了${what}`, "explosive", { name: p.name, kind: target.kind });
     } else return false;
     discardItem(state, p, itemId);
     return true;
@@ -828,30 +829,30 @@
   function resolveEvent(state, id) {
     state.lastEvent = id;
     const ev = DATA.EVENTS[id] || { name: id };
-    log(state, `⚡ 事件：${ev.name}`);
+    log(state, `⚡ 事件：${ev.name}`, "event", { id, name: ev.name });
     if (id === "contamination") {
       if (state._toxinFrontier == null) state._toxinFrontier = (state.maxRing != null ? state.maxRing : 2);   // storm starts at the outermost ring and creeps inward
       const fr = state._toxinFrontier; let n = 0;
       for (const k in state.board) { const c = state.board[k]; if (!c.toxin && !c.dome && ringFromTower(state, c) === fr) { c.toxin = true; n++; } }
       state._toxinFrontier = Math.max(0, fr - 1);
-      log(state, `　毒气扩张：${n} 格被污染`);
+      log(state, `　毒气扩张：${n} 格被污染`, "toxinSpread", { n });
     } else if (id === "supply_drop" || id === "ex_tech") {
       const star = id === "ex_tech" ? 3 : 2; let n = 0;
       for (const k of shuffle(Object.keys(state.board), state.rnd)) {
         if (n >= 2) break; const c = state.board[k];
         if (!c.hasTower && !(id === "supply_drop" && c.tokens.some(t => t.kind === "supply"))) { c.tokens.push({ kind: "supply", star }); n++; }
       }
-      log(state, `　空投：${n} 个 ${star}★ 补给箱`);
+      log(state, `　空投：${n} 个 ${star}★ 补给箱`, "supplyDrop", { n, star });
     } else if (id === "dome") {
-      state.board[towerKey(state)].dome = true; log(state, "　穹顶降临中央塔（安全区）");
+      state.board[towerKey(state)].dome = true; log(state, "　穹顶降临中央塔（安全区）", "domeEvent", {});
     } else if (id === "gift_fans") {
       for (const p of state.players) { const c = state.decks.equip1.pop(); if (c) p.backpack.push(c); }
-      log(state, "　每位玩家抽 1 张 1★ 装备");
+      log(state, "　每位玩家抽 1 张 1★ 装备", "giftFans", {});
     } else if (id === "gift_producers") {
       let lo = state.players[0]; for (const p of state.players) if (totalFame(p) < totalFame(lo)) lo = p;
-      const c = state.decks.equip2.pop(); if (c) lo.backpack.push(c); log(state, `　落后的 ${lo.name} 抽 1 张 2★ 装备`);
+      const c = state.decks.equip2.pop(); if (c) lo.backpack.push(c); log(state, `　落后的 ${lo.name} 抽 1 张 2★ 装备`, "giftProducers", { name: lo.name });
     } else if (id === "gift_sponsors") {
-      for (const p of state.players) p.carryingBeacons += 1; log(state, "　每位玩家 +1 携带信标");
+      for (const p of state.players) p.carryingBeacons += 1; log(state, "　每位玩家 +1 携带信标", "giftSponsors", {});
     } else if (id === "announcement") {
       resolveAnnouncement(state);
     }
@@ -866,7 +867,7 @@
       const key = (t) => sum(t, totalFame) * 1e6 + sum(t, p => p.fame.achievement || 0) * 1e3 + sum(t, p => p.fame.reload);
       let winT = teams[0], best = -1; for (const t of teams) { const k = key(t); if (k > best) { best = k; winT = t; } }
       state.winnerTeam = winT; state.winner = teamMembers(state, winT)[0].idx;
-      log(state, `游戏结束：队伍 ${winT + 1} 获胜（队伍名望 ${teamFame(state, winT)}）`);
+      log(state, `游戏结束：队伍 ${winT + 1} 获胜（队伍名望 ${teamFame(state, winT)}）`, "gameOverTeam", { n: winT + 1, fame: teamFame(state, winT) });
       return;
     }
     // tie-break (achievements rulebook): total fame -> most Achievement fame -> most RELOAD fame
@@ -874,7 +875,7 @@
     let win = 0, best = -1;
     for (const p of state.players) { const k = key(p); if (k > best) { best = k; win = p.idx; } }
     state.winner = win;
-    log(state, `游戏结束：${state.players[win].name} 获胜（名望 ${totalFame(state.players[win])}）`);
+    log(state, `游戏结束：${state.players[win].name} 获胜（名望 ${totalFame(state.players[win])}）`, "gameOver", { name: state.players[win].name, fame: totalFame(state.players[win]) });
   }
   function endTurn(state) {
     if (state.gameOver) return state;
@@ -899,7 +900,7 @@
     // End phase toxin (inert until events add toxin tokens): toxin hex & not safe -> 1 injury
     if (p.pos) {
       const cell = state.board[hexKey(p.pos.q, p.pos.r)], safe = hasFriendlyHideout(state, p);
-      if ((cell.toxin || cell.toxinIcon) && !safe) { log(state, `${p.name} 处于毒气区，受到 1 点伤害`); if (takeInjuries(state, p, 1)) reloadPlayer(state, p, null); }
+      if ((cell.toxin || cell.toxinIcon) && !safe) { log(state, `${p.name} 处于毒气区，受到 1 点伤害`, "toxinDamage", { name: p.name }); if (takeInjuries(state, p, 1)) reloadPlayer(state, p, null); }
     }
     state._turnsTaken++;
     const isLastInRound = state.activePlayer === (state.firstPlayer + state.numPlayers - 1) % state.numPlayers;
@@ -1092,10 +1093,10 @@
     if (a) p.backpack.push(a); if (b) state.decks.discard2.push(b);
     p.injuries = 0; p.actionDice = START_ACTION_DICE; p.defensePool = 0; p.assigned = 0; p.assignedDice = [];
     p.pos = null; p.reloadZone = true; p.combatLine = []; p._runBonus = false; p._runBonusUsed = true; p._noMove = false;
-    log(state, `💥 ${p.name} 被迫 RELOAD！丢弃装备，回到跳伞区`);
+    log(state, `💥 ${p.name} 被迫 RELOAD！丢弃装备，回到跳伞区`, "reloadForced", { name: p.name });
     if (attacker) {
-      gainFame(state, attacker, "reload", 1); log(state, `${attacker.name} +1 RELOAD 名望`);
-      if (coopTeamSpirit) { gainFame(state, attacker, "teamSpirit", 1); log(state, `${attacker.name} 在队友身边击退对手 +1 团队精神`); }
+      gainFame(state, attacker, "reload", 1); log(state, `${attacker.name} +1 RELOAD 名望`, "reloadFame", { name: attacker.name });
+      if (coopTeamSpirit) { gainFame(state, attacker, "teamSpirit", 1); log(state, `${attacker.name} 在队友身边击退对手 +1 团队精神`, "reloadTeamSpirit", { name: attacker.name }); }
     }
   }
 
@@ -1138,8 +1139,8 @@
     }
     T.combatLine = def.line.filter(x => x != null);
     if (reload) { reloadPlayer(state, T, A); awardNextAchievement(state, A, "rangedReload"); }  // MARKSMAN
-    else if (dealt > 0) { gainFame(state, A, "injury", 1); log(state, `🔫 ${A.name} 用${w.name}射击 ${T.name}，造成 ${dealt} 伤 → +1 受伤名望`); }
-    else log(state, `🔫 ${A.name} 射击 ${T.name}，未造成伤害`);
+    else if (dealt > 0) { gainFame(state, A, "injury", 1); log(state, `🔫 ${A.name} 用${w.name}射击 ${T.name}，造成 ${dealt} 伤 → +1 受伤名望`, "shootHit", { a: A.name, weapon: w.name, t: T.name, dealt }); }
+    else log(state, `🔫 ${A.name} 射击 ${T.name}，未造成伤害`, "shootMiss", { a: A.name, t: T.name });
     state.lastCombat = { type: "ranged", a: A.idx, t: T.idx, weapon: w.name, assignValue,
       shooter: shooterDice.slice(), defender: defRaw.slice(), aSkulls: aSk, dSkulls: tSk, dealt, reload };
     return true;
@@ -1180,7 +1181,7 @@
     const ac = applySmallInjuries(aR.line, Math.max(0, aSmall - aArm.smallInjuryReduce)); if (ac) { tDealt += ac; if (takeInjuries(state, A, ac, { hierarchy: false })) aReload = true; }
     if (tReload) { reloadPlayer(state, T, A); awardNextAchievement(state, A, "closeReload"); } else if (aDealt > 0) { gainFame(state, A, "injury", 1); }  // MARTIAL ARTIST
     if (aReload) { reloadPlayer(state, A, T); awardNextAchievement(state, T, "closeReload"); } else if (tDealt > 0) { gainFame(state, T, "injury", 1); }
-    log(state, `🗡 近战 ${A.name} vs ${T.name}：造成 ${aDealt} / 受到 ${tDealt}`);
+    log(state, `🗡 近战 ${A.name} vs ${T.name}：造成 ${aDealt} / 受到 ${tDealt}`, "melee", { a: A.name, t: T.name, aDealt, tDealt });
     state.lastCombat = { type: "close", a: A.idx, t: T.idx, shooter: aRaw.slice(), defender: tRaw.slice(),
       aSkulls: aSk, dSkulls: tSk, dealt: aDealt, taken: tDealt, reload: tReload, selfReload: aReload };
     A.defensePool = 0; A._closeEndedTurn = true;          // close combat ends the active player's turn
