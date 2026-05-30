@@ -136,6 +136,61 @@
     }
     svg.appendChild(g);
   }
+
+  // dark or light "ink" for an icon drawn on top of a given fill color
+  function inkFor(hex) {
+    const c = (hex || "#888").replace("#", "");
+    const r = parseInt(c.slice(0, 2), 16), g = parseInt(c.slice(2, 4), 16), b = parseInt(c.slice(4, 6), 16);
+    return (0.299 * r + 0.587 * g + 0.114 * b) > 140 ? "#0c0e12" : "#f6f8fc";
+  }
+  // Original, thematic per-character emblem (no copyrighted art) — coords are fractions of `s` around (cx,cy).
+  function drawEmblem(add, id, cx, cy, s, ink) {
+    const SW = Math.max(1.1, s * 0.16);
+    const X = f => cx + f * s, Y = f => cy + f * s;
+    const line = (x1, y1, x2, y2, w) => add("line", { x1: X(x1), y1: Y(y1), x2: X(x2), y2: Y(y2), stroke: ink, "stroke-width": w || SW, "stroke-linecap": "round" });
+    const circ = (x, y, r, filled) => add("circle", { cx: X(x), cy: Y(y), r: r * s, fill: filled ? ink : "none", stroke: ink, "stroke-width": SW });
+    const dot = (x, y, r) => add("circle", { cx: X(x), cy: Y(y), r: r * s, fill: ink });
+    const poly = (pts, filled) => add("polygon", { points: pts.map(p => X(p[0]) + "," + Y(p[1])).join(" "), fill: filled ? ink : "none", stroke: ink, "stroke-width": SW, "stroke-linejoin": "round", "stroke-linecap": "round" });
+    const rrect = (x, y, w, h, filled) => add("rect", { x: X(x), y: Y(y), width: w * s, height: h * s, rx: s * 0.1, fill: filled ? ink : "none", stroke: ink, "stroke-width": SW });
+    switch (id) {
+      case "betty": circ(0, 0.18, 0.45, true); line(0.30, -0.14, 0.50, -0.50); dot(0.55, -0.56, 0.12); break;            // bomb
+      case "blitz": poly([[0.10, -0.60], [-0.32, 0.06], [-0.04, 0.06], [-0.18, 0.60], [0.34, -0.12], [0.04, -0.12]], true); break; // lightning
+      case "butcher": poly([[-0.50, -0.45], [0.15, -0.50], [0.18, 0.05], [-0.50, 0.18]], true); line(0.18, -0.22, 0.55, -0.30, SW * 1.7); break; // cleaver
+      case "duke": poly([[-0.55, 0.30], [0.42, -0.34], [0.52, -0.18], [-0.45, 0.46]], true); poly([[-0.55, 0.30], [-0.45, 0.46], [-0.66, 0.52], [-0.72, 0.36]], true); break; // rifle
+      case "sora": poly([[-0.45, 0.14], [0, -0.28], [0.45, 0.14]], false); poly([[-0.45, 0.50], [0, 0.08], [0.45, 0.50]], false); break; // speed chevrons
+      case "dax": poly([[0, -0.55], [0.45, -0.34], [0.45, 0.06], [0, 0.56], [-0.45, 0.06], [-0.45, -0.34]], false); line(-0.20, 0.02, -0.04, 0.22); line(-0.04, 0.22, 0.26, -0.24); break; // shield + check
+      case "korat": rrect(-0.45, -0.12, 0.90, 0.58, false); rrect(-0.52, -0.30, 1.04, 0.20, false); line(0, -0.30, 0, 0.46); circ(-0.13, -0.40, 0.10, false); circ(0.13, -0.40, 0.10, false); break; // gift box
+      case "emmet": rrect(-0.28, -0.52, 0.58, 0.22, true); line(0.02, -0.30, -0.14, 0.55, SW * 1.5); break; // hammer
+      case "echo": add("path", { d: `M ${X(-0.55)} ${Y(0)} Q ${X(0)} ${Y(-0.42)} ${X(0.55)} ${Y(0)} Q ${X(0)} ${Y(0.42)} ${X(-0.55)} ${Y(0)} Z`, fill: "none", stroke: ink, "stroke-width": SW, "stroke-linejoin": "round" }); dot(0, 0, 0.17); break; // eye
+      case "diana": circ(0, 0, 0.44, false); line(0, -0.62, 0, -0.26); line(0, 0.26, 0, 0.62); line(-0.62, 0, -0.26, 0); line(0.26, 0, 0.62, 0); dot(0, 0, 0.08); break; // crosshair
+      case "kaiser": poly([[-0.50, 0.30], [-0.50, -0.28], [-0.20, 0.04], [0, -0.42], [0.20, 0.04], [0.50, -0.28], [0.50, 0.30]], true); rrect(-0.50, 0.28, 1.0, 0.16, true); break; // crown
+      case "codybuzz": dot(0, 0, 0.18); line(-0.40, -0.40, 0.40, 0.40); line(0.40, -0.40, -0.40, 0.40); circ(-0.45, -0.45, 0.15, false); circ(0.45, -0.45, 0.15, false); circ(-0.45, 0.45, 0.15, false); circ(0.45, 0.45, 0.15, false); break; // drone
+      default: { // generic: a target ring (covers any future character)
+        circ(0, 0, 0.40, false); dot(0, 0, 0.12);
+      }
+    }
+  }
+  // a colored game-piece standee (board) with the character emblem
+  function drawMini(svg, p, ch, cx, cy, active) {
+    const g = svgEl("g", { "pointer-events": "none" });
+    const add = (tag, a) => { const e = svgEl(tag, a); g.appendChild(e); return e; };
+    const hw = 10.5, top = cy - 16, mid = cy - 8, bot = cy + 12;
+    const body = `M ${cx - hw} ${bot} L ${cx - hw} ${mid} Q ${cx - hw} ${top} ${cx} ${top} Q ${cx + hw} ${top} ${cx + hw} ${mid} L ${cx + hw} ${bot} Z`;
+    add("ellipse", { cx, cy: cy + 13, rx: 11, ry: 3.4, fill: "#000", "fill-opacity": 0.32 });           // ground shadow
+    if (active) add("path", { d: body, fill: "none", stroke: "#fff", "stroke-width": 5, "stroke-linejoin": "round" }); // active halo
+    add("path", { d: body, fill: p.color, stroke: "#0c0e12", "stroke-width": 1.6, "stroke-linejoin": "round" });       // standee
+    drawEmblem(add, p.character, cx, cy - 3, 7, inkFor(p.color));                                        // emblem
+    svg.appendChild(g);
+  }
+  // framed emblem badge for HTML panels (returns an <svg> markup string)
+  function emblemSVG(p, ch, px) {
+    const root = svgEl("svg", { viewBox: "0 0 100 100", width: px, height: px, class: "emblem" });
+    const add = (tag, a) => { const e = svgEl(tag, a); root.appendChild(e); return e; };
+    add("rect", { x: 5, y: 5, width: 90, height: 90, rx: 16, fill: p.color, "fill-opacity": 0.16, stroke: p.color, "stroke-width": 2.5 });
+    add("circle", { cx: 50, cy: 54, r: 30, fill: p.color, stroke: "#0c0e12", "stroke-width": 1.5 });
+    drawEmblem(add, p.character, 50, 52, 24, inkFor(p.color));
+    return root.outerHTML;
+  }
   function renderBoard() {
     const svg = $("board"); svg.innerHTML = "";
     const hl = highlightSet();
@@ -182,18 +237,14 @@
       if (c.trap != null) svg.appendChild(Object.assign(svgEl("text", { x: x - 18, y: y + 20, "font-size": "14", fill: "#e3424b" }), { textContent: "⚠" }));
       c.hideouts.forEach((ownerIdx, hi) => { const op = G.players[ownerIdx]; if (!op) return; const hx = x + 13 + hi * 7, hy = y - 14; svg.appendChild(svgEl("polygon", { points: `${hx - 6},${hy + 3} ${hx},${hy - 5} ${hx + 6},${hy + 3}`, fill: op.color, stroke: "#0c0e12", "stroke-width": 1, "pointer-events": "none" })); svg.appendChild(svgEl("rect", { x: hx - 5, y: hy + 3, width: 10, height: 7, fill: op.color, stroke: "#0c0e12", "stroke-width": 1, "pointer-events": "none" })); });
     }
-    // minis — character figurine standees (fall back to a colored disc if art is missing)
+    // minis — original colored game-piece standees with per-character emblem (no art files)
     for (const c of cells) {
       const here = E.playersOnHex(G, c.q, c.r);
       const { x, y } = hexToPixel(c.q, c.r);
       here.forEach((p, i) => {
         const ang = here.length > 1 ? (Math.PI * 2 * i / here.length) : 0;
         const ox = here.length > 1 ? Math.cos(ang) * 14 : 0, oy = here.length > 1 ? Math.sin(ang) * 10 : 0;
-        const cx = x + ox, cy = y + oy, active = p.idx === G.activePlayer, ch = CHAR[p.character];
-        // procedural "mini": a colored token disc with the character's initial (+ white ring when active)
-        if (active) svg.appendChild(svgEl("circle", { cx, cy, r: 14, fill: "none", stroke: "#fff", "stroke-width": 2, "pointer-events": "none" }));
-        svg.appendChild(svgEl("circle", { cx, cy, r: 11, fill: p.color, stroke: "#0c0e12", "stroke-width": 1.5, "pointer-events": "none" }));
-        svg.appendChild(Object.assign(svgEl("text", { x: cx, y: cy + 4, "text-anchor": "middle", "font-size": "12", "font-weight": "800", fill: "#0c0e12", "pointer-events": "none" }), { textContent: (((ch && (ch.cn || ch.name)) || p.name) + " ")[0] }));
+        drawMini(svg, p, CHAR[p.character], x + ox, y + oy, p.idx === G.activePlayer);
       });
     }
   }
@@ -207,7 +258,7 @@
       const assigned = p.assignedDice && p.assignedDice.length ? ` · 已用 ${p.assignedDice.join("/")}` : "";
       const combat = p.combatLine && p.combatLine.length ? ` · 战斗列 ${p.combatLine.join("/")}` : "";
       const ch = CHAR[p.character];
-      const portrait = ch && ch.mini ? `<img class="pportrait" src="${ch.mini}" alt="${p.name}" onerror="this.style.display='none'">` : "";
+      const portrait = ch ? `<span class="pportrait">${emblemSVG(p, ch, 40)}</span>` : "";
       const persona = p.persona ? `<div class="ppersona">「${p.persona.name}」${p.persona.archetype}</div>` : "";
       d.innerHTML = `<div class="prow">${portrait}<div class="pinfo">` +
         `<div class="pname">${p.name}${p.human ? " (你)" : ""}${p.team != null ? ` <span class="team-badge team${p.team}">队${p.team + 1}</span>` : ""}${p.idx === G.activePlayer ? " ◀" : ""}</div>` +
@@ -512,7 +563,7 @@
       </div>
       <div class="cb-boardmain">
         <div class="cb-actions">${[["➤", "移动"], ["✋", "掠夺"], ["⚙", "启动"], ["🔨", "建造"], ["✚", "治疗"], ["🔫", "远程"], ["🗡", "近战"]].map(a => `<div class="cb-act"><span class="cb-act-i">${a[0]}</span>${a[1]}</div>`).join("")}</div>
-        <div class="cb-art"><img class="cb-card" src="${ch.card}" alt="${p.name}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'cb-cardfallback',textContent:'${p.name}'}))"></div>
+        <div class="cb-art">${emblemSVG(p, ch, 200)}</div>
         <div class="cb-side">
           ${ch.ability ? `<div class="cb-ability"><b>${ch.ability.name}</b><div>${ch.ability.text}</div></div>` : ""}
           ${p.persona ? `<div class="cb-persona">「${p.persona.name}」${p.persona.archetype}<div>${p.persona.blurb}</div></div>` : ""}
