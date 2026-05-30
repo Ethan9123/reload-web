@@ -49,6 +49,7 @@
       "slotcn.head": "头部", "slotcn.torso": "躯干", "slotcn.hand": "手持", "slotcn.special": "道具",
       "terr.tower": "中央塔", "terr.jungle": "丛林", "terr.plains": "平原", "terr.mountain": "山地", "terr.village": "村庄", "terr.maze": "迷宫", "terr.solar": "太阳能阵列",
       "cs.title": "选择你的角色", "cs.subtitle": "挑一个你喜欢的角色参战 · 出场顺位随机", "cs.back": "返回", "cs.start": "开始游戏",
+      "over.superstar": "（超级巨星）", "over.playAgain": "再来一局", "over.close": "查看棋盘",
     },
     en: {
       "legend.move": "Move/Reach", "legend.atk": "Attackable", "legend.you": "You", "legend.loot": "✋ Loot here",
@@ -82,6 +83,7 @@
       "slotcn.head": "Head", "slotcn.torso": "Torso", "slotcn.hand": "Hand", "slotcn.special": "Item",
       "terr.tower": "Tower", "terr.jungle": "Jungle", "terr.plains": "Plains", "terr.mountain": "Mountain", "terr.village": "Village", "terr.maze": "Maze", "terr.solar": "Solar Array",
       "cs.title": "Choose your character", "cs.subtitle": "Pick a character you like — turn order is random", "cs.back": "Back", "cs.start": "Start game",
+      "over.superstar": "(Superstar)", "over.playAgain": "Play again", "over.close": "View board",
     },
     fr: {
       "legend.move": "Déplacer/Portée", "legend.atk": "Attaquable", "legend.you": "Vous", "legend.loot": "✋ Ramasser ici",
@@ -115,6 +117,7 @@
       "slotcn.head": "Tête", "slotcn.torso": "Torse", "slotcn.hand": "Main", "slotcn.special": "Objet",
       "terr.tower": "Tour", "terr.jungle": "Jungle", "terr.plains": "Plaine", "terr.mountain": "Montagne", "terr.village": "Village", "terr.maze": "Labyrinthe", "terr.solar": "Panneaux solaires",
       "cs.title": "Choisissez votre personnage", "cs.subtitle": "Choisissez un personnage qui vous plaît — l'ordre de jeu est aléatoire", "cs.back": "Retour", "cs.start": "Démarrer",
+      "over.superstar": "(Superstar)", "over.playAgain": "Rejouer", "over.close": "Voir le plateau",
     },
     es: {
       "legend.move": "Mover/Alcance", "legend.atk": "Atacable", "legend.you": "Tú", "legend.loot": "✋ Saquear aquí",
@@ -148,6 +151,7 @@
       "slotcn.head": "Cabeza", "slotcn.torso": "Torso", "slotcn.hand": "Mano", "slotcn.special": "Objeto",
       "terr.tower": "Torre", "terr.jungle": "Jungla", "terr.plains": "Llanura", "terr.mountain": "Montaña", "terr.village": "Pueblo", "terr.maze": "Laberinto", "terr.solar": "Panel solar",
       "cs.title": "Elige tu personaje", "cs.subtitle": "Elige un personaje que te guste — el orden de turno es aleatorio", "cs.back": "Atrás", "cs.start": "Empezar",
+      "over.superstar": "(Superstar)", "over.playAgain": "Jugar de nuevo", "over.close": "Ver el tablero",
     },
   };
   let lang = (typeof localStorage !== "undefined" && localStorage.getItem("rl-lang")) || "zh";
@@ -587,10 +591,43 @@
     }));
   }
 
+  // ---- game-over results screen: final standings + play again ----
+  let _overShown = false;
+  function closeOver() { const ov = $("over-overlay"); if (ov) ov.style.display = "none"; }
+  function renderGameOver() {
+    const ov0 = $("over-overlay");
+    if (!G || !G.gameOver) { _overShown = false; if (ov0) ov0.style.display = "none"; return; }
+    if (_overShown) return;                                  // built once; don't rebuild on every render tick
+    _overShown = true;
+    let ov = ov0; if (!ov) { ov = document.createElement("div"); ov.id = "over-overlay"; document.body.appendChild(ov); }
+    const sstar = G.superstar ? " " + T("over.superstar") : "";
+    const title = (G.isTeam && G.winnerTeam != null)
+      ? T("hint.winTeam", { n: G.winnerTeam + 1, fame: E.teamFame(G, G.winnerTeam) })
+      : T("hint.win", { name: G.players[G.winner].name });
+    const fb = p => `🔆${p.fame.beacon} 🩸${p.fame.injury} 💥${p.fame.reload} ⚠${p.fame.trap || 0}` +
+      (p.fame.teamSpirit ? ` 🤝${p.fame.teamSpirit}` : "") + (p.fame.achievement ? ` 🏅${p.fame.achievement}` : "");
+    const ranked = G.players.slice().sort((a, b) => E.totalFame(b) - E.totalFame(a));
+    const rows = ranked.map((p, i) => {
+      const ch = CHAR[p.character], cn = lang === "zh" ? (ch && (ch.cn || ch.name)) : (ch && ch.name);
+      return `<div class="ov-row${p.idx === G.winner ? " win" : ""}">` +
+        `<span class="ov-rank">${i + 1}</span><span class="ov-emb">${emblemSVG(p, ch, 30)}</span>` +
+        `<span class="ov-name"><b style="color:${p.color}">${p.name}</b>${p.human ? " " + T("pc.you") : ""}` +
+        `${p.team != null ? ` <span class="team-badge team${p.team}">${T("pc.team", { n: p.team + 1 })}</span>` : ""}<small>${cn}</small></span>` +
+        `<span class="ov-fame">${E.totalFame(p)}</span><span class="ov-fb">${fb(p)}</span></div>`;
+    }).join("");
+    ov.innerHTML = `<div class="ov-panel"><div class="ov-title">${title}${sstar}</div>` +
+      `<div class="ov-list">${rows}</div>` +
+      `<div class="ov-bar"><button class="small" id="ov-close">${T("over.close")}</button><button id="ov-again">${T("over.playAgain")}</button></div></div>`;
+    ov.style.display = "flex";
+    ov.querySelector("#ov-close").addEventListener("click", closeOver);
+    ov.querySelector("#ov-again").addEventListener("click", () => { closeOver(); $("game-screen").classList.add("hidden"); $("setup-screen").classList.remove("hidden"); });
+  }
+
   function render() {
     renderBoard(); renderPlayers(); renderTop(); renderLog(); renderAchievements(); renderDiplomacy();
     if (G && (G._achSeq || 0) > lastAchSeq) { lastAchSeq = G._achSeq; if (G.lastAchievement) flashAchievement(G.lastAchievement); }
     if (G && G.gameOver && !_overSfx) { _overSfx = true; SFX("win"); } else if (G && !G.gameOver) _overSfx = false;
+    renderGameOver();
   }
 
   async function onHex(key) {

@@ -41,6 +41,23 @@ select, button { font: inherit; padding: 6px 10px; border-radius: 6px; border: 1
 #btn-cs-start:hover:not(:disabled) { filter: brightness(1.08); }
 #btn-cs-start:disabled { opacity: .45; cursor: not-allowed; }
 
+/* ---- game-over results ---- */
+#over-overlay { position: fixed; inset: 0; background: rgba(8,10,14,.72); display: none; align-items: center; justify-content: center; z-index: 60; }
+.ov-panel { background: #161a22; border: 2px solid #2a2f3a; border-radius: 16px; padding: 22px 26px; min-width: 440px; max-width: 92vw; box-shadow: 0 18px 60px rgba(0,0,0,.6); }
+.ov-title { font-size: 24px; font-weight: 800; color: #f4d03f; text-align: center; margin-bottom: 16px; }
+.ov-list { display: flex; flex-direction: column; gap: 6px; }
+.ov-row { display: grid; grid-template-columns: 26px 36px 1fr auto; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: 8px; background: #1b1f28; }
+.ov-row.win { background: #2a2f1c; box-shadow: 0 0 0 1px #f4d03f inset; }
+.ov-rank { font-weight: 800; color: #8a909c; text-align: center; }
+.ov-name b { font-weight: 800; }
+.ov-name small { color: #8a909c; margin-left: 6px; }
+.ov-fame { font-weight: 800; font-size: 18px; color: #e8eef6; justify-self: end; }
+.ov-fb { grid-column: 3 / 5; font-size: 12px; color: #9aa1ad; }
+.ov-bar { display: flex; gap: 12px; justify-content: center; margin-top: 18px; }
+#ov-again { background: #f4d03f; color: #1b1f28; font-weight: 700; cursor: pointer; padding: 10px 22px; }
+#ov-again:hover { filter: brightness(1.08); }
+
 /* ---- game ---- */
 #game-screen { display: flex; flex-direction: column; }
 #topbar { display: flex; align-items: center; gap: 16px; padding: 8px 14px;
