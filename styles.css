@@ -175,7 +175,7 @@ button.small { padding: 4px 10px; font-size: 13px; cursor: pointer; }
 #dice-overlay { display: none; position: fixed; inset: 0; z-index: 60; pointer-events: none;
   background: rgba(8, 10, 14, 0.55); align-items: center; justify-content: center; }
 .dz-panel { background: #161a22; border: 2px solid #2a2f3a; border-radius: 14px; padding: 18px 26px;
-  min-width: 320px; text-align: center; box-shadow: 0 14px 48px rgba(0, 0, 0, 0.55); }
+  min-width: 320px; text-align: center; box-shadow: 0 14px 48px rgba(0, 0, 0, 0.55); position: relative; }
 .dz-title { font-weight: 700; margin-bottom: 12px; }
 .dz-body { display: flex; align-items: center; justify-content: center; gap: 20px; }
 .dz-who { font-size: 12px; font-weight: 700; margin-bottom: 6px; }
@@ -192,8 +192,17 @@ button.small { padding: 4px 10px; font-size: 13px; cursor: pointer; }
 .dz-cap { font-size: 11px; color: #aab0bc; font-weight: 400; }
 @keyframes dz-shake { 0% { transform: translateY(-2px) rotate(-7deg); } 50% { transform: translateY(2px) rotate(7deg); } 100% { transform: translateY(-2px) rotate(-7deg); } }
 .dz-result { margin-top: 14px; font-weight: 700; min-height: 20px; }
-.dz-result.hit { color: #7CFC7C; }
-.dz-result.big { color: #ff6b6b; font-size: 18px; }
+.dz-result.hit { color: #7CFC7C; animation: dz-respop .32s ease-out; }
+.dz-result.big { color: #ff6b6b; font-size: 18px; animation: dz-respop .32s ease-out; }
+@keyframes dz-respop { 0% { transform: scale(.6); opacity: .3; } 60% { transform: scale(1.18); } 100% { transform: scale(1); opacity: 1; } }
+.adie.settled { box-shadow: inset 0 0 0 2px #3a4150; animation: dz-settle .18s ease-out; }
+@keyframes dz-settle { 0% { transform: scale(1.35); } 70% { transform: scale(.92); } 100% { transform: scale(1); } }
+.adie.win { background: #2e7d32; color: #eaffea; box-shadow: 0 0 10px rgba(124,252,124,.7), inset 0 0 0 2px #5fd06f; transform: scale(1.08); }
+.adie.lose { background: #5a1822; color: #d8a0a8; opacity: .6; }
+.dz-pop { position: absolute; top: 42%; left: 50%; transform: translate(-50%,-50%); font-size: 40px; font-weight: 900;
+  text-shadow: 0 2px 10px rgba(0,0,0,.6); pointer-events: none; animation: dz-dmg .9s ease-out forwards; }
+@keyframes dz-dmg { 0% { transform: translate(-50%,-30%) scale(.4); opacity: 0; } 25% { transform: translate(-50%,-50%) scale(1.25); opacity: 1; }
+  60% { transform: translate(-50%,-60%) scale(1); opacity: 1; } 100% { transform: translate(-50%,-95%) scale(.9); opacity: 0; } }
 
 /* ---- generic choice overlay (e.g. heal target) ---- */
 #choice-overlay { display: none; position: fixed; inset: 0; z-index: 70; align-items: center; justify-content: center;

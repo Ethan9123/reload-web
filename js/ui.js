@@ -15,6 +15,76 @@
   const SVGNS = "http://www.w3.org/2000/svg";
   const HEX = 46;
   let G = null, aiRunning = false, _overSfx = false;
+  // ---- i18n: play-guidance strings (legend / banner / speed / combat / hints / meta). {name} etc. are filled by T(). ----
+  const LANG = {
+    zh: {
+      "legend.move": "移动/可达", "legend.atk": "可攻击", "legend.you": "你的位置", "legend.loot": "✋ 当前格可拾取",
+      "legend.dice": "🎲 行动骰", "legend.cost": "移动/建造/治疗各 1 骰 · 上山 2 骰", "legend.para": "跳伞：点黄色虚线格降落", "legend.nodice": "（无骰）",
+      "banner.acting": "{name}（AI）行动中…", "banner.endTurn": "{name} 结束回合",
+      "speed.slow": "🐢 慢速", "speed.med": "🐇 中速", "speed.fast": "⚡ 快速",
+      "cb.atk": "攻", "cb.def": "守", "cb.roll": "掷骰…", "cb.compare": "逐列比对 ▶",
+      "cb.skullA": "攻方多 {n}", "cb.skullD": "守方多 {n}", "cb.skullTie": "持平",
+      "cb.hit": "命中！造成 {n} 点伤", "cb.nohit": "未造成伤害", "cb.reload": "💥 {name} 被迫 RELOAD！",
+      "toast.hit": "命中 {n}", "toast.nohit": "未命中", "toast.reload": "💥 RELOAD！",
+      "hint.win": "🏆 {name} 获胜", "hint.winTeam": "🏆 队伍 {n} 获胜（队伍名望 {fame}）", "hint.acting": "{name}（AI）行动中…",
+      "hint.para": "跳伞：点击中央塔或相邻格", "hint.your": "你的回合：点相邻格移动{loot}{upload}{atk} · 或结束回合",
+      "hint.loot": " · 点当前格拾取", "hint.upload": " · 点中央塔上缴信标", "hint.atk": " · 点红框敌人攻击",
+      "meta.players": "人", "meta.round": "回合", "meta.events": "事件", "mode.br": "大逃杀", "mode.team": "团队赛",
+      "diff.easy": "简单", "diff.medium": "普通", "diff.hard": "困难", "diff.expert": "专家",
+    },
+    en: {
+      "legend.move": "Move/Reach", "legend.atk": "Attackable", "legend.you": "You", "legend.loot": "✋ Loot here",
+      "legend.dice": "🎲 Action dice", "legend.cost": "Move/Build/Heal: 1 die · Mountain: 2", "legend.para": "Drop: click a yellow dashed hex", "legend.nodice": "(no dice)",
+      "banner.acting": "{name} (AI) is thinking…", "banner.endTurn": "{name} ends turn",
+      "speed.slow": "🐢 Slow", "speed.med": "🐇 Normal", "speed.fast": "⚡ Fast",
+      "cb.atk": "ATK", "cb.def": "DEF", "cb.roll": "rolling…", "cb.compare": "compare ▶",
+      "cb.skullA": "ATK +{n}", "cb.skullD": "DEF +{n}", "cb.skullTie": "tie",
+      "cb.hit": "Hit! {n} damage", "cb.nohit": "No damage", "cb.reload": "💥 {name} forced to RELOAD!",
+      "toast.hit": "Hit {n}", "toast.nohit": "Missed", "toast.reload": "💥 RELOAD!",
+      "hint.win": "🏆 {name} wins", "hint.winTeam": "🏆 Team {n} wins (team fame {fame})", "hint.acting": "{name} (AI) is thinking…",
+      "hint.para": "Drop: click the central tower or an adjacent hex", "hint.your": "Your turn: click an adjacent hex to move{loot}{upload}{atk} · or end turn",
+      "hint.loot": " · click your hex to loot", "hint.upload": " · click the tower to turn in beacons", "hint.atk": " · click a red-framed enemy to attack",
+      "meta.players": "p", "meta.round": "Round", "meta.events": "Events", "mode.br": "Battle Royale", "mode.team": "Team",
+      "diff.easy": "Easy", "diff.medium": "Normal", "diff.hard": "Hard", "diff.expert": "Expert",
+    },
+    fr: {
+      "legend.move": "Déplacer/Portée", "legend.atk": "Attaquable", "legend.you": "Vous", "legend.loot": "✋ Ramasser ici",
+      "legend.dice": "🎲 Dés d'action", "legend.cost": "Déplacer/Construire/Soigner : 1 dé · Montagne : 2", "legend.para": "Saut : cliquez une case en pointillés jaunes", "legend.nodice": "(aucun dé)",
+      "banner.acting": "{name} (IA) réfléchit…", "banner.endTurn": "{name} termine son tour",
+      "speed.slow": "🐢 Lent", "speed.med": "🐇 Normal", "speed.fast": "⚡ Rapide",
+      "cb.atk": "ATT", "cb.def": "DÉF", "cb.roll": "lancer…", "cb.compare": "comparer ▶",
+      "cb.skullA": "ATT +{n}", "cb.skullD": "DÉF +{n}", "cb.skullTie": "égalité",
+      "cb.hit": "Touché ! {n} dégâts", "cb.nohit": "Aucun dégât", "cb.reload": "💥 {name} forcé de RELOAD !",
+      "toast.hit": "Touché {n}", "toast.nohit": "Manqué", "toast.reload": "💥 RELOAD !",
+      "hint.win": "🏆 {name} gagne", "hint.winTeam": "🏆 Équipe {n} gagne (renommée {fame})", "hint.acting": "{name} (IA) réfléchit…",
+      "hint.para": "Saut : cliquez la tour centrale ou une case adjacente", "hint.your": "Votre tour : cliquez une case adjacente pour vous déplacer{loot}{upload}{atk} · ou terminez",
+      "hint.loot": " · cliquez votre case pour ramasser", "hint.upload": " · cliquez la tour pour rendre les balises", "hint.atk": " · cliquez un ennemi encadré en rouge",
+      "meta.players": "j", "meta.round": "Tour", "meta.events": "Événements", "mode.br": "Battle Royale", "mode.team": "Équipe",
+      "diff.easy": "Facile", "diff.medium": "Normal", "diff.hard": "Difficile", "diff.expert": "Expert",
+    },
+    es: {
+      "legend.move": "Mover/Alcance", "legend.atk": "Atacable", "legend.you": "Tú", "legend.loot": "✋ Saquear aquí",
+      "legend.dice": "🎲 Dados de acción", "legend.cost": "Mover/Construir/Curar: 1 dado · Montaña: 2", "legend.para": "Salto: clic en casilla amarilla punteada", "legend.nodice": "(sin dados)",
+      "banner.acting": "{name} (IA) está pensando…", "banner.endTurn": "{name} termina el turno",
+      "speed.slow": "🐢 Lento", "speed.med": "🐇 Normal", "speed.fast": "⚡ Rápido",
+      "cb.atk": "ATQ", "cb.def": "DEF", "cb.roll": "tirando…", "cb.compare": "comparar ▶",
+      "cb.skullA": "ATQ +{n}", "cb.skullD": "DEF +{n}", "cb.skullTie": "empate",
+      "cb.hit": "¡Impacto! {n} de daño", "cb.nohit": "Sin daño", "cb.reload": "💥 ¡{name} forzado a RELOAD!",
+      "toast.hit": "Impacto {n}", "toast.nohit": "Fallo", "toast.reload": "💥 ¡RELOAD!",
+      "hint.win": "🏆 {name} gana", "hint.winTeam": "🏆 Equipo {n} gana (fama {fame})", "hint.acting": "{name} (IA) está pensando…",
+      "hint.para": "Salto: clic en la torre central o una casilla adyacente", "hint.your": "Tu turno: clic en una casilla adyacente para mover{loot}{upload}{atk} · o termina",
+      "hint.loot": " · clic en tu casilla para saquear", "hint.upload": " · clic en la torre para entregar balizas", "hint.atk": " · clic en un enemigo con marco rojo",
+      "meta.players": "j", "meta.round": "Ronda", "meta.events": "Eventos", "mode.br": "Battle Royale", "mode.team": "Equipo",
+      "diff.easy": "Fácil", "diff.medium": "Normal", "diff.hard": "Difícil", "diff.expert": "Experto",
+    },
+  };
+  let lang = (typeof localStorage !== "undefined" && localStorage.getItem("rl-lang")) || "zh";
+  function T(key, vars) {
+    const d = LANG[lang] || LANG.zh;
+    let s = d[key] != null ? d[key] : (LANG.zh[key] != null ? LANG.zh[key] : key);
+    if (vars) for (const k in vars) s = s.split("{" + k + "}").join(vars[k]);
+    return s;
+  }
   const SFX = (n) => { try { if (RL.sfx && RL.sfx[n]) RL.sfx[n](); } catch (e) { } };   // play a procedural sound (no-op if muted / unavailable)
   function shake(px) {   // brief screen-shake on the board (impact feedback)
     const el = $("board-wrap"); if (!el) return;
@@ -276,18 +346,19 @@
   function renderTop() {
     const p = E.curP(G);
     let hint = "";
+    const sstar = G.superstar ? "（Superstar）" : "";
     if (G.gameOver) hint = (G.isTeam && G.winnerTeam != null)
-      ? `🏆 队伍 ${G.winnerTeam + 1} 获胜${G.superstar ? "（Superstar）" : ""}（队伍名望 ${E.teamFame(G, G.winnerTeam)}）`
-      : `🏆 ${G.players[G.winner].name} 获胜${G.superstar ? "（Superstar）" : ""}`;
-    else if (!p.human) hint = `${p.name}（AI）行动中…`;
-    else if (G.needsParachute) hint = "跳伞：点击中央塔或相邻格";
-    else { const h = highlightSet(); hint = `你的回合：点相邻格移动${h.loot ? " · 点当前格拾取" : ""}${E.canUpload(G, p) ? " · 点中央塔上缴信标" : ""}${h.atk.size ? " · 点红框敌人攻击" : ""} · 或结束回合`; }
+      ? T("hint.winTeam", { n: G.winnerTeam + 1, fame: E.teamFame(G, G.winnerTeam) }) + sstar
+      : T("hint.win", { name: G.players[G.winner].name }) + sstar;
+    else if (!p.human) hint = T("hint.acting", { name: p.name });
+    else if (G.needsParachute) hint = T("hint.para");
+    else { const h = highlightSet(); hint = T("hint.your", { loot: h.loot ? T("hint.loot") : "", upload: E.canUpload(G, p) ? T("hint.upload") : "", atk: h.atk.size ? T("hint.atk") : "" }); }
     const le = (G.lastEvent && D.EVENTS[G.lastEvent]) ? ` · ⚡${D.EVENTS[G.lastEvent].name}` : "";
-    const diffCN = { easy: "简单", medium: "普通", hard: "困难", expert: "专家" }[G.difficulty] || "普通";
-    let modeLabel = "大逃杀";
-    if (G.isTeam) { const ts = [...new Set(G.players.map(p => p.team))].sort((a, b) => a - b); modeLabel = "团队赛 " + ts.map(t => `队${t + 1} ${E.teamFame(G, t)}`).join(" : "); }
+    const diffCN = T("diff." + (G.difficulty || "medium"));
+    let modeLabel = T("mode.br");
+    if (G.isTeam) { const ts = [...new Set(G.players.map(p => p.team))].sort((a, b) => a - b); modeLabel = T("mode.team") + " " + ts.map(t => `${t + 1}:${E.teamFame(G, t)}`).join(" / "); }
     modeLabel += ` · ${diffCN}`;
-    $("game-info").textContent = `${G.map} · ${G.numPlayers}人 · ${modeLabel} · 第${G.round}回合 · 事件${G.eventsResolved}/${G.eventTotal}${le} — ${hint}`;
+    $("game-info").textContent = `${G.map} · ${G.numPlayers}${T("meta.players")} · ${modeLabel} · ${T("meta.round")} ${G.round} · ${T("meta.events")} ${G.eventsResolved}/${G.eventTotal}${le} — ${hint}`;
     const human = !G.gameOver && p.human, showAct = human && !G.needsParachute;
     const setBtn = (id, ok) => { const bt = $(id); if (!bt) return; bt.disabled = !ok; bt.classList.toggle("hidden", !human); };
     setBtn("btn-end", human && !G.needsParachute);
@@ -307,19 +378,19 @@
     const leg = ensureLegend();
     if (G.gameOver || !human) { leg.classList.remove("show"); return; }
     if (G.needsParachute) {
-      leg.innerHTML = `<span class="lg-item"><i class="lg-sw para"></i>跳伞：点黄色虚线格降落</span>`;
+      leg.innerHTML = `<span class="lg-item"><i class="lg-sw para"></i>${T("legend.para")}</span>`;
     } else {
       const h = highlightSet();
       const dice = Math.max(0, p.defensePool), boost = p.boostDice || 0, real = Math.max(0, dice - boost);
-      const pips = "●".repeat(real) + (boost ? "⚡".repeat(boost) : "") || "（无骰）";
+      const pips = ("●".repeat(real) + (boost ? "⚡".repeat(boost) : "")) || T("legend.nodice");
       leg.innerHTML =
-        `<span class="lg-item"><i class="lg-sw move"></i>移动/可达</span>` +
-        (h.atk.size ? `<span class="lg-item"><i class="lg-sw atk"></i>可攻击</span>` : "") +
-        `<span class="lg-item"><i class="lg-sw cur"></i>你的位置</span>` +
-        (h.loot ? `<span class="lg-item">✋ 当前格可拾取</span>` : "") +
+        `<span class="lg-item"><i class="lg-sw move"></i>${T("legend.move")}</span>` +
+        (h.atk.size ? `<span class="lg-item"><i class="lg-sw atk"></i>${T("legend.atk")}</span>` : "") +
+        `<span class="lg-item"><i class="lg-sw cur"></i>${T("legend.you")}</span>` +
+        (h.loot ? `<span class="lg-item">${T("legend.loot")}</span>` : "") +
         `<span class="lg-sep"></span>` +
-        `<span class="lg-item lg-dice">🎲 行动骰 <b>${pips}</b></span>` +
-        `<span class="lg-item lg-dim">移动/建造/治疗各 1 骰 · 上山 2 骰</span>`;
+        `<span class="lg-item lg-dice">${T("legend.dice")} <b>${pips}</b></span>` +
+        `<span class="lg-item lg-dim">${T("legend.cost")}</span>`;
     }
     leg.classList.add("show");
   }
@@ -453,7 +524,9 @@
 
   // ---- AI turn visualization: telegraph who's acting, animate the move, surface combat ----
   let aiDelay = 650;                                   // ms pause between AI turns (cycled by #btn-speed)
-  const AI_SPEEDS = [{ ms: 1100, label: "🐢 慢速" }, { ms: 650, label: "🐇 中速" }, { ms: 240, label: "⚡ 快速" }];
+  let aiSpeedIdx = 1;
+  const AI_SPEEDS = [{ ms: 1100, key: "speed.slow" }, { ms: 650, key: "speed.med" }, { ms: 240, key: "speed.fast" }];
+  function applySpeed() { aiDelay = AI_SPEEDS[aiSpeedIdx].ms; const sb = $("btn-speed"); if (sb) sb.textContent = T(AI_SPEEDS[aiSpeedIdx].key); }
   function ensureAiBanner() {
     let b = $("ai-banner");
     if (!b) { b = document.createElement("div"); b.id = "ai-banner"; ($("board-wrap") || document.body).appendChild(b); }
@@ -486,16 +559,16 @@
     }).then(() => g.remove());
   }
   function combatToast(rep) {                           // compact AI-vs-AI combat readout (no full modal)
-    const A = G.players[rep.a], T = G.players[rep.t];
+    const A = G.players[rep.a], Tp = G.players[rep.t];
     const icon = rep.type === "ranged" ? "🔫" : "🗡";
-    const res = rep.reload ? `💥 RELOAD！` : (rep.dealt > 0 ? `命中 ${rep.dealt}` : "未命中");
-    aiBanner(`${icon} <b style="color:${A.color}">${A.name}</b> → <b style="color:${T.color}">${T.name}</b> · ${res}`, A.color);
+    const res = rep.reload ? T("toast.reload") : (rep.dealt > 0 ? T("toast.hit", { n: rep.dealt }) : T("toast.nohit"));
+    aiBanner(`${icon} <b style="color:${A.color}">${A.name}</b> → <b style="color:${Tp.color}">${Tp.name}</b> · ${res}`, A.color);
     if (rep.reload) { SFX("reload"); shake(9); } else if (rep.dealt > 0) { SFX(rep.type === "close" ? "melee" : "shoot"); shake(4); }
     return sleep(Math.max(420, aiDelay));
   }
   function summarizeTurn(p, newLines) {                 // build a one-line "what the AI did" from the new log
     const mine = newLines.filter(l => l.includes(p.name)).reverse();   // chronological
-    const txt = mine.slice(0, 2).join(" · ") || `${p.name} 结束回合`;
+    const txt = mine.slice(0, 2).join(" · ") || T("banner.endTurn", { name: p.name });
     return txt.length > 64 ? txt.slice(0, 63) + "…" : txt;
   }
 
@@ -506,7 +579,7 @@
       const p = E.curP(G);
       const beforePos = p.pos ? { q: p.pos.q, r: p.pos.r } : null;
       const beforeCombat = G.lastCombat, beforeLen = G.log.length, seq = G._trapSeq || 0;
-      aiBanner(`${p.name}（AI）行动中…`, p.color); pulseActing(p);
+      aiBanner(T("banner.acting", { name: p.name }), p.color); pulseActing(p);
       await sleep(Math.min(360, aiDelay));
 
       RL.ai.takeTurn(G);
@@ -718,20 +791,36 @@
     rEl.textContent = resultText || ""; if (resultClass) rEl.classList.add(resultClass);
     await sleep(850); ov.style.display = "none";
   }
+  // a big damage number that punches up over the dice overlay and fades
+  function dmgPopup(ov, text, color) {
+    const panel = ov.querySelector(".dz-panel") || ov;
+    const el = document.createElement("div"); el.className = "dz-pop"; el.textContent = text; el.style.color = color;
+    panel.appendChild(el);
+    setTimeout(() => el.remove(), 900);
+  }
+  // flash the target's hex on the board (impact lands on the actual piece)
+  function flashMini(idx, color) {
+    const t = G.players[idx]; if (!t || !t.pos) return;
+    const svg = $("board"), g = vfxGroup(); if (!svg || !g) return;
+    const { x, y } = hexToPixel(t.pos.q, t.pos.r);
+    const ring = svgEl("circle", { cx: x, cy: y, r: 13, fill: color, "fill-opacity": 0.5, stroke: color, "stroke-width": 3, "pointer-events": "none" });
+    g.appendChild(ring);
+    animateRAF(520, k => { ring.setAttribute("r", (13 + k * 22).toFixed(1)); ring.setAttribute("opacity", (1 - k).toFixed(2)); }).then(() => g.remove());
+  }
   // multi-phase combat: roll -> skull compare -> combat-line row-by-row -> result
   async function animateCombat(rep) {
     if (!rep) return;
-    const A = G.players[rep.a], T = G.players[rep.t];
+    const A = G.players[rep.a], Tp = G.players[rep.t];
     const ov = ensureDiceOverlay();
     ov.querySelector(".dz-title").textContent = rep.type === "ranged"
-      ? `${A.name} 🔫 ${rep.weapon || "远程"} → ${T.name}`
-      : `${A.name} 🗡 近战 → ${T.name}`;
+      ? `${A.name} 🔫 ${rep.weapon || ""} → ${Tp.name}`
+      : `${A.name} 🗡 → ${Tp.name}`;
     const rEl = ov.querySelector(".dz-result"); rEl.textContent = ""; rEl.className = "dz-result";
     const body = ov.querySelector(".dz-body");
     body.innerHTML =
-      `<div class="dz-side"><div class="dz-who" style="color:${A.color}">${A.name}（攻）</div><div class="dz-dice" id="dzA"></div></div>` +
-      `<div class="dz-vs" id="dzMid">掷骰…</div>` +
-      `<div class="dz-side"><div class="dz-who" style="color:${T.color}">${T.name}（守）</div><div class="dz-dice" id="dzD"></div></div>`;
+      `<div class="dz-side"><div class="dz-who" style="color:${A.color}">${A.name}（${T("cb.atk")}）</div><div class="dz-dice" id="dzA"></div></div>` +
+      `<div class="dz-vs" id="dzMid">${T("cb.roll")}</div>` +
+      `<div class="dz-side"><div class="dz-who" style="color:${Tp.color}">${Tp.name}（${T("cb.def")}）</div><div class="dz-dice" id="dzD"></div></div>`;
     ov.style.display = "flex";
     const aWrap = ov.querySelector("#dzA"), dWrap = ov.querySelector("#dzD"), mid = ov.querySelector("#dzMid");
     const aArr = rep.shooter || [], dArr = rep.defender || [];
@@ -746,7 +835,7 @@
     await sleep(450);
     // PHASE 2 — skull step
     const aS = rep.aSkulls || 0, dS = rep.dSkulls || 0;
-    const skTxt = aS > dS ? `攻方多 ${aS - dS}` : dS > aS ? `守方多 ${dS - aS}` : "持平";
+    const skTxt = aS > dS ? T("cb.skullA", { n: aS - dS }) : dS > aS ? T("cb.skullD", { n: dS - aS }) : T("cb.skullTie");
     mid.innerHTML = `💀 ${aS} : ${dS}<br><span class="dz-cap">${skTxt}</span>`;
     await sleep(950);
     // PHASE 3 — combat line, row by row (numeric, high->low)
@@ -755,7 +844,7 @@
     // row-by-row compare, so drop them here too (engine trims them in doRanged/doClose).
     if (dS > aS) aNum.splice(Math.max(0, aNum.length - (dS - aS)), dS - aS);
     else if (aS > dS) dNum.splice(Math.max(0, dNum.length - (aS - dS)), aS - dS);
-    mid.innerHTML = `逐列比对 ▶`;
+    mid.innerHTML = T("cb.compare");
     aWrap.innerHTML = aNum.map(v => `<span class="adie settled">${v}</span>`).join("") || '<i class="muted">—</i>';
     dWrap.innerHTML = dNum.map(v => `<span class="adie settled">${v}</span>`).join("") || '<i class="muted">—</i>';
     const aN = [...aWrap.querySelectorAll(".adie")], dN = [...dWrap.querySelectorAll(".adie")];
@@ -766,12 +855,12 @@
       else if (av != null) aN[i].classList.add("win"); else if (dv != null) dN[i].classList.add("win");
       await sleep(420);
     }
-    // PHASE 4 — result
+    // PHASE 4 — result (impact feedback scales with the damage dealt)
     rEl.className = "dz-result " + (rep.reload ? "big" : (rep.dealt > 0 ? "hit" : ""));
-    rEl.textContent = rep.reload ? `💥 ${T.name} 被迫 RELOAD！` : (rep.dealt > 0 ? `命中！造成 ${rep.dealt} 点伤` : "未造成伤害");
-    if (rep.reload) { SFX("reload"); shake(14); flashHit("rgba(227,66,75,.32)"); }
-    else if (rep.dealt > 0) { if (rep.type === "close") SFX("melee"); shake(6); flashHit("rgba(255,200,90,.16)"); }
-    await sleep(1100);
+    rEl.textContent = rep.reload ? T("cb.reload", { name: Tp.name }) : (rep.dealt > 0 ? T("cb.hit", { n: rep.dealt }) : T("cb.nohit"));
+    if (rep.reload) { SFX("reload"); shake(16); flashHit("rgba(227,66,75,.34)"); dmgPopup(ov, "💥 RELOAD", "#ff5a4b"); flashMini(rep.t, "#e3424b"); }
+    else if (rep.dealt > 0) { if (rep.type === "close") SFX("melee"); shake(6 + rep.dealt * 4); flashHit("rgba(255,200,90,.18)"); dmgPopup(ov, "-" + rep.dealt, "#ffd24a"); flashMini(rep.t, "#ffb020"); }
+    await sleep(rep.dealt > 0 || rep.reload ? 1150 : 850);
     ov.style.display = "none";
   }
   // small styled chooser for the heal target (self vs teammate) — returns the chosen idx, or null if cancelled
@@ -988,11 +1077,12 @@
   }
 
   function init() {
-    if (typeof window !== "undefined") window.__render = render;   // dev/test hook for forced re-render
+    if (typeof window !== "undefined") { window.__render = render; window.__combat = animateCombat; }   // dev/test hooks (forced re-render / play a combat overlay)
     $("btn-start").addEventListener("click", startGame);
     { const tb = $("btn-tutorial"); if (tb) tb.addEventListener("click", startTutorial); }
     { const mb = $("btn-mute"); if (mb) mb.addEventListener("click", () => { const m = RL.sfx ? RL.sfx.toggle() : true; mb.textContent = m ? "🔇" : "🔊"; }); }
-    { const sb = $("btn-speed"); if (sb) { let si = 1; const apply = () => { aiDelay = AI_SPEEDS[si].ms; sb.textContent = AI_SPEEDS[si].label; }; apply(); sb.addEventListener("click", () => { si = (si + 1) % AI_SPEEDS.length; apply(); }); } }
+    { const sb = $("btn-speed"); if (sb) { applySpeed(); sb.addEventListener("click", () => { aiSpeedIdx = (aiSpeedIdx + 1) % AI_SPEEDS.length; applySpeed(); }); } }
+    { const ls = $("lang-select"); if (ls) { ls.value = lang; ls.addEventListener("change", () => { lang = ls.value; try { localStorage.setItem("rl-lang", lang); } catch (e) { } applySpeed(); if (G) render(); }); } }
     $("btn-restart").addEventListener("click", () => location.reload());
     const modeSel = $("mode-select"), pcSel = $("player-count");
     if (modeSel && pcSel) modeSel.addEventListener("change", () => {   // team modes fix the player count
