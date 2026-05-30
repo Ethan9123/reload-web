@@ -38,6 +38,11 @@
       "pc.fame": "名望", "pc.dmg": "伤害", "pc.def": "防御区", "pc.pack": "背包", "pc.carry": "携带信标", "pc.used": "已用", "pc.line": "战斗列", "pc.onmap": "在场", "pc.waitdrop": "待跳伞", "pc.you": "(你)", "pc.team": "队{n}",
       "panel.log": "事件日志", "panel.dip": "外交 / 喊话", "panel.ach": "成就板",
       "map.arcadia": "Arcadia 阿卡迪亚 (3-4)", "map.imperial": "帝国皇朝 (2-3)", "map.transit": "转运站 · 4传送门 (4-6)", "map.ring": "环形争霸战 (4-6)", "map.metropolis": "大都会 · 迷宫 (3-4)", "map.reactor": "反应炉 · 太阳能 (4-6)",
+      "cb.zlabel": "傷害區 / RELOAD", "cb.dmgzone": "伤害区", "cb.you": "你", "cb.loadout": "装备槽位", "cb.equiphint": "分配骰子前可点击更换", "cb.close": "关闭", "cb.slotEmpty": "— 空 —", "cb.slotBlocked": "双手武器占用", "cb.items": "可用道具（自由行动 · 用后弃置）", "cb.use": "使用", "cb.dismantle": "拆除",
+      "act.move": "移动", "act.loot": "掠夺", "act.activate": "启动", "act.build": "建造", "act.heal": "治疗", "act.ranged": "远程", "act.melee": "近战",
+      "fb.beacon": "信标", "fb.injury": "受伤", "fb.reload": "重整", "fb.trap": "陷阱", "fb.ach": "成就",
+      "slot.head": "头盔", "slot.armor": "护甲", "slot.hand1": "手 1", "slot.hand2": "手 2",
+      "tip.heal": "治疗：消耗 1 行动骰掷骰，恢复 1 点伤（骷髅+1）。同格有敌人时不可用。", "tip.barrier": "屏障：消耗 1 行动骰，在当前格空边放置自己的屏障（挡移动/视线，自己可穿）。同格有敌人时不可用。", "tip.hideout": "藏身处：消耗 1 行动骰，在当前格放藏身处（回合在此结束有好处、免疫毒气）。", "tip.trap": "陷阱：消耗 1 行动骰，在当前格埋隐藏陷阱，敌人踩入需猜拳。", "tip.end": "结束回合：已用骰子进战斗列，进入结束阶段并轮到下一位。", "tip.restart": "重新开始游戏。",
     },
     en: {
       "legend.move": "Move/Reach", "legend.atk": "Attackable", "legend.you": "You", "legend.loot": "✋ Loot here",
@@ -60,6 +65,11 @@
       "pc.fame": "Fame", "pc.dmg": "Dmg", "pc.def": "Defense", "pc.pack": "Pack", "pc.carry": "Beacons", "pc.used": "used", "pc.line": "Combat", "pc.onmap": "on map", "pc.waitdrop": "to drop", "pc.you": "(you)", "pc.team": "T{n}",
       "panel.log": "Event log", "panel.dip": "Diplomacy / Taunts", "panel.ach": "Achievements",
       "map.arcadia": "Arcadia (3-4)", "map.imperial": "Imperial Dynasty (2-3)", "map.transit": "Transit Hub · 4 portals (4-6)", "map.ring": "Ring Arena (4-6)", "map.metropolis": "Metropolis · Maze (3-4)", "map.reactor": "Reactor · Solar (4-6)",
+      "cb.zlabel": "Damage / RELOAD", "cb.dmgzone": "Damage", "cb.you": "you", "cb.loadout": "Loadout", "cb.equiphint": "click to swap before assigning dice", "cb.close": "Close", "cb.slotEmpty": "— empty —", "cb.slotBlocked": "two-handed weapon", "cb.items": "Items (free action · discard after use)", "cb.use": "Use", "cb.dismantle": "Dismantle",
+      "act.move": "Move", "act.loot": "Loot", "act.activate": "Activate", "act.build": "Build", "act.heal": "Heal", "act.ranged": "Ranged", "act.melee": "Melee",
+      "fb.beacon": "beacon", "fb.injury": "injury", "fb.reload": "reload", "fb.trap": "trap", "fb.ach": "ach",
+      "slot.head": "Helmet", "slot.armor": "Armor", "slot.hand1": "Hand 1", "slot.hand2": "Hand 2",
+      "tip.heal": "Heal: spend 1 action die to roll and recover 1 damage (skull +1). Unavailable with an enemy on your hex.", "tip.barrier": "Barrier: spend 1 action die to place your barrier on an empty edge (blocks move/LOS, you may pass). Not with an enemy here.", "tip.hideout": "Hideout: spend 1 action die to place a hideout on your hex (ending your turn here has perks; immune to toxin).", "tip.trap": "Trap: spend 1 action die to bury a hidden trap; an enemy stepping in plays rock-paper-scissors.", "tip.end": "End turn: unused dice join your combat line, then the End Phase resolves and play passes on.", "tip.restart": "Restart the game.",
     },
     fr: {
       "legend.move": "Déplacer/Portée", "legend.atk": "Attaquable", "legend.you": "Vous", "legend.loot": "✋ Ramasser ici",
@@ -82,6 +92,11 @@
       "pc.fame": "Renommée", "pc.dmg": "Dégâts", "pc.def": "Défense", "pc.pack": "Sac", "pc.carry": "Balises", "pc.used": "utilisé", "pc.line": "Combat", "pc.onmap": "en jeu", "pc.waitdrop": "à larguer", "pc.you": "(vous)", "pc.team": "É{n}",
       "panel.log": "Journal", "panel.dip": "Diplomatie / Provoc.", "panel.ach": "Succès",
       "map.arcadia": "Arcadia (3-4)", "map.imperial": "Dynastie impériale (2-3)", "map.transit": "Hub de transit · 4 portails (4-6)", "map.ring": "Arène circulaire (4-6)", "map.metropolis": "Métropole · Labyrinthe (3-4)", "map.reactor": "Réacteur · Solaire (4-6)",
+      "cb.zlabel": "Dégâts / RELOAD", "cb.dmgzone": "Dégâts", "cb.you": "vous", "cb.loadout": "Équipement", "cb.equiphint": "cliquez pour changer avant d'assigner les dés", "cb.close": "Fermer", "cb.slotEmpty": "— vide —", "cb.slotBlocked": "arme à 2 mains", "cb.items": "Objets (action gratuite · jeté après usage)", "cb.use": "Utiliser", "cb.dismantle": "Démanteler",
+      "act.move": "Déplacer", "act.loot": "Piller", "act.activate": "Activer", "act.build": "Construire", "act.heal": "Soigner", "act.ranged": "Distance", "act.melee": "Mêlée",
+      "fb.beacon": "balise", "fb.injury": "blessure", "fb.reload": "reload", "fb.trap": "piège", "fb.ach": "succès",
+      "slot.head": "Casque", "slot.armor": "Armure", "slot.hand1": "Main 1", "slot.hand2": "Main 2",
+      "tip.heal": "Soigner : dépensez 1 dé d'action pour lancer et récupérer 1 dégât (crâne +1). Indisponible si un ennemi est sur votre case.", "tip.barrier": "Barrière : dépensez 1 dé d'action pour poser votre barrière sur un bord vide (bloque déplacement/vue, vous passez). Pas si un ennemi est là.", "tip.hideout": "Cachette : dépensez 1 dé d'action pour poser une cachette sur votre case (avantages en y finissant ; immunisé au gaz).", "tip.trap": "Piège : dépensez 1 dé d'action pour enterrer un piège ; un ennemi qui marche dessus joue à pierre-feuille-ciseaux.", "tip.end": "Fin du tour : les dés inutilisés rejoignent la ligne de combat, puis la phase de fin se résout.", "tip.restart": "Recommencer la partie.",
     },
     es: {
       "legend.move": "Mover/Alcance", "legend.atk": "Atacable", "legend.you": "Tú", "legend.loot": "✋ Saquear aquí",
@@ -104,6 +119,11 @@
       "pc.fame": "Fama", "pc.dmg": "Daño", "pc.def": "Defensa", "pc.pack": "Mochila", "pc.carry": "Balizas", "pc.used": "usado", "pc.line": "Combate", "pc.onmap": "en juego", "pc.waitdrop": "por saltar", "pc.you": "(tú)", "pc.team": "E{n}",
       "panel.log": "Registro", "panel.dip": "Diplomacia / Provoc.", "panel.ach": "Logros",
       "map.arcadia": "Arcadia (3-4)", "map.imperial": "Dinastía imperial (2-3)", "map.transit": "Centro de tránsito · 4 portales (4-6)", "map.ring": "Arena circular (4-6)", "map.metropolis": "Metrópolis · Laberinto (3-4)", "map.reactor": "Reactor · Solar (4-6)",
+      "cb.zlabel": "Daño / RELOAD", "cb.dmgzone": "Daño", "cb.you": "tú", "cb.loadout": "Equipo", "cb.equiphint": "clic para cambiar antes de asignar dados", "cb.close": "Cerrar", "cb.slotEmpty": "— vacío —", "cb.slotBlocked": "arma a 2 manos", "cb.items": "Objetos (acción libre · se descarta tras usar)", "cb.use": "Usar", "cb.dismantle": "Desmantelar",
+      "act.move": "Mover", "act.loot": "Saquear", "act.activate": "Activar", "act.build": "Construir", "act.heal": "Curar", "act.ranged": "Distancia", "act.melee": "Cuerpo a cuerpo",
+      "fb.beacon": "baliza", "fb.injury": "herida", "fb.reload": "reload", "fb.trap": "trampa", "fb.ach": "logro",
+      "slot.head": "Casco", "slot.armor": "Armadura", "slot.hand1": "Mano 1", "slot.hand2": "Mano 2",
+      "tip.heal": "Curar: gasta 1 dado de acción para tirar y recuperar 1 de daño (calavera +1). No disponible con un enemigo en tu casilla.", "tip.barrier": "Barrera: gasta 1 dado de acción para colocar tu barrera en un borde vacío (bloquea movimiento/visión, tú pasas). No con un enemigo aquí.", "tip.hideout": "Refugio: gasta 1 dado de acción para colocar un refugio en tu casilla (ventajas al terminar aquí; inmune al gas).", "tip.trap": "Trampa: gasta 1 dado de acción para enterrar una trampa oculta; un enemigo que entre juega piedra-papel-tijera.", "tip.end": "Terminar turno: los dados sin usar se unen a tu línea de combate y se resuelve la fase final.", "tip.restart": "Reiniciar el juego.",
     },
   };
   let lang = (typeof localStorage !== "undefined" && localStorage.getItem("rl-lang")) || "zh";
@@ -697,8 +717,8 @@
     const line = (p.combatLine || []).map(v => dieSpan(v, "line")).join("");
     const inj = Array.from({ length: p.injuries }, () => dieSpan("✕", "inj")).join("");
     const row = (label, html) => `<div class="cb-dice"><span class="cb-dl">${label}</span>${html || '<i class="muted">—</i>'}</div>`;
-    const defLabel = boost ? `防御区(${real}+${boost}⚡)` : `防御区(${p.defensePool})`;
-    return row(defLabel, def) + row(`战斗列`, line) + row(`伤害区(${p.injuries}/${E.INJURY_ZONE})`, inj);
+    const defLabel = boost ? `${T("pc.def")}(${real}+${boost}⚡)` : `${T("pc.def")}(${p.defensePool})`;
+    return row(defLabel, def) + row(T("pc.line"), line) + row(`${T("cb.dmgzone")}(${p.injuries}/${E.INJURY_ZONE})`, inj);
   }
   const SP_ICON = { pain_killer: "💊", energy_drink: "🥤", tactical_explosive: "💣" };
   // Free-action special items usable right now (only on the active human's own board, to match engine's curP).
@@ -706,30 +726,30 @@
     if (!p.human || G.gameOver || G.needsParachute || E.curP(G) !== p) return "";
     const usable = E.usableSpecials(G, p);
     if (!usable.length) return "";
-    const kindCN = (k) => k === "trap" ? "陷阱" : k === "wall" ? "屏障" : "藏身处";
+    const kindCN = (k) => k === "trap" ? T("btn.trap") : k === "wall" ? T("btn.barrier") : T("btn.hideout");
     let rows = "";
     for (const e of usable) {
       const icon = SP_ICON[e.id] || "✦";
       if (e.id === "tactical_explosive") {
         E.explosiveTargets(G, p).forEach((t, i) => {
-          rows += `<button class="cb-use small" data-item="${e.id}" data-ti="${i}">${icon} ${e.name}：拆除${kindCN(t.kind)}</button>`;
+          rows += `<button class="cb-use small" data-item="${e.id}" data-ti="${i}">${icon} ${e.name}：${T("cb.dismantle")}${kindCN(t.kind)}</button>`;
         });
       } else {
-        rows += `<button class="cb-use small" data-item="${e.id}">${icon} 使用 ${e.name}</button>`;
+        rows += `<button class="cb-use small" data-item="${e.id}">${icon} ${T("cb.use")} ${e.name}</button>`;
       }
     }
-    return `<div class="cb-sec"><h3>可用道具（自由行动 · 用后弃置）</h3><div class="cb-uses">${rows}</div></div>`;
+    return `<div class="cb-sec"><h3>${T("cb.items")}</h3><div class="cb-uses">${rows}</div></div>`;
   }
   // fixed-slot loadout (head / torso / hand1 / hand2), HUD-style
   function slotChip(label, id, editable, blocked) {
-    const inner = blocked ? '<div class="cb-slot-x muted">双手武器占用</div>'
+    const inner = blocked ? `<div class="cb-slot-x muted">${T("cb.slotBlocked")}</div>`
       : id ? equipCardHTML(EQ[id], editable ? "unequip" : null)
-        : '<div class="cb-slot-x muted">— 空 —</div>';
+        : `<div class="cb-slot-x muted">${T("cb.slotEmpty")}</div>`;
     return `<div class="cb-slot"><div class="cb-slot-l">${label}</div>${inner}</div>`;
   }
   function loadoutHTML(p, editable) {
     const hand = p.equipped.hand || [], h0 = hand[0], two = h0 && EQ[h0] && EQ[h0].hands === 2;
-    return `<div class="cb-slots">${slotChip("头盔", p.equipped.head, editable)}${slotChip("护甲", p.equipped.torso, editable)}${slotChip("手 1", h0, editable)}${two ? slotChip("手 2", null, false, true) : slotChip("手 2", hand[1], editable)}</div>`;
+    return `<div class="cb-slots">${slotChip(T("slot.head"), p.equipped.head, editable)}${slotChip(T("slot.armor"), p.equipped.torso, editable)}${slotChip(T("slot.hand1"), h0, editable)}${two ? slotChip(T("slot.hand2"), null, false, true) : slotChip(T("slot.hand2"), hand[1], editable)}</div>`;
   }
   function openCharBoard(idx) {
     const p = G.players[idx], ch = CHAR[p.character];
@@ -739,37 +759,37 @@
     const equippedIds = [p.equipped.head, p.equipped.torso, ...(p.equipped.hand || [])].filter(Boolean);
     const packLeft = (p.backpack || []).slice();                 // backpack minus currently-equipped instances
     for (const id of equippedIds) { const i = packLeft.indexOf(id); if (i >= 0) packLeft.splice(i, 1); }
-    const packHTML = packLeft.map(id => equipCardHTML(EQ[id], (editable && EQ[id] && EQ[id].slot !== "special") ? "equip" : null)).join("") || '<span class="muted">空</span>';
+    const packHTML = packLeft.map(id => equipCardHTML(EQ[id], (editable && EQ[id] && EQ[id].slot !== "special") ? "equip" : null)).join("") || `<span class="muted">${T("cb.slotEmpty")}</span>`;
     const f = p.fame;
     ov.innerHTML = `<div class="cb-board" style="--accent:${p.color}">
-      <button class="cb-close" title="关闭">✕</button>
+      <button class="cb-close" title="${T("cb.close")}">✕</button>
       <div class="cb-boardtop">
         <div class="cb-injury">
-          <div class="cb-zlabel">傷害區 / RELOAD</div>
+          <div class="cb-zlabel">${T("cb.zlabel")}</div>
           <div class="cb-skulls">${Array.from({ length: E.INJURY_ZONE }, (_, i) => `<span class="cb-skull${i < p.injuries ? " on" : ""}">${i < p.injuries ? "☠" : ""}</span>`).join("")}</div>
         </div>
         <div class="cb-namewrap">
-          <div class="cb-name2">${ch.cn || ch.name}${p.human ? ' <span class="cb-you">你</span>' : ""}</div>
-          <div class="cb-en">${ch.name}${p.team != null ? ` · 队${p.team + 1}` : ""}</div>
+          <div class="cb-name2">${ch.cn || ch.name}${p.human ? ` <span class="cb-you">${T("cb.you")}</span>` : ""}</div>
+          <div class="cb-en">${ch.name}${p.team != null ? ` · ${T("pc.team", { n: p.team + 1 })}` : ""}</div>
         </div>
         <div class="cb-dial" style="--p:${Math.round(p.injuries / E.INJURY_ZONE * 100)}">
           <div class="cb-dial-in"><div class="cb-dial-t">RELOAD</div><div class="cb-dial-p">${Math.round(p.injuries / E.INJURY_ZONE * 100)}%</div></div>
         </div>
       </div>
       <div class="cb-boardmain">
-        <div class="cb-actions">${[["➤", "移动"], ["✋", "掠夺"], ["⚙", "启动"], ["🔨", "建造"], ["✚", "治疗"], ["🔫", "远程"], ["🗡", "近战"]].map(a => `<div class="cb-act"><span class="cb-act-i">${a[0]}</span>${a[1]}</div>`).join("")}</div>
+        <div class="cb-actions">${[["➤", "act.move"], ["✋", "act.loot"], ["⚙", "act.activate"], ["🔨", "act.build"], ["✚", "act.heal"], ["🔫", "act.ranged"], ["🗡", "act.melee"]].map(a => `<div class="cb-act"><span class="cb-act-i">${a[0]}</span>${T(a[1])}</div>`).join("")}</div>
         <div class="cb-art">${emblemSVG(p, ch, 200)}</div>
         <div class="cb-side">
           ${ch.ability ? `<div class="cb-ability"><b>${ch.ability.name}</b><div>${ch.ability.text}</div></div>` : ""}
           ${p.persona ? `<div class="cb-persona">「${p.persona.name}」${p.persona.archetype}<div>${p.persona.blurb}</div></div>` : ""}
-          <div class="cb-fame">名望 <b>${E.totalFame(p)}</b>　信标${f.beacon}·受伤${f.injury}·重整${f.reload}·陷阱${f.trap || 0}·成就${f.achievement || 0}${p.carryingBeacons ? `　｜ 携带信标 ${p.carryingBeacons}` : ""}</div>
+          <div class="cb-fame">${T("pc.fame")} <b>${E.totalFame(p)}</b>　${T("fb.beacon")}${f.beacon}·${T("fb.injury")}${f.injury}·${T("fb.reload")}${f.reload}·${T("fb.trap")}${f.trap || 0}·${T("fb.ach")}${f.achievement || 0}${p.carryingBeacons ? `　｜ ${T("pc.carry")} ${p.carryingBeacons}` : ""}</div>
           ${p.achievementsWon && p.achievementsWon.length ? `<div class="cb-fame">🏅 ${p.achievementsWon.map(id => (ACH[id] ? ACH[id].cn : id)).join("、")}</div>` : ""}
           ${diceRowsHTML(p)}
         </div>
       </div>
-      <div class="cb-sec"><h3>装备槽位 ${editable ? '<span class="cb-equiphint">分配骰子前可点击更换</span>' : ""}</h3>${loadoutHTML(p, editable)}</div>
+      <div class="cb-sec"><h3>${T("cb.loadout")} ${editable ? `<span class="cb-equiphint">${T("cb.equiphint")}</span>` : ""}</h3>${loadoutHTML(p, editable)}</div>
       ${specialUseHTML(p)}
-      <div class="cb-sec"><h3>背包（${p.backpack.length}）</h3><div class="ecards">${packHTML}</div></div>
+      <div class="cb-sec"><h3>${T("pc.pack")}（${p.backpack.length}）</h3><div class="ecards">${packHTML}</div></div>
     </div>`;
     ov.querySelector(".cb-close").addEventListener("click", closeCharBoard);
     ov.querySelectorAll("[data-eq]").forEach(el => el.addEventListener("click", () => {
@@ -1055,12 +1075,8 @@
     return h + `<div class="tt-hint">点击查看完整角色板</div>`;
   }
   const BTN_TIP = {
-    "btn-heal": "治疗：消耗 1 行动骰掷骰，恢复 1 点伤（骷髅+1）。同格有敌人时不可用。",
-    "btn-barrier": "屏障：消耗 1 行动骰，在当前格空边放置自己的屏障（挡移动/视线，自己可穿）。同格有敌人时不可用。",
-    "btn-hideout": "藏身处：消耗 1 行动骰，在当前格放藏身处（回合在此结束有好处、免疫毒气）。",
-    "btn-trap": "陷阱：消耗 1 行动骰，在当前格埋隐藏陷阱，敌人踩入需猜拳。",
-    "btn-end": "结束回合：已用骰子进战斗列，进入结束阶段并轮到下一位。",
-    "btn-restart": "重新开始游戏。",
+    "btn-heal": "tip.heal", "btn-barrier": "tip.barrier", "btn-hideout": "tip.hideout",
+    "btn-trap": "tip.trap", "btn-end": "tip.end", "btn-restart": "tip.restart",
   };
 
   // ---- interactive 1v1 tutorial: Betty (you) vs Echo (AI) on Imperial Dynasty, step-by-step coach marks ----
@@ -1134,7 +1150,7 @@
     $("btn-barrier").addEventListener("click", () => act(p => { const e = barrierEdgeTowardEnemy(p); return e != null && E.doBuildBarrier(G, e); }, "build"));
     $("btn-hideout").addEventListener("click", () => act(p => E.canBuild(G, p) && E.doBuildHideout(G), "build"));
     $("btn-trap").addEventListener("click", () => act(() => E.doBuildTrap(G), "mine"));
-    Object.keys(BTN_TIP).forEach(id => { const b = $(id); if (b) bindTip(b, BTN_TIP[id]); });
+    Object.keys(BTN_TIP).forEach(id => { const b = $(id); if (b) bindTip(b, () => T(BTN_TIP[id])); });
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
