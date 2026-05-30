@@ -154,7 +154,24 @@
     neutralWalls: [{ q: 0, r: 0, edge: 0 }, { q: 0, r: 0, edge: 3 }],
   };
 
-  const MAPS = { arcadia: ARCADIA, imperial: IMPERIAL, transit: TRANSIT, ring: RING, metropolis: METROPOLIS, reactor: REACTOR };
+  // Crossfire — an original arena: maze chokes + solar arrays flank the tower (the only map to mix both).
+  // The inner ring alternates maze (slow, blocks LOS) and solar (free dice), making the centre tense.
+  const CROSSFIRE = {
+    name: "Crossfire 十字火力", players: "4-6",
+    hexes: [
+      { q: 0, r: 0, terrain: "tower" },
+      { q: 1, r: 0, terrain: "maze" }, { q: 1, r: -1, terrain: "solar" }, { q: 0, r: -1, terrain: "plains" },
+      { q: -1, r: 0, terrain: "maze" }, { q: -1, r: 1, terrain: "solar" }, { q: 0, r: 1, terrain: "plains" },
+      { q: 2, r: 0, terrain: "village" }, { q: 2, r: -1, terrain: "jungle" }, { q: 2, r: -2, terrain: "mountain" },
+      { q: 1, r: -2, terrain: "plains" }, { q: 0, r: -2, terrain: "village" }, { q: -1, r: -1, terrain: "jungle" },
+      { q: -2, r: 0, terrain: "village" }, { q: -2, r: 1, terrain: "jungle" }, { q: -2, r: 2, terrain: "mountain" },
+      { q: -1, r: 2, terrain: "plains" }, { q: 0, r: 2, terrain: "village" }, { q: 1, r: 1, terrain: "jungle" },
+    ],
+    portals: [{ q: 2, r: -2 }, { q: -2, r: 2 }],
+    neutralWalls: [{ q: 0, r: 0, edge: 0 }, { q: 0, r: 0, edge: 2 }, { q: 0, r: 0, edge: 4 }],
+  };
+
+  const MAPS = { arcadia: ARCADIA, imperial: IMPERIAL, transit: TRANSIT, ring: RING, metropolis: METROPOLIS, reactor: REACTOR, crossfire: CROSSFIRE };
 
   // axial neighbor directions (pointy-top), index 0..5
   const HEX_DIRS = [
