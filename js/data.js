@@ -470,7 +470,7 @@
     medium: { blunder: 0.12 },
     hard:   { blunder: 0, rangedAggro: 0.15, closeAggro: 0.45, rushAggro: 0.60 },
     // expert = hard heuristic AS the rollout policy + Monte-Carlo look-ahead (ai.js). rollouts = strength/think-time.
-    expert: { blunder: 0, rangedAggro: 0.15, closeAggro: 0.45, rushAggro: 0.60, rollouts: 16, rolloutDepth: 0 },   // rollouts = rollouts PER candidate (1-ply look-ahead); more = stronger + slower
+    expert: { blunder: 0, rangedAggro: 0.15, closeAggro: 0.45, rushAggro: 0.60, rollouts: 32, rolloutDepth: 0 },   // rollouts PER candidate (1-ply look-ahead); 32 measured > 16 in self-play (tools/ab_expert.js). more = stronger + slower
   };
 
   const DATA = {
