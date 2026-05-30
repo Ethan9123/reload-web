@@ -5,7 +5,7 @@
 Un portage web **open-source, réalisé par un fan, du jeu de société *RELOAD*** — un jeu de dés tactique de type battle royale. Écrit en JavaScript pur (sans framework ni étape de build), il fonctionne partout où il y a un navigateur.
 
 ## ▶️ Jouer en ligne
-**https://ethan9123.github.io/reload-web/** — ouvrez-le dans un navigateur et jouez contre l'IA. (Cliquez sur 🔊 pour couper le son.)
+**https://ethan9123.github.io/reload-web/** — ouvrez-le dans un navigateur et jouez contre l'IA. (Cliquez sur 🔊 pour couper le son ; choisissez votre langue depuis l'écran d'accueil.)
 
 ## 💜 Pourquoi ce projet
 Je suis fan de la chaîne YouTube **下课桌游** et de leur vidéo sur RELOAD : <https://www.youtube.com/watch?v=Hcq1IFnXOLQ>. J'adore ce jeu, et j'ai créé ce projet pour en comprendre vraiment les règles en le ré-implémentant de zéro. Un grand merci à 下课桌游 pour l'inspiration. 🙏
@@ -20,6 +20,7 @@ Ceci est un **projet de fan non officiel et non commercial**, **sans aucun lien 
 - **Difficulté de l'IA :** Facile / Normal / Difficile / **Expert** (recherche par simulations Monte-Carlo)
 - **Effets sonores procéduraux + tremblement d'écran** (synthétisés dans le code, aucun fichier audio)
 - **Tutoriel interactif 1c1** pour les nouveaux joueurs
+- **Entièrement localisé** — jouable en 中文 / English / Français / Español, changeable en direct depuis l'écran d'accueil
 - Un moteur de règles sans interface, déterministe, avec une suite de tests automatisés complète
 
 ## 🕹️ Exécuter en local

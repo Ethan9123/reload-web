@@ -5,7 +5,7 @@
 An open-source, fan-made **web port of *RELOAD*** — a battle-royale tactical dice board game. Written in plain vanilla JavaScript (no framework, no build step), so it runs anywhere a browser does.
 
 ## ▶️ Play online
-**https://ethan9123.github.io/reload-web/** — open in a browser and play against the AI. (Click 🔊 to mute sound.)
+**https://ethan9123.github.io/reload-web/** — open in a browser and play against the AI. (Click 🔊 to mute sound; pick your language from the setup screen.)
 
 ## 💜 Why this exists
 I'm a fan of the YouTube channel **下课桌游 (After-Class Board Games)** and their RELOAD video: <https://www.youtube.com/watch?v=Hcq1IFnXOLQ>. I love this game, and I built this project to truly understand its rules by re-implementing it from scratch. Big thanks to 下课桌游 for the inspiration. 🙏
@@ -20,6 +20,7 @@ This is an **unofficial, non-commercial fan project**, **not affiliated with or 
 - **AI difficulty:** Easy / Medium / Hard / **Expert** (Monte-Carlo rollout look-ahead)
 - **Procedural sound effects + screen-shake** (synthesized in code, zero audio files)
 - **Interactive 1v1 tutorial** for new players
+- **Fully localized** — playable in 中文 / English / Français / Español, switchable live from the setup screen
 - A headless, deterministic rules engine with a full automated test suite
 
 ## 🕹️ Run locally
