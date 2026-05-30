@@ -35,6 +35,9 @@
       "opt.br": "大逃杀（各自为战）", "opt.team2": "团队赛（2v2）", "opt.team3": "团队赛（3v3）", "opt.team2v2v2": "乱斗（2v2v2）", "opt.diffExpert": "专家（前瞻搜索·较慢）",
       "opt.p2": "2 人", "opt.p3": "3 人", "opt.p4": "4 人", "opt.p5": "5 人", "opt.p6": "6 人",
       "btn.heal": "治疗", "btn.barrier": "屏障", "btn.hideout": "藏身处", "btn.trap": "陷阱", "btn.end": "结束回合", "btn.restart": "重开",
+      "pc.fame": "名望", "pc.dmg": "伤害", "pc.def": "防御区", "pc.pack": "背包", "pc.carry": "携带信标", "pc.used": "已用", "pc.line": "战斗列", "pc.onmap": "在场", "pc.waitdrop": "待跳伞", "pc.you": "(你)", "pc.team": "队{n}",
+      "panel.log": "事件日志", "panel.dip": "外交 / 喊话", "panel.ach": "成就板",
+      "map.arcadia": "Arcadia 阿卡迪亚 (3-4)", "map.imperial": "帝国皇朝 (2-3)", "map.transit": "转运站 · 4传送门 (4-6)", "map.ring": "环形争霸战 (4-6)", "map.metropolis": "大都会 · 迷宫 (3-4)", "map.reactor": "反应炉 · 太阳能 (4-6)",
     },
     en: {
       "legend.move": "Move/Reach", "legend.atk": "Attackable", "legend.you": "You", "legend.loot": "✋ Loot here",
@@ -54,6 +57,9 @@
       "opt.br": "Battle Royale (free-for-all)", "opt.team2": "Team (2v2)", "opt.team3": "Team (3v3)", "opt.team2v2v2": "Rumble (2v2v2)", "opt.diffExpert": "Expert (look-ahead · slower)",
       "opt.p2": "2 players", "opt.p3": "3 players", "opt.p4": "4 players", "opt.p5": "5 players", "opt.p6": "6 players",
       "btn.heal": "Heal", "btn.barrier": "Barrier", "btn.hideout": "Hideout", "btn.trap": "Trap", "btn.end": "End turn", "btn.restart": "Restart",
+      "pc.fame": "Fame", "pc.dmg": "Dmg", "pc.def": "Defense", "pc.pack": "Pack", "pc.carry": "Beacons", "pc.used": "used", "pc.line": "Combat", "pc.onmap": "on map", "pc.waitdrop": "to drop", "pc.you": "(you)", "pc.team": "T{n}",
+      "panel.log": "Event log", "panel.dip": "Diplomacy / Taunts", "panel.ach": "Achievements",
+      "map.arcadia": "Arcadia (3-4)", "map.imperial": "Imperial Dynasty (2-3)", "map.transit": "Transit Hub · 4 portals (4-6)", "map.ring": "Ring Arena (4-6)", "map.metropolis": "Metropolis · Maze (3-4)", "map.reactor": "Reactor · Solar (4-6)",
     },
     fr: {
       "legend.move": "Déplacer/Portée", "legend.atk": "Attaquable", "legend.you": "Vous", "legend.loot": "✋ Ramasser ici",
@@ -73,6 +79,9 @@
       "opt.br": "Battle Royale (chacun pour soi)", "opt.team2": "Équipe (2c2)", "opt.team3": "Équipe (3c3)", "opt.team2v2v2": "Mêlée (2c2c2)", "opt.diffExpert": "Expert (recherche · plus lent)",
       "opt.p2": "2 joueurs", "opt.p3": "3 joueurs", "opt.p4": "4 joueurs", "opt.p5": "5 joueurs", "opt.p6": "6 joueurs",
       "btn.heal": "Soigner", "btn.barrier": "Barrière", "btn.hideout": "Cachette", "btn.trap": "Piège", "btn.end": "Fin du tour", "btn.restart": "Recommencer",
+      "pc.fame": "Renommée", "pc.dmg": "Dégâts", "pc.def": "Défense", "pc.pack": "Sac", "pc.carry": "Balises", "pc.used": "utilisé", "pc.line": "Combat", "pc.onmap": "en jeu", "pc.waitdrop": "à larguer", "pc.you": "(vous)", "pc.team": "É{n}",
+      "panel.log": "Journal", "panel.dip": "Diplomatie / Provoc.", "panel.ach": "Succès",
+      "map.arcadia": "Arcadia (3-4)", "map.imperial": "Dynastie impériale (2-3)", "map.transit": "Hub de transit · 4 portails (4-6)", "map.ring": "Arène circulaire (4-6)", "map.metropolis": "Métropole · Labyrinthe (3-4)", "map.reactor": "Réacteur · Solaire (4-6)",
     },
     es: {
       "legend.move": "Mover/Alcance", "legend.atk": "Atacable", "legend.you": "Tú", "legend.loot": "✋ Saquear aquí",
@@ -92,6 +101,9 @@
       "opt.br": "Battle Royale (todos contra todos)", "opt.team2": "Equipo (2c2)", "opt.team3": "Equipo (3c3)", "opt.team2v2v2": "Refriega (2c2c2)", "opt.diffExpert": "Experto (búsqueda · más lento)",
       "opt.p2": "2 jugadores", "opt.p3": "3 jugadores", "opt.p4": "4 jugadores", "opt.p5": "5 jugadores", "opt.p6": "6 jugadores",
       "btn.heal": "Curar", "btn.barrier": "Barrera", "btn.hideout": "Refugio", "btn.trap": "Trampa", "btn.end": "Terminar turno", "btn.restart": "Reiniciar",
+      "pc.fame": "Fama", "pc.dmg": "Daño", "pc.def": "Defensa", "pc.pack": "Mochila", "pc.carry": "Balizas", "pc.used": "usado", "pc.line": "Combate", "pc.onmap": "en juego", "pc.waitdrop": "por saltar", "pc.you": "(tú)", "pc.team": "E{n}",
+      "panel.log": "Registro", "panel.dip": "Diplomacia / Provoc.", "panel.ach": "Logros",
+      "map.arcadia": "Arcadia (3-4)", "map.imperial": "Dinastía imperial (2-3)", "map.transit": "Centro de tránsito · 4 portales (4-6)", "map.ring": "Arena circular (4-6)", "map.metropolis": "Metrópolis · Laberinto (3-4)", "map.reactor": "Reactor · Solar (4-6)",
     },
   };
   let lang = (typeof localStorage !== "undefined" && localStorage.getItem("rl-lang")) || "zh";
@@ -341,17 +353,17 @@
       const d = document.createElement("div");
       d.className = "pcard"; d.style.borderLeft = `4px solid ${p.color}`;
       if (p.idx === G.activePlayer) d.style.background = "#222a38";
-      const assigned = p.assignedDice && p.assignedDice.length ? ` · 已用 ${p.assignedDice.join("/")}` : "";
-      const combat = p.combatLine && p.combatLine.length ? ` · 战斗列 ${p.combatLine.join("/")}` : "";
+      const assigned = p.assignedDice && p.assignedDice.length ? ` · ${T("pc.used")} ${p.assignedDice.join("/")}` : "";
+      const combat = p.combatLine && p.combatLine.length ? ` · ${T("pc.line")} ${p.combatLine.join("/")}` : "";
       const ch = CHAR[p.character];
       const portrait = ch ? `<span class="pportrait">${emblemSVG(p, ch, 40)}</span>` : "";
       const persona = p.persona ? `<div class="ppersona">「${p.persona.name}」${p.persona.archetype}</div>` : "";
       d.innerHTML = `<div class="prow">${portrait}<div class="pinfo">` +
-        `<div class="pname">${p.name}${p.human ? " (你)" : ""}${p.team != null ? ` <span class="team-badge team${p.team}">队${p.team + 1}</span>` : ""}${p.idx === G.activePlayer ? " ◀" : ""}</div>` +
+        `<div class="pname">${p.name}${p.human ? " " + T("pc.you") : ""}${p.team != null ? ` <span class="team-badge team${p.team}">${T("pc.team", { n: p.team + 1 })}</span>` : ""}${p.idx === G.activePlayer ? " ◀" : ""}</div>` +
         persona +
-        `<div class="pstat">名望 ${E.totalFame(p)} · 伤害 ${p.injuries} · 防御区 ${p.defensePool}/${p.actionDice}${p.boostDice ? ` <span style="color:#5fd06f">+${p.boostDice}⚡</span>` : ""}${assigned}${combat} · 背包 ${p.backpack.length}` +
-        (p.carryingBeacons ? ` · 携带信标 ${p.carryingBeacons}` : "") +
-        ` · ${p.pos ? "在场" : "待跳伞"}</div></div></div>`;
+        `<div class="pstat">${T("pc.fame")} ${E.totalFame(p)} · ${T("pc.dmg")} ${p.injuries} · ${T("pc.def")} ${p.defensePool}/${p.actionDice}${p.boostDice ? ` <span style="color:#5fd06f">+${p.boostDice}⚡</span>` : ""}${assigned}${combat} · ${T("pc.pack")} ${p.backpack.length}` +
+        (p.carryingBeacons ? ` · ${T("pc.carry")} ${p.carryingBeacons}` : "") +
+        ` · ${p.pos ? T("pc.onmap") : T("pc.waitdrop")}</div></div></div>`;
       d.style.cursor = "pointer";
       d.addEventListener("click", () => openCharBoard(p.idx));
       bindTip(d, () => playerTip(p));
@@ -435,7 +447,7 @@
         <div class="ach-meta"><div class="ach-name">${a.cn} ${badge}</div>
         <div class="ach-fame">🏅×${slot.fameBelow || 0}</div></div></div>`;
     }
-    box.innerHTML = `<h4>成就板</h4><div class="ach-list">${cards}</div>`;
+    box.innerHTML = `<h4>${T("panel.ach")}</h4><div class="ach-list">${cards}</div>`;
     box.querySelectorAll(".ach-card").forEach(el => {
       const a = ACH[el.dataset.id];
       bindTip(el, () => `<h5>${a.cn} · ${a.name}</h5>${a.desc}<div class="tt-sub">${a.type === "next" ? "⚡ 即时：下一位达成者立即获得卡片及其名望" : `🏆 比拼：游戏结束结算 · 当前领先：${mostLeader(a.metric)}`}</div>`);
@@ -473,7 +485,7 @@
       const canTalk = myTurn && !E.sameTeam(me, o);
       const truced = E.hasTruce(G, me.idx, o.idx);
       rows += `<div class="dip-row">
-        <span class="dip-name" style="color:${o.color}">${o.name}${o.team != null ? ` 队${o.team + 1}` : ""}</span>
+        <span class="dip-name" style="color:${o.color}">${o.name}${o.team != null ? ` ${T("pc.team", { n: o.team + 1 })}` : ""}</span>
         <span class="rel ${r.cls}">${r.txt}</span>${isFocus ? '<span class="rel rel-focus">🎯目标</span>' : ""}
         ${canTalk ? `<span class="dip-btns">
           ${truced ? "" : `<button class="dip-b" data-act="truce" data-to="${o.idx}" title="提议休战">休战</button>`}
@@ -490,7 +502,7 @@
     }
     const feed = (G.diplomacy.feed || []).slice(0, 4)
       .map(f => `<div class="dip-line"><b style="color:${G.players[f.from] ? G.players[f.from].color : "#ccc"}">${G.players[f.from] ? G.players[f.from].name : "?"}</b>：${f.line}</div>`).join("");
-    box.innerHTML = `<h4>外交 / 喊话</h4>${offerHtml}<div class="dip-list">${rows}</div>${feed ? `<div class="dip-feed">${feed}</div>` : ""}`;
+    box.innerHTML = `<h4>${T("panel.dip")}</h4>${offerHtml}<div class="dip-list">${rows}</div>${feed ? `<div class="dip-feed">${feed}</div>` : ""}`;
     box.querySelectorAll(".dip-b[data-act]").forEach(b => b.addEventListener("click", () => {
       if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;   // only on your own turn, not during AI autoplay
       const to = +b.dataset.to;
