@@ -49,7 +49,7 @@
       "slotcn.head": "头部", "slotcn.torso": "躯干", "slotcn.hand": "手持", "slotcn.special": "道具",
       "terr.tower": "中央塔", "terr.jungle": "丛林", "terr.plains": "平原", "terr.mountain": "山地", "terr.village": "村庄", "terr.maze": "迷宫", "terr.solar": "太阳能阵列",
       "cs.title": "选择你的角色", "cs.subtitle": "挑一个你喜欢的角色参战 · 出场顺位随机", "cs.back": "返回", "cs.start": "开始游戏",
-      "over.superstar": "（超级巨星）", "over.playAgain": "再来一局", "over.close": "查看棋盘",
+      "over.superstar": "（超级巨星）", "over.playAgain": "换设置", "over.close": "查看棋盘", "over.rematch": "再战一局",
     },
     en: {
       "legend.move": "Move/Reach", "legend.atk": "Attackable", "legend.you": "You", "legend.loot": "✋ Loot here",
@@ -83,7 +83,7 @@
       "slotcn.head": "Head", "slotcn.torso": "Torso", "slotcn.hand": "Hand", "slotcn.special": "Item",
       "terr.tower": "Tower", "terr.jungle": "Jungle", "terr.plains": "Plains", "terr.mountain": "Mountain", "terr.village": "Village", "terr.maze": "Maze", "terr.solar": "Solar Array",
       "cs.title": "Choose your character", "cs.subtitle": "Pick a character you like — turn order is random", "cs.back": "Back", "cs.start": "Start game",
-      "over.superstar": "(Superstar)", "over.playAgain": "Play again", "over.close": "View board",
+      "over.superstar": "(Superstar)", "over.playAgain": "New setup", "over.close": "View board", "over.rematch": "Rematch",
     },
     fr: {
       "legend.move": "Déplacer/Portée", "legend.atk": "Attaquable", "legend.you": "Vous", "legend.loot": "✋ Ramasser ici",
@@ -117,7 +117,7 @@
       "slotcn.head": "Tête", "slotcn.torso": "Torse", "slotcn.hand": "Main", "slotcn.special": "Objet",
       "terr.tower": "Tour", "terr.jungle": "Jungle", "terr.plains": "Plaine", "terr.mountain": "Montagne", "terr.village": "Village", "terr.maze": "Labyrinthe", "terr.solar": "Panneaux solaires",
       "cs.title": "Choisissez votre personnage", "cs.subtitle": "Choisissez un personnage qui vous plaît — l'ordre de jeu est aléatoire", "cs.back": "Retour", "cs.start": "Démarrer",
-      "over.superstar": "(Superstar)", "over.playAgain": "Rejouer", "over.close": "Voir le plateau",
+      "over.superstar": "(Superstar)", "over.playAgain": "Réglages", "over.close": "Voir le plateau", "over.rematch": "Revanche",
     },
     es: {
       "legend.move": "Mover/Alcance", "legend.atk": "Atacable", "legend.you": "Tú", "legend.loot": "✋ Saquear aquí",
@@ -151,7 +151,7 @@
       "slotcn.head": "Cabeza", "slotcn.torso": "Torso", "slotcn.hand": "Mano", "slotcn.special": "Objeto",
       "terr.tower": "Torre", "terr.jungle": "Jungla", "terr.plains": "Llanura", "terr.mountain": "Montaña", "terr.village": "Pueblo", "terr.maze": "Laberinto", "terr.solar": "Panel solar",
       "cs.title": "Elige tu personaje", "cs.subtitle": "Elige un personaje que te guste — el orden de turno es aleatorio", "cs.back": "Atrás", "cs.start": "Empezar",
-      "over.superstar": "(Superstar)", "over.playAgain": "Jugar de nuevo", "over.close": "Ver el tablero",
+      "over.superstar": "(Superstar)", "over.playAgain": "Ajustes", "over.close": "Ver el tablero", "over.rematch": "Revancha",
     },
   };
   let lang = (typeof localStorage !== "undefined" && localStorage.getItem("rl-lang")) || "zh";
@@ -617,10 +617,13 @@
     }).join("");
     ov.innerHTML = `<div class="ov-panel"><div class="ov-title">${title}${sstar}</div>` +
       `<div class="ov-list">${rows}</div>` +
-      `<div class="ov-bar"><button class="small" id="ov-close">${T("over.close")}</button><button id="ov-again">${T("over.playAgain")}</button></div></div>`;
+      `<div class="ov-bar"><button class="small" id="ov-close">${T("over.close")}</button>` +
+      `<button class="small" id="ov-setup">${T("over.playAgain")}</button>` +
+      `<button id="ov-again">${T("over.rematch")}</button></div></div>`;
     ov.style.display = "flex";
     ov.querySelector("#ov-close").addEventListener("click", closeOver);
-    ov.querySelector("#ov-again").addEventListener("click", () => { closeOver(); $("game-screen").classList.add("hidden"); $("setup-screen").classList.remove("hidden"); });
+    ov.querySelector("#ov-setup").addEventListener("click", () => { closeOver(); $("game-screen").classList.add("hidden"); $("setup-screen").classList.remove("hidden"); });
+    ov.querySelector("#ov-again").addEventListener("click", () => { closeOver(); startGame(); });   // rematch: same settings + same human character
   }
 
   function render() {
