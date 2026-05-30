@@ -34,7 +34,7 @@ python devserver.py        # 然后打开 http://localhost:8765
 ## ✅ 测试
 纯 Node.js，无依赖：
 ```bash
-for f in tests/*.js; do node "$f"; done
+npm test     # 通过 tools/run_tests.js 运行全部测试（每次 push 也会在 CI 中运行）
 ```
 
 ## 📄 许可证

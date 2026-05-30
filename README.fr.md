@@ -34,7 +34,7 @@ python devserver.py        # puis ouvrez http://localhost:8765
 ## ✅ Tests
 Node.js pur, sans dépendances :
 ```bash
-for f in tests/*.js; do node "$f"; done
+npm test     # lance toutes les suites via tools/run_tests.js (et tourne en CI à chaque push)
 ```
 
 ## 📄 Licence
