@@ -74,6 +74,68 @@
     if (opacity != null) t.setAttribute("opacity", opacity);
     t.textContent = s; return t;
   }
+  // Crisp procedural vector terrain art (no image files) — drawn as the bottom layer of each hex.
+  function terrainDecal(svg, terrain, x, y) {
+    const g = svgEl("g", { opacity: 0.62, "pointer-events": "none" });
+    const add = (tag, a) => g.appendChild(svgEl(tag, a));
+    switch (terrain) {
+      case "tower": { // control-tower mast + cabin + beacon light
+        add("polygon", { points: `${x - 8},${y + 22} ${x - 3.5},${y - 13} ${x + 3.5},${y - 13} ${x + 8},${y + 22}`, fill: "#cfdcec" });
+        add("line", { x1: x - 6, y1: y + 11, x2: x + 6, y2: y + 1, stroke: "#9db0c8", "stroke-width": 1.4 });
+        add("line", { x1: x + 6, y1: y + 11, x2: x - 6, y2: y + 1, stroke: "#9db0c8", "stroke-width": 1.4 });
+        add("rect", { x: x - 12, y: y - 23, width: 24, height: 11, rx: 2, fill: "#aebfd4", stroke: "#7e92ad", "stroke-width": 1 });
+        add("circle", { cx: x, cy: y - 27, r: 3.4, fill: "#f4d03f", stroke: "#9a7a10", "stroke-width": 0.8 });
+        break;
+      }
+      case "jungle": { // three stacked-triangle pines
+        const pine = (cx, cy, s) => {
+          add("rect", { x: cx - s * 0.12, y: cy + s * 0.5, width: s * 0.24, height: s * 0.55, fill: "#5e3a1e" });
+          add("polygon", { points: `${cx},${cy - s} ${cx - s * 0.78},${cy + s * 0.55} ${cx + s * 0.78},${cy + s * 0.55}`, fill: "#14532a" });
+          add("polygon", { points: `${cx},${cy - s * 0.5} ${cx - s * 0.64},${cy + s * 0.72} ${cx + s * 0.64},${cy + s * 0.72}`, fill: "#2f9e54" });
+        };
+        pine(x - 14, y - 1, 11); pine(x + 13, y + 3, 13); pine(x - 1, y - 12, 9);
+        break;
+      }
+      case "plains": { // wheat stalks fanning up with seed heads
+        for (const dx of [-14, -5, 4, 13]) {
+          add("path", { d: `M ${x + dx},${y + 16} Q ${x + dx + 2},${y + 2} ${x + dx + 5},${y - 12}`, fill: "none", stroke: "#7e9a3a", "stroke-width": 1.8, "stroke-linecap": "round" });
+          add("ellipse", { cx: x + dx + 5, cy: y - 13, rx: 2.4, ry: 4.4, fill: "#e6cf52", transform: `rotate(18 ${x + dx + 5} ${y - 13})` });
+        }
+        break;
+      }
+      case "mountain": { // two peaks with snow caps
+        add("polygon", { points: `${x - 22},${y + 18} ${x - 5},${y - 14} ${x + 12},${y + 18}`, fill: "#565a61" });
+        add("polygon", { points: `${x - 5},${y - 14} ${x - 11},${y - 3} ${x + 1},${y - 3}`, fill: "#eef3f8" });
+        add("polygon", { points: `${x - 2},${y + 18} ${x + 12},${y - 7} ${x + 23},${y + 18}`, fill: "#6f747c" });
+        add("polygon", { points: `${x + 12},${y - 7} ${x + 7},${y + 1} ${x + 17},${y + 1}`, fill: "#eef3f8" });
+        break;
+      }
+      case "village": { // a small house with roof + door
+        add("rect", { x: x - 13, y: y - 4, width: 26, height: 22, fill: "#e6d2a8", stroke: "#8a6a3a", "stroke-width": 1 });
+        add("polygon", { points: `${x - 16},${y - 3} ${x},${y - 18} ${x + 16},${y - 3}`, fill: "#8a4a28", stroke: "#5e3118", "stroke-width": 1 });
+        add("rect", { x: x - 4, y: y + 7, width: 8, height: 11, fill: "#6e4a26" });
+        add("rect", { x: x + 5, y: y + 2, width: 6, height: 6, fill: "#9ec6e0", stroke: "#6e4a26", "stroke-width": 0.8 });
+        break;
+      }
+      case "maze": { // concentric labyrinth lines with a gap
+        add("rect", { x: x - 19, y: y - 17, width: 38, height: 34, fill: "none", stroke: "#cbb4e6", "stroke-width": 2 });
+        add("rect", { x: x - 12, y: y - 10, width: 24, height: 20, fill: "none", stroke: "#cbb4e6", "stroke-width": 2 });
+        add("rect", { x: x - 5, y: y - 3, width: 10, height: 6, fill: "none", stroke: "#cbb4e6", "stroke-width": 2 });
+        add("line", { x1: x, y1: y - 17, x2: x, y2: y - 10, stroke: "#6a4f8a", "stroke-width": 2.6 }); // entrance gap
+        break;
+      }
+      case "solar": { // sun disc with radiating rays
+        for (let i = 0; i < 8; i++) {
+          const a = Math.PI / 4 * i, r0 = 11, r1 = 19;
+          add("line", { x1: x + Math.cos(a) * r0, y1: y + Math.sin(a) * r0, x2: x + Math.cos(a) * r1, y2: y + Math.sin(a) * r1, stroke: "#caa017", "stroke-width": 2, "stroke-linecap": "round" });
+        }
+        add("circle", { cx: x, cy: y, r: 9, fill: "#fff1b0", stroke: "#caa017", "stroke-width": 1.5 });
+        break;
+      }
+      default: return;
+    }
+    svg.appendChild(g);
+  }
   function renderBoard() {
     const svg = $("board"); svg.innerHTML = "";
     const hl = highlightSet();
@@ -89,7 +151,7 @@
     for (const { c, x, y } of pix) {
       const key = E.hexKey(c.q, c.r), t = D.TERRAIN[c.terrain], pts = hexCorners(x, y);
       svg.appendChild(svgEl("polygon", { points: pts, fill: t.color, "pointer-events": "none" })); // fallback tint
-      if (TERRAIN_GLYPH[c.terrain]) svg.appendChild(svgText(x, y + HEX * 0.24, TERRAIN_GLYPH[c.terrain], HEX * 0.85, "#000", 0.30));   // faint terrain motif (procedural — no art files)
+      terrainDecal(svg, c.terrain, x, y);   // crisp procedural terrain motif (no art files)
       const poly = svgEl("polygon", { points: pts, fill: "transparent", class: "hex-poly" }); // interactive + highlight
       if (hl.atk.has(key)) { poly.setAttribute("stroke", "#e3424b"); poly.setAttribute("stroke-width", "4"); }
       else if (hl.para.has(key)) { poly.setAttribute("stroke", "#f4d03f"); poly.setAttribute("stroke-width", "4"); poly.setAttribute("stroke-dasharray", "6 4"); }
