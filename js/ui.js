@@ -68,6 +68,12 @@
     };
   }
 
+  const TERRAIN_GLYPH = { tower: "🗼", jungle: "🌲", plains: "🌾", mountain: "⛰", village: "🏠", maze: "▦", solar: "☀" };
+  function svgText(x, y, s, size, fill, opacity) {
+    const t = svgEl("text", { x, y, "text-anchor": "middle", "font-size": size, fill: fill || "#fff", "pointer-events": "none" });
+    if (opacity != null) t.setAttribute("opacity", opacity);
+    t.textContent = s; return t;
+  }
   function renderBoard() {
     const svg = $("board"); svg.innerHTML = "";
     const hl = highlightSet();
@@ -83,14 +89,7 @@
     for (const { c, x, y } of pix) {
       const key = E.hexKey(c.q, c.r), t = D.TERRAIN[c.terrain], pts = hexCorners(x, y);
       svg.appendChild(svgEl("polygon", { points: pts, fill: t.color, "pointer-events": "none" })); // fallback tint
-      const tile = D.TILE_ART[c.terrain];
-      if (tile) {
-        const clipId = "hc" + key.replace(/[^0-9-]/g, "_");
-        const cp = svgEl("clipPath", { id: clipId, clipPathUnits: "userSpaceOnUse" });
-        cp.appendChild(svgEl("polygon", { points: pts })); defs.appendChild(cp);
-        const im = svgImg(tile, x - HEX, y - HEX * 0.9, HEX * 2, HEX * 1.8, null, "xMidYMid slice");
-        im.setAttribute("clip-path", `url(#${clipId})`); svg.appendChild(im);
-      }
+      if (TERRAIN_GLYPH[c.terrain]) svg.appendChild(svgText(x, y + HEX * 0.24, TERRAIN_GLYPH[c.terrain], HEX * 0.85, "#000", 0.30));   // faint terrain motif (procedural — no art files)
       const poly = svgEl("polygon", { points: pts, fill: "transparent", class: "hex-poly" }); // interactive + highlight
       if (hl.atk.has(key)) { poly.setAttribute("stroke", "#e3424b"); poly.setAttribute("stroke-width", "4"); }
       else if (hl.para.has(key)) { poly.setAttribute("stroke", "#f4d03f"); poly.setAttribute("stroke-width", "4"); poly.setAttribute("stroke-dasharray", "6 4"); }
@@ -99,12 +98,12 @@
       poly.addEventListener("click", () => onHex(key));
       bindTip(poly, () => hexTip(c));
       svg.appendChild(poly);
-      // map token art (portal/toxin under, beacon/supply on top)
-      if (c.toxin && D.TOKEN_ART.toxin) svg.appendChild(svgImg(D.TOKEN_ART.toxin, x - HEX * 0.7, y - HEX * 0.7, HEX * 1.4, HEX * 1.4, 0.5));
-      if (c.portal) svg.appendChild(svgImg(D.TOKEN_ART.portal, x - 23, y - 23, 46, 46, 0.92));
-      if (c.dome && D.TOKEN_ART.dome) svg.appendChild(svgImg(D.TOKEN_ART.dome, x - 22, y - 22, 44, 44, 0.9));
-      if (c.tokens.some(k => k.kind === "beacon")) svg.appendChild(svgImg(D.TOKEN_ART.beacon, x - 13, y - 21, 26, 26));
-      if (c.tokens.some(k => k.kind === "supply")) svg.appendChild(svgImg(D.TOKEN_ART.supply, x - 14, y - 23, 28, 28));
+      // map tokens — drawn procedurally (no image assets): toxin tint, portal rings, dome, beacon, supply box
+      if (c.toxin) { svg.appendChild(svgEl("polygon", { points: pts, fill: "#6a4f8a", opacity: 0.30, "pointer-events": "none" })); svg.appendChild(svgText(x + HEX * 0.5, y - HEX * 0.42, "☣", 15, "#caa6ff", 0.95)); }
+      if (c.portal) for (let r = 8; r <= 20; r += 6) svg.appendChild(svgEl("circle", { cx: x, cy: y, r, fill: "none", stroke: "#5fd0e0", "stroke-width": 2.5, opacity: 0.85, "pointer-events": "none" }));
+      if (c.dome) svg.appendChild(svgEl("path", { d: `M ${x - 26} ${y + 6} A 26 26 0 0 1 ${x + 26} ${y + 6} Z`, fill: "#7fd0ff", "fill-opacity": 0.16, stroke: "#7fd0ff", "stroke-width": 1.5, "pointer-events": "none" }));
+      if (c.tokens.some(k => k.kind === "beacon")) { svg.appendChild(svgEl("polygon", { points: `${x},${y - 21} ${x + 8},${y - 12} ${x},${y - 3} ${x - 8},${y - 12}`, fill: "#f4d03f", stroke: "#7a5c00", "stroke-width": 1.5, "pointer-events": "none" })); svg.appendChild(svgEl("circle", { cx: x, cy: y - 12, r: 2.4, fill: "#fff7cf", "pointer-events": "none" })); }
+      if (c.tokens.some(k => k.kind === "supply")) { svg.appendChild(svgEl("rect", { x: x - 12, y: y + 5, width: 24, height: 17, rx: 3, fill: "#b08948", stroke: "#5e4422", "stroke-width": 1.5, "pointer-events": "none" })); svg.appendChild(svgEl("line", { x1: x - 12, y1: y + 13.5, x2: x + 12, y2: y + 13.5, stroke: "#5e4422", "stroke-width": 1.5, "pointer-events": "none" })); svg.appendChild(svgEl("line", { x1: x, y1: y + 5, x2: x, y2: y + 22, stroke: "#5e4422", "stroke-width": 1.5, "pointer-events": "none" })); }
     }
     // walls/barriers (neutral gray, player-owned colored) + trap/hideout markers
     for (const { c, x, y } of pix) {
@@ -119,7 +118,7 @@
           stroke: o === "n" ? "#cfd6e0" : (G.players[o] ? G.players[o].color : "#cfd6e0"), "stroke-width": 5, "stroke-linecap": "round", "pointer-events": "none" }));
       }
       if (c.trap != null) svg.appendChild(Object.assign(svgEl("text", { x: x - 18, y: y + 20, "font-size": "14", fill: "#e3424b" }), { textContent: "⚠" }));
-      c.hideouts.forEach((ownerIdx, hi) => { const op = G.players[ownerIdx], art = op && D.HIDEOUT_ART[op.character]; if (art) svg.appendChild(svgImg(art, x + 2 + hi * 5, y - 4, 22, 22)); });
+      c.hideouts.forEach((ownerIdx, hi) => { const op = G.players[ownerIdx]; if (!op) return; const hx = x + 13 + hi * 7, hy = y - 14; svg.appendChild(svgEl("polygon", { points: `${hx - 6},${hy + 3} ${hx},${hy - 5} ${hx + 6},${hy + 3}`, fill: op.color, stroke: "#0c0e12", "stroke-width": 1, "pointer-events": "none" })); svg.appendChild(svgEl("rect", { x: hx - 5, y: hy + 3, width: 10, height: 7, fill: op.color, stroke: "#0c0e12", "stroke-width": 1, "pointer-events": "none" })); });
     }
     // minis — character figurine standees (fall back to a colored disc if art is missing)
     for (const c of cells) {
@@ -127,20 +126,12 @@
       const { x, y } = hexToPixel(c.q, c.r);
       here.forEach((p, i) => {
         const ang = here.length > 1 ? (Math.PI * 2 * i / here.length) : 0;
-        const ox = here.length > 1 ? Math.cos(ang) * 16 : 0, oy = here.length > 1 ? Math.sin(ang) * 12 : 0;
-        const cx = x + ox, cy = y + oy, active = p.idx === G.activePlayer;
-        if (active) svg.appendChild(svgEl("ellipse", { cx, cy: cy + 12, rx: 16, ry: 6, fill: "none", stroke: "#fff", "stroke-width": 2, "pointer-events": "none" }));
-        svg.appendChild(svgEl("ellipse", { cx, cy: cy + 12, rx: 12, ry: 4.5, fill: p.color, "fill-opacity": 0.9, stroke: "#0c0e12", "stroke-width": 1.2, "pointer-events": "none" }));
-        const ch = CHAR[p.character];
-        if (ch && ch.mini) {
-          const img = svgEl("image", { x: cx - 18, y: cy - 28, width: 36, height: 42, preserveAspectRatio: "xMidYMax meet", "pointer-events": "none" });
-          img.setAttributeNS("http://www.w3.org/1999/xlink", "href", ch.mini);
-          img.setAttribute("href", ch.mini);
-          svg.appendChild(img);
-        } else {
-          svg.appendChild(svgEl("circle", { cx, cy, r: 12, fill: p.color, "pointer-events": "none" }));
-          svg.appendChild(Object.assign(svgEl("text", { x: cx, y: cy + 4, "text-anchor": "middle", "font-size": "12", "font-weight": "700", fill: "#0c0e12", "pointer-events": "none" }), { textContent: p.name[0] }));
-        }
+        const ox = here.length > 1 ? Math.cos(ang) * 14 : 0, oy = here.length > 1 ? Math.sin(ang) * 10 : 0;
+        const cx = x + ox, cy = y + oy, active = p.idx === G.activePlayer, ch = CHAR[p.character];
+        // procedural "mini": a colored token disc with the character's initial (+ white ring when active)
+        if (active) svg.appendChild(svgEl("circle", { cx, cy, r: 14, fill: "none", stroke: "#fff", "stroke-width": 2, "pointer-events": "none" }));
+        svg.appendChild(svgEl("circle", { cx, cy, r: 11, fill: p.color, stroke: "#0c0e12", "stroke-width": 1.5, "pointer-events": "none" }));
+        svg.appendChild(Object.assign(svgEl("text", { x: cx, y: cy + 4, "text-anchor": "middle", "font-size": "12", "font-weight": "800", fill: "#0c0e12", "pointer-events": "none" }), { textContent: (((ch && (ch.cn || ch.name)) || p.name) + " ")[0] }));
       });
     }
   }
