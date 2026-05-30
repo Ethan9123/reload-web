@@ -1,5 +1,7 @@
 # RELOAD — Web Edition (fan project)
 
+[![tests](https://github.com/Ethan9123/reload-web/actions/workflows/ci.yml/badge.svg)](https://github.com/Ethan9123/reload-web/actions/workflows/ci.yml)
+
 > 🌐 **Languages:** [English](README.md) · [中文](README.zh-CN.md) · [Français](README.fr.md) · [Español](README.es.md)
 
 An open-source, fan-made **web port of *RELOAD*** — a battle-royale tactical dice board game. Written in plain vanilla JavaScript (no framework, no build step), so it runs anywhere a browser does.

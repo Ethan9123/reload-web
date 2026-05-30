@@ -1,5 +1,7 @@
 # RELOAD — Edición Web (proyecto de fans)
 
+[![tests](https://github.com/Ethan9123/reload-web/actions/workflows/ci.yml/badge.svg)](https://github.com/Ethan9123/reload-web/actions/workflows/ci.yml)
+
 > 🌐 **Idiomas:** [English](README.md) · [中文](README.zh-CN.md) · [Français](README.fr.md) · [Español](README.es.md)
 
 Una adaptación web **de código abierto, hecha por un fan, del juego de mesa *RELOAD*** — un juego de dados táctico tipo battle royale. Escrito en JavaScript puro (sin framework ni paso de compilación), funciona en cualquier navegador.

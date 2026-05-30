@@ -1,5 +1,7 @@
 # RELOAD —— 网页版（粉丝项目）
 
+[![tests](https://github.com/Ethan9123/reload-web/actions/workflows/ci.yml/badge.svg)](https://github.com/Ethan9123/reload-web/actions/workflows/ci.yml)
+
 > 🌐 **语言：** [English](README.md) · [中文](README.zh-CN.md) · [Français](README.fr.md) · [Español](README.es.md)
 
 一个开源的、粉丝制作的 **《RELOAD》网页移植版** —— 一款大逃杀战术骰子桌游。使用纯原生 JavaScript 编写（无框架、无构建步骤），任何浏览器都能直接运行。
