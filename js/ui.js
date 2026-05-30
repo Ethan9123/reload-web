@@ -43,6 +43,8 @@
       "fb.beacon": "信标", "fb.injury": "受伤", "fb.reload": "重整", "fb.trap": "陷阱", "fb.ach": "成就",
       "slot.head": "头盔", "slot.armor": "护甲", "slot.hand1": "手 1", "slot.hand2": "手 2",
       "tip.heal": "治疗：消耗 1 行动骰掷骰，恢复 1 点伤（骷髅+1）。同格有敌人时不可用。", "tip.barrier": "屏障：消耗 1 行动骰，在当前格空边放置自己的屏障（挡移动/视线，自己可穿）。同格有敌人时不可用。", "tip.hideout": "藏身处：消耗 1 行动骰，在当前格放藏身处（回合在此结束有好处、免疫毒气）。", "tip.trap": "陷阱：消耗 1 行动骰，在当前格埋隐藏陷阱，敌人踩入需猜拳。", "tip.end": "结束回合：已用骰子进战斗列，进入结束阶段并轮到下一位。", "tip.restart": "重新开始游戏。",
+      "tut.title": "📖 新手教学", "tut.prev": "上一步", "tut.next": "下一步 ▶", "tut.done": "完成 ✓", "tut.exit": "结束教学",
+      "ach.next": "⚡即时", "ach.most": "🏆比拼", "ach.instantTip": "⚡ 即时：下一位达成者立即获得卡片及其名望", "ach.contestTip": "🏆 比拼：游戏结束结算 · 当前领先：{leader}", "ach.unlocked": "⚡ 达成成就", "ach.famefx": "成就名望",
     },
     en: {
       "legend.move": "Move/Reach", "legend.atk": "Attackable", "legend.you": "You", "legend.loot": "✋ Loot here",
@@ -70,6 +72,8 @@
       "fb.beacon": "beacon", "fb.injury": "injury", "fb.reload": "reload", "fb.trap": "trap", "fb.ach": "ach",
       "slot.head": "Helmet", "slot.armor": "Armor", "slot.hand1": "Hand 1", "slot.hand2": "Hand 2",
       "tip.heal": "Heal: spend 1 action die to roll and recover 1 damage (skull +1). Unavailable with an enemy on your hex.", "tip.barrier": "Barrier: spend 1 action die to place your barrier on an empty edge (blocks move/LOS, you may pass). Not with an enemy here.", "tip.hideout": "Hideout: spend 1 action die to place a hideout on your hex (ending your turn here has perks; immune to toxin).", "tip.trap": "Trap: spend 1 action die to bury a hidden trap; an enemy stepping in plays rock-paper-scissors.", "tip.end": "End turn: unused dice join your combat line, then the End Phase resolves and play passes on.", "tip.restart": "Restart the game.",
+      "tut.title": "📖 Tutorial", "tut.prev": "Back", "tut.next": "Next ▶", "tut.done": "Done ✓", "tut.exit": "Exit tutorial",
+      "ach.next": "⚡ Instant", "ach.most": "🏆 Contest", "ach.instantTip": "⚡ Instant: the next player to unlock it immediately gains the card and its fame", "ach.contestTip": "🏆 Contest: scored at game end · leader: {leader}", "ach.unlocked": "⚡ Achievement unlocked", "ach.famefx": "achievement fame",
     },
     fr: {
       "legend.move": "Déplacer/Portée", "legend.atk": "Attaquable", "legend.you": "Vous", "legend.loot": "✋ Ramasser ici",
@@ -97,6 +101,8 @@
       "fb.beacon": "balise", "fb.injury": "blessure", "fb.reload": "reload", "fb.trap": "piège", "fb.ach": "succès",
       "slot.head": "Casque", "slot.armor": "Armure", "slot.hand1": "Main 1", "slot.hand2": "Main 2",
       "tip.heal": "Soigner : dépensez 1 dé d'action pour lancer et récupérer 1 dégât (crâne +1). Indisponible si un ennemi est sur votre case.", "tip.barrier": "Barrière : dépensez 1 dé d'action pour poser votre barrière sur un bord vide (bloque déplacement/vue, vous passez). Pas si un ennemi est là.", "tip.hideout": "Cachette : dépensez 1 dé d'action pour poser une cachette sur votre case (avantages en y finissant ; immunisé au gaz).", "tip.trap": "Piège : dépensez 1 dé d'action pour enterrer un piège ; un ennemi qui marche dessus joue à pierre-feuille-ciseaux.", "tip.end": "Fin du tour : les dés inutilisés rejoignent la ligne de combat, puis la phase de fin se résout.", "tip.restart": "Recommencer la partie.",
+      "tut.title": "📖 Tutoriel", "tut.prev": "Précédent", "tut.next": "Suivant ▶", "tut.done": "Terminé ✓", "tut.exit": "Quitter",
+      "ach.next": "⚡ Immédiat", "ach.most": "🏆 Concours", "ach.instantTip": "⚡ Immédiat : le prochain joueur qui le réussit gagne aussitôt la carte et sa renommée", "ach.contestTip": "🏆 Concours : décompté en fin de partie · en tête : {leader}", "ach.unlocked": "⚡ Succès débloqué", "ach.famefx": "renommée de succès",
     },
     es: {
       "legend.move": "Mover/Alcance", "legend.atk": "Atacable", "legend.you": "Tú", "legend.loot": "✋ Saquear aquí",
@@ -124,6 +130,8 @@
       "fb.beacon": "baliza", "fb.injury": "herida", "fb.reload": "reload", "fb.trap": "trampa", "fb.ach": "logro",
       "slot.head": "Casco", "slot.armor": "Armadura", "slot.hand1": "Mano 1", "slot.hand2": "Mano 2",
       "tip.heal": "Curar: gasta 1 dado de acción para tirar y recuperar 1 de daño (calavera +1). No disponible con un enemigo en tu casilla.", "tip.barrier": "Barrera: gasta 1 dado de acción para colocar tu barrera en un borde vacío (bloquea movimiento/visión, tú pasas). No con un enemigo aquí.", "tip.hideout": "Refugio: gasta 1 dado de acción para colocar un refugio en tu casilla (ventajas al terminar aquí; inmune al gas).", "tip.trap": "Trampa: gasta 1 dado de acción para enterrar una trampa oculta; un enemigo que entre juega piedra-papel-tijera.", "tip.end": "Terminar turno: los dados sin usar se unen a tu línea de combate y se resuelve la fase final.", "tip.restart": "Reiniciar el juego.",
+      "tut.title": "📖 Tutorial", "tut.prev": "Atrás", "tut.next": "Siguiente ▶", "tut.done": "Listo ✓", "tut.exit": "Salir",
+      "ach.next": "⚡ Instantáneo", "ach.most": "🏆 Concurso", "ach.instantTip": "⚡ Instantáneo: el próximo jugador que lo logre obtiene al instante la carta y su fama", "ach.contestTip": "🏆 Concurso: se calcula al final · líder: {leader}", "ach.unlocked": "⚡ Logro desbloqueado", "ach.famefx": "fama de logro",
     },
   };
   let lang = (typeof localStorage !== "undefined" && localStorage.getItem("rl-lang")) || "zh";
@@ -133,6 +141,14 @@
     if (vars) for (const k in vars) s = s.split("{" + k + "}").join(vars[k]);
     return s;
   }
+  // content translation (personas / achievements / tutorial / FR-ES of abilities+equipment, from js/i18n.js).
+  // Returns the translation for the current language if present, else the source value (fallback).
+  function TC(key, fallback) {
+    const C = RL.LANG_CONTENT && RL.LANG_CONTENT[lang];
+    return (C && C[key] != null) ? C[key] : fallback;
+  }
+  // achievement display name: Chinese uses cn (cn·name in tooltips); other languages use the English name
+  function achName(a, full) { return lang === "zh" ? (full ? `${a.cn} · ${a.name}` : a.cn) : a.name; }
   const SFX = (n) => { try { if (RL.sfx && RL.sfx[n]) RL.sfx[n](); } catch (e) { } };   // play a procedural sound (no-op if muted / unavailable)
   function shake(px) {   // brief screen-shake on the board (impact feedback)
     const el = $("board-wrap"); if (!el) return;
@@ -377,7 +393,8 @@
       const combat = p.combatLine && p.combatLine.length ? ` · ${T("pc.line")} ${p.combatLine.join("/")}` : "";
       const ch = CHAR[p.character];
       const portrait = ch ? `<span class="pportrait">${emblemSVG(p, ch, 40)}</span>` : "";
-      const persona = p.persona ? `<div class="ppersona">「${p.persona.name}」${p.persona.archetype}</div>` : "";
+      const pr = p.persona;
+      const persona = pr ? `<div class="ppersona">「${TC("persona." + pr.id + ".name", pr.name)}」${TC("persona." + pr.id + ".arch", pr.archetype)}</div>` : "";
       d.innerHTML = `<div class="prow">${portrait}<div class="pinfo">` +
         `<div class="pname">${p.name}${p.human ? " " + T("pc.you") : ""}${p.team != null ? ` <span class="team-badge team${p.team}">${T("pc.team", { n: p.team + 1 })}</span>` : ""}${p.idx === G.activePlayer ? " ◀" : ""}</div>` +
         persona +
@@ -461,16 +478,16 @@
     for (const slot of G.achievements.board) {
       const a = ACH[slot.id]; if (!a) continue;
       const isNext = a.type === "next";
-      const badge = isNext ? '<span class="ach-next">⚡即时</span>' : '<span class="ach-most">🏆比拼</span>';
+      const badge = isNext ? `<span class="ach-next">${T("ach.next")}</span>` : `<span class="ach-most">${T("ach.most")}</span>`;
       cards += `<div class="ach-card" data-id="${slot.id}">
-        <img class="ach-img" src="${a.card}" alt="${a.cn}" onerror="this.style.display='none'">
-        <div class="ach-meta"><div class="ach-name">${a.cn} ${badge}</div>
+        <img class="ach-img" src="${a.card}" alt="${a.name}" onerror="this.style.display='none'">
+        <div class="ach-meta"><div class="ach-name">${achName(a)} ${badge}</div>
         <div class="ach-fame">🏅×${slot.fameBelow || 0}</div></div></div>`;
     }
     box.innerHTML = `<h4>${T("panel.ach")}</h4><div class="ach-list">${cards}</div>`;
     box.querySelectorAll(".ach-card").forEach(el => {
       const a = ACH[el.dataset.id];
-      bindTip(el, () => `<h5>${a.cn} · ${a.name}</h5>${a.desc}<div class="tt-sub">${a.type === "next" ? "⚡ 即时：下一位达成者立即获得卡片及其名望" : `🏆 比拼：游戏结束结算 · 当前领先：${mostLeader(a.metric)}`}</div>`);
+      bindTip(el, () => `<h5>${achName(a, true)}</h5>${TC("ach." + a.id + ".desc", a.desc)}<div class="tt-sub">${a.type === "next" ? T("ach.instantTip") : T("ach.contestTip", { leader: mostLeader(a.metric) })}</div>`);
     });
   }
 
@@ -479,7 +496,7 @@
     if (!rep) return; const a = ACH[rep.id]; if (!a) return;
     const who = G.players[rep.player];
     let t = $("ach-toast"); if (!t) { t = document.createElement("div"); t.id = "ach-toast"; document.body.appendChild(t); }
-    t.innerHTML = `<img src="${a.card}" onerror="this.style.display='none'"><div><div class="at-h">⚡ 达成成就</div><div class="at-n" style="color:${who.color}">${who.name} — ${a.cn}</div><div class="at-f">+${rep.fame} 成就名望</div></div>`;
+    t.innerHTML = `<img src="${a.card}" onerror="this.style.display='none'"><div><div class="at-h">${T("ach.unlocked")}</div><div class="at-n" style="color:${who.color}">${who.name} — ${achName(a)}</div><div class="at-f">+${rep.fame} ${T("ach.famefx")}</div></div>`;
     t.classList.remove("show"); void t.offsetWidth; t.classList.add("show");
     clearTimeout(flashAchievement._t); flashAchievement._t = setTimeout(() => t.classList.remove("show"), 2600);
   }
@@ -769,7 +786,7 @@
           <div class="cb-skulls">${Array.from({ length: E.INJURY_ZONE }, (_, i) => `<span class="cb-skull${i < p.injuries ? " on" : ""}">${i < p.injuries ? "☠" : ""}</span>`).join("")}</div>
         </div>
         <div class="cb-namewrap">
-          <div class="cb-name2">${ch.cn || ch.name}${p.human ? ` <span class="cb-you">${T("cb.you")}</span>` : ""}</div>
+          <div class="cb-name2">${lang === "zh" ? (ch.cn || ch.name) : ch.name}${p.human ? ` <span class="cb-you">${T("cb.you")}</span>` : ""}</div>
           <div class="cb-en">${ch.name}${p.team != null ? ` · ${T("pc.team", { n: p.team + 1 })}` : ""}</div>
         </div>
         <div class="cb-dial" style="--p:${Math.round(p.injuries / E.INJURY_ZONE * 100)}">
@@ -780,10 +797,10 @@
         <div class="cb-actions">${[["➤", "act.move"], ["✋", "act.loot"], ["⚙", "act.activate"], ["🔨", "act.build"], ["✚", "act.heal"], ["🔫", "act.ranged"], ["🗡", "act.melee"]].map(a => `<div class="cb-act"><span class="cb-act-i">${a[0]}</span>${T(a[1])}</div>`).join("")}</div>
         <div class="cb-art">${emblemSVG(p, ch, 200)}</div>
         <div class="cb-side">
-          ${ch.ability ? `<div class="cb-ability"><b>${ch.ability.name}</b><div>${ch.ability.text}</div></div>` : ""}
-          ${p.persona ? `<div class="cb-persona">「${p.persona.name}」${p.persona.archetype}<div>${p.persona.blurb}</div></div>` : ""}
+          ${ch.ability ? `<div class="cb-ability"><b>${TC("ability." + ch.ability.id + ".name", ch.ability.name)}</b><div>${TC("ability." + ch.ability.id + ".text", ch.ability.text)}</div></div>` : ""}
+          ${p.persona ? `<div class="cb-persona">「${TC("persona." + p.persona.id + ".name", p.persona.name)}」${TC("persona." + p.persona.id + ".arch", p.persona.archetype)}<div>${TC("persona." + p.persona.id + ".blurb", p.persona.blurb)}</div></div>` : ""}
           <div class="cb-fame">${T("pc.fame")} <b>${E.totalFame(p)}</b>　${T("fb.beacon")}${f.beacon}·${T("fb.injury")}${f.injury}·${T("fb.reload")}${f.reload}·${T("fb.trap")}${f.trap || 0}·${T("fb.ach")}${f.achievement || 0}${p.carryingBeacons ? `　｜ ${T("pc.carry")} ${p.carryingBeacons}` : ""}</div>
-          ${p.achievementsWon && p.achievementsWon.length ? `<div class="cb-fame">🏅 ${p.achievementsWon.map(id => (ACH[id] ? ACH[id].cn : id)).join("、")}</div>` : ""}
+          ${p.achievementsWon && p.achievementsWon.length ? `<div class="cb-fame">🏅 ${p.achievementsWon.map(id => (ACH[id] ? achName(ACH[id]) : id)).join("、")}</div>` : ""}
           ${diceRowsHTML(p)}
         </div>
       </div>
@@ -1103,9 +1120,9 @@
     const s = TUT_STEPS[tutI]; tutClearHL();
     if (s.sel) { const t = document.querySelector(s.sel); if (t) t.classList.add("tut-hl"); }
     ov.innerHTML = `<div class="tut-card">
-      <div class="tut-head">📖 新手教学 <span class="tut-step">${tutI + 1}/${TUT_STEPS.length}</span><button class="tut-x" title="结束教学">✕</button></div>
-      <div class="tut-body">${s.text}</div>
-      <div class="tut-nav"><button class="tut-prev"${tutI === 0 ? " disabled" : ""}>上一步</button><button class="tut-next">${tutI === TUT_STEPS.length - 1 ? "完成 ✓" : "下一步 ▶"}</button></div>
+      <div class="tut-head">${T("tut.title")} <span class="tut-step">${tutI + 1}/${TUT_STEPS.length}</span><button class="tut-x" title="${T("tut.exit")}">✕</button></div>
+      <div class="tut-body">${TC("tut." + tutI, s.text)}</div>
+      <div class="tut-nav"><button class="tut-prev"${tutI === 0 ? " disabled" : ""}>${T("tut.prev")}</button><button class="tut-next">${tutI === TUT_STEPS.length - 1 ? T("tut.done") : T("tut.next")}</button></div>
     </div>`;
     ov.style.display = "block";
     ov.querySelector(".tut-x").addEventListener("click", tutEnd);
