@@ -295,6 +295,33 @@
     setBtn("btn-barrier", showAct && E.canBuild(G, p) && E.emptyEdges(G, p).length > 0 && p.barriersUsed < 6);
     setBtn("btn-hideout", showAct && E.canBuild(G, p));
     setBtn("btn-trap", showAct && E.canBuild(G, p) && p.pos && G.board[E.hexKey(p.pos.q, p.pos.r)].trap == null && p.trapsUsed < 6);
+    renderLegend(p, human);
+  }
+  // a persistent, always-visible key for the board's highlight colors + your remaining action dice
+  function ensureLegend() {
+    let el = $("hex-legend");
+    if (!el) { el = document.createElement("div"); el.id = "hex-legend"; ($("board-wrap") || document.body).appendChild(el); }
+    return el;
+  }
+  function renderLegend(p, human) {
+    const leg = ensureLegend();
+    if (G.gameOver || !human) { leg.classList.remove("show"); return; }
+    if (G.needsParachute) {
+      leg.innerHTML = `<span class="lg-item"><i class="lg-sw para"></i>跳伞：点黄色虚线格降落</span>`;
+    } else {
+      const h = highlightSet();
+      const dice = Math.max(0, p.defensePool), boost = p.boostDice || 0, real = Math.max(0, dice - boost);
+      const pips = "●".repeat(real) + (boost ? "⚡".repeat(boost) : "") || "（无骰）";
+      leg.innerHTML =
+        `<span class="lg-item"><i class="lg-sw move"></i>移动/可达</span>` +
+        (h.atk.size ? `<span class="lg-item"><i class="lg-sw atk"></i>可攻击</span>` : "") +
+        `<span class="lg-item"><i class="lg-sw cur"></i>你的位置</span>` +
+        (h.loot ? `<span class="lg-item">✋ 当前格可拾取</span>` : "") +
+        `<span class="lg-sep"></span>` +
+        `<span class="lg-item lg-dice">🎲 行动骰 <b>${pips}</b></span>` +
+        `<span class="lg-item lg-dim">移动/建造/治疗各 1 骰 · 上山 2 骰</span>`;
+    }
+    leg.classList.add("show");
   }
 
   function renderLog() {
@@ -424,19 +451,84 @@
     }
   }
 
+  // ---- AI turn visualization: telegraph who's acting, animate the move, surface combat ----
+  let aiDelay = 650;                                   // ms pause between AI turns (cycled by #btn-speed)
+  const AI_SPEEDS = [{ ms: 1100, label: "🐢 慢速" }, { ms: 650, label: "🐇 中速" }, { ms: 240, label: "⚡ 快速" }];
+  function ensureAiBanner() {
+    let b = $("ai-banner");
+    if (!b) { b = document.createElement("div"); b.id = "ai-banner"; ($("board-wrap") || document.body).appendChild(b); }
+    return b;
+  }
+  function aiBanner(text, color) {
+    const b = ensureAiBanner();
+    b.innerHTML = `<span class="ab-dot" style="background:${color || "#888"}"></span>${text}`;
+    b.classList.add("show");
+  }
+  function clearAiBanner() { const b = $("ai-banner"); if (b) b.classList.remove("show"); }
+  function pulseActing(p) {                             // bright pulsing ring on the acting AI's hex (cleared by next render)
+    if (!p.pos) return; const svg = $("board"); if (!svg) return;
+    const { x, y } = hexToPixel(p.pos.q, p.pos.r);
+    const ring = svgEl("circle", { cx: x, cy: y, r: 16, fill: "none", stroke: "#fff", "stroke-width": 3, opacity: 0.9, "pointer-events": "none" });
+    ring.innerHTML = '<animate attributeName="r" values="15;27;15" dur="0.9s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.95;0.25;0.95" dur="0.9s" repeatCount="indefinite"/>';
+    svg.appendChild(ring);
+  }
+  function animateAIMove(from, to, color) {             // a glowing dot streaks from old hex to new hex, leaving a trail
+    const a = pxOf(E.hexKey(from.q, from.r)), b = pxOf(E.hexKey(to.q, to.r)), g = vfxGroup();
+    if (!a || !b || !g) return Promise.resolve();
+    const trail = svgEl("line", { x1: a.x, y1: a.y, x2: a.x, y2: a.y, stroke: color, "stroke-width": 4, "stroke-linecap": "round", opacity: 0.5, "stroke-dasharray": "2 6" });
+    const dot = svgEl("circle", { cx: a.x, cy: a.y, r: 7, fill: color, stroke: "#fff", "stroke-width": 2 });
+    g.appendChild(trail); g.appendChild(dot);
+    return animateRAF(380, k => {
+      const e = 1 - (1 - k) * (1 - k);
+      dot.setAttribute("cx", (a.x + (b.x - a.x) * e).toFixed(1)); dot.setAttribute("cy", (a.y + (b.y - a.y) * e).toFixed(1));
+      trail.setAttribute("x2", (a.x + (b.x - a.x) * e).toFixed(1)); trail.setAttribute("y2", (a.y + (b.y - a.y) * e).toFixed(1));
+      dot.setAttribute("opacity", (1 - k * 0.5).toFixed(2));
+    }).then(() => g.remove());
+  }
+  function combatToast(rep) {                           // compact AI-vs-AI combat readout (no full modal)
+    const A = G.players[rep.a], T = G.players[rep.t];
+    const icon = rep.type === "ranged" ? "🔫" : "🗡";
+    const res = rep.reload ? `💥 RELOAD！` : (rep.dealt > 0 ? `命中 ${rep.dealt}` : "未命中");
+    aiBanner(`${icon} <b style="color:${A.color}">${A.name}</b> → <b style="color:${T.color}">${T.name}</b> · ${res}`, A.color);
+    if (rep.reload) { SFX("reload"); shake(9); } else if (rep.dealt > 0) { SFX(rep.type === "close" ? "melee" : "shoot"); shake(4); }
+    return sleep(Math.max(420, aiDelay));
+  }
+  function summarizeTurn(p, newLines) {                 // build a one-line "what the AI did" from the new log
+    const mine = newLines.filter(l => l.includes(p.name)).reverse();   // chronological
+    const txt = mine.slice(0, 2).join(" · ") || `${p.name} 结束回合`;
+    return txt.length > 64 ? txt.slice(0, 63) + "…" : txt;
+  }
+
   async function runAI() {
     if (aiRunning) return;
     aiRunning = true;
     while (!G.gameOver && !E.curP(G).human) {
-      if (G.needsParachute || E.curP(G).pos == null) { /* let AI handle in takeTurn */ }
-      const seq = G._trapSeq || 0;
+      const p = E.curP(G);
+      const beforePos = p.pos ? { q: p.pos.q, r: p.pos.r } : null;
+      const beforeCombat = G.lastCombat, beforeLen = G.log.length, seq = G._trapSeq || 0;
+      aiBanner(`${p.name}（AI）行动中…`, p.color); pulseActing(p);
+      await sleep(Math.min(360, aiDelay));
+
       RL.ai.takeTurn(G);
       render();
+
+      const afterPos = p.pos ? { q: p.pos.q, r: p.pos.r } : null;
+      if (beforePos && afterPos && (beforePos.q !== afterPos.q || beforePos.r !== afterPos.r))
+        await animateAIMove(beforePos, afterPos, p.color);                    // show the move
+
+      if (G.lastCombat && G.lastCombat !== beforeCombat) {                    // a fight happened this turn
+        const rep = G.lastCombat, human = G.players[rep.a].human || G.players[rep.t].human;
+        if (human) {                                                         // player involved → full dice overlay
+          if (rep.type === "ranged" && p.pos) await vfxGunshot(E.hexKey(p.pos.q, p.pos.r), G.players[rep.t].pos ? E.hexKey(G.players[rep.t].pos.q, G.players[rep.t].pos.r) : null);
+          await animateCombat(rep);
+        } else await combatToast(rep);                                        // AI vs AI → compact toast
+      } else aiBanner(summarizeTurn(p, G.log.slice(0, Math.max(0, G.log.length - beforeLen))), p.color);
+
       if ((G._trapSeq || 0) > seq && G.lastTrap && G.players[G.lastTrap.owner].human) await animateTrap(G.lastTrap); // your mine triggered
-      await sleep(450);
+      await sleep(aiDelay);
     }
     aiRunning = false;
-    render();
+    clearAiBanner(); render();
   }
 
   async function endTurn() {
@@ -631,7 +723,9 @@
     if (!rep) return;
     const A = G.players[rep.a], T = G.players[rep.t];
     const ov = ensureDiceOverlay();
-    ov.querySelector(".dz-title").textContent = `${A.name} ${rep.type === "ranged" ? "🔫 远程" : "🗡 近战"} ${T.name}`;
+    ov.querySelector(".dz-title").textContent = rep.type === "ranged"
+      ? `${A.name} 🔫 ${rep.weapon || "远程"} → ${T.name}`
+      : `${A.name} 🗡 近战 → ${T.name}`;
     const rEl = ov.querySelector(".dz-result"); rEl.textContent = ""; rEl.className = "dz-result";
     const body = ov.querySelector(".dz-body");
     body.innerHTML =
@@ -898,6 +992,7 @@
     $("btn-start").addEventListener("click", startGame);
     { const tb = $("btn-tutorial"); if (tb) tb.addEventListener("click", startTutorial); }
     { const mb = $("btn-mute"); if (mb) mb.addEventListener("click", () => { const m = RL.sfx ? RL.sfx.toggle() : true; mb.textContent = m ? "🔇" : "🔊"; }); }
+    { const sb = $("btn-speed"); if (sb) { let si = 1; const apply = () => { aiDelay = AI_SPEEDS[si].ms; sb.textContent = AI_SPEEDS[si].label; }; apply(); sb.addEventListener("click", () => { si = (si + 1) % AI_SPEEDS.length; apply(); }); } }
     $("btn-restart").addEventListener("click", () => location.reload());
     const modeSel = $("mode-select"), pcSel = $("player-count");
     if (modeSel && pcSel) modeSel.addEventListener("change", () => {   // team modes fix the player count

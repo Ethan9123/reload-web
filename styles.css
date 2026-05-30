@@ -31,8 +31,27 @@ select, button { font: inherit; padding: 6px 10px; border-radius: 6px; border: 1
 button.small { padding: 4px 10px; font-size: 13px; cursor: pointer; }
 #game-screen { height: 100vh; }
 .game-body { display: flex; flex: 1; min-height: 0; }
-#board-wrap { flex: 1; padding: 12px; overflow: auto; display: flex; }
+#board-wrap { flex: 1; padding: 12px; overflow: auto; display: flex; position: relative; }
 #board { width: 100%; height: 100%; }
+#ai-banner { position: absolute; top: 10px; left: 50%; transform: translateX(-50%) translateY(-8px);
+  background: rgba(16,19,26,.92); border: 1px solid #2b3340; border-radius: 999px; padding: 6px 14px; font-size: 13px; color: #e6e8ec;
+  display: flex; align-items: center; gap: 8px; pointer-events: none; opacity: 0; transition: opacity .18s, transform .18s; z-index: 30; white-space: nowrap; box-shadow: 0 4px 16px rgba(0,0,0,.4); }
+#ai-banner.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+#ai-banner .ab-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; box-shadow: 0 0 6px currentColor; }
+#ai-banner b { font-weight: 700; }
+#hex-legend { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+  background: rgba(16,19,26,.9); border: 1px solid #2b3340; border-radius: 10px; padding: 5px 12px; font-size: 12px; color: #c7ccd6;
+  display: none; align-items: center; gap: 12px; pointer-events: none; z-index: 25; box-shadow: 0 4px 14px rgba(0,0,0,.4); max-width: 94%; flex-wrap: wrap; justify-content: center; }
+#hex-legend.show { display: flex; }
+#hex-legend .lg-item { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+#hex-legend .lg-sw { width: 13px; height: 13px; border-radius: 3px; flex: none; }
+#hex-legend .lg-sw.move { border: 2px solid #5fd0e0; }
+#hex-legend .lg-sw.atk { border: 2px solid #e3424b; }
+#hex-legend .lg-sw.cur { border: 2px solid #fff; }
+#hex-legend .lg-sw.para { border: 2px dashed #f4d03f; }
+#hex-legend .lg-sep { width: 1px; height: 15px; background: #2b3340; }
+#hex-legend .lg-dice b { color: #e8eef6; letter-spacing: 1px; }
+#hex-legend .lg-dim { color: #7c8492; }
 #side { width: 300px; border-left: 1px solid #2a2f3a; padding: 10px; overflow: auto; background: #161a22; }
 
 .hex-poly { stroke: #0c0e12; stroke-width: 2; cursor: pointer; }
