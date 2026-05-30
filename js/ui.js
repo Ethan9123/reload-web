@@ -163,9 +163,12 @@
   function achName(a, full) { return lang === "zh" ? (full ? `${a.cn} · ${a.name}` : a.cn) : a.name; }
   // format one structured engine-log entry per language. Plain strings (barks) pass through; objects
   // {s,k,p} resolve via RL.LOG_FMT[lang][k] with {param} interpolation, falling back to the source string s.
+  // a persona/chatter bark, localized via RL.BARK[lang][ref] (falls back to the source line)
+  function barkTr(ref, src) { const b = RL.BARK && RL.BARK[lang]; return (b && ref && b[ref]) || src; }
   function logLine(e) {
     if (typeof e === "string") return e;
     if (!e || !e.k) return (e && e.s) || "";
+    if (e.k === "bark") return `💬 ${e.p.who}：${barkTr(e.p.ref, e.p.line)}`;
     const fmt = RL.LOG_FMT && RL.LOG_FMT[lang] && RL.LOG_FMT[lang][e.k];
     if (!fmt) return e.s;                                   // no template for this language → source (zh)
     const p = Object.assign({}, e.p);
@@ -565,7 +568,7 @@
         <button class="dip-b no" data-offer="${of.id}" data-ok="0">拒绝</button></div>`;
     }
     const feed = (G.diplomacy.feed || []).slice(0, 4)
-      .map(f => `<div class="dip-line"><b style="color:${G.players[f.from] ? G.players[f.from].color : "#ccc"}">${G.players[f.from] ? G.players[f.from].name : "?"}</b>：${f.line}</div>`).join("");
+      .map(f => `<div class="dip-line"><b style="color:${G.players[f.from] ? G.players[f.from].color : "#ccc"}">${G.players[f.from] ? G.players[f.from].name : "?"}</b>：${barkTr(f.ref, f.line)}</div>`).join("");
     box.innerHTML = `<h4>${T("panel.dip")}</h4>${offerHtml}<div class="dip-list">${rows}</div>${feed ? `<div class="dip-feed">${feed}</div>` : ""}`;
     box.querySelectorAll(".dip-b[data-act]").forEach(b => b.addEventListener("click", () => {
       if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;   // only on your own turn, not during AI autoplay

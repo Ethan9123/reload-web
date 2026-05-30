@@ -239,13 +239,16 @@
   function truceRoundsLeft(state, i, j) { const u = state.diplomacy && state.diplomacy.truce[dipKey(i, j)]; return u != null ? Math.max(0, u - state.round) : 0; }
   // players the active player should not attack: teammates always, truce partners by agreement
   function friendly(state, a, b) { return a === b || sameTeam(state.players[a], state.players[b]) || hasTruce(state, a, b); }
-  function dipLine(state, kind) { const arr = (DATA.CHATTER && DATA.CHATTER[kind]) || []; return arr.length ? arr[Math.floor(state.rnd() * arr.length)] : ""; }
-  function dipSay(state, fromIdx, kind, msg) {
+  // pick a generic chatter line; returns {line, ref} where ref keys the i18n table (bark.chatter.<kind>.<i>)
+  function dipLine(state, kind) { const arr = (DATA.CHATTER && DATA.CHATTER[kind]) || []; if (!arr.length) return { line: "", ref: null }; const i = Math.floor(state.rnd() * arr.length); return { line: arr[i], ref: "bark.chatter." + kind + "." + i }; }
+  function dipSay(state, fromIdx, kind, msg, ref) {
     const who = state.players[fromIdx] ? state.players[fromIdx].name : "?";
-    const line = msg || dipLine(state, kind);
-    state.diplomacy.feed.unshift({ from: fromIdx, kind, line, round: state.round });
+    let line, useRef;
+    if (msg != null) { line = msg; useRef = ref || null; }     // caller supplied the line (+ optional i18n ref)
+    else { const pick = dipLine(state, kind); line = pick.line; useRef = pick.ref; }
+    state.diplomacy.feed.unshift({ from: fromIdx, kind, line, ref: useRef, round: state.round });
     if (state.diplomacy.feed.length > 40) state.diplomacy.feed.pop();
-    log(state, `💬 ${who}：${line}`);
+    log(state, `💬 ${who}：${line}`, "bark", { who, line, ref: useRef });
   }
   function setTruce(state, i, j, rounds) { state.diplomacy.truce[dipKey(i, j)] = state.round + (rounds || 3); }
   function breakTruce(state, breaker, victim) {
@@ -305,7 +308,8 @@
   // emit a persona's signature line (or a generic trash line) into the feed/log
   function dipTaunt(state, fromIdx) {
     const p = state.players[fromIdx], lines = p && p.persona && p.persona.lines;
-    dipSay(state, fromIdx, "trash", (lines && lines.length) ? lines[Math.floor(state.rnd() * lines.length)] : null);
+    if (lines && lines.length) { const li = Math.floor(state.rnd() * lines.length); dipSay(state, fromIdx, "trash", lines[li], "bark.persona." + p.persona.id + "." + li); }
+    else dipSay(state, fromIdx, "trash", null);
     return true;
   }
   function tickDiplomacy(state) {
