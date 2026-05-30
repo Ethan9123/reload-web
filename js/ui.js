@@ -31,6 +31,10 @@
       "hint.loot": " · 点当前格拾取", "hint.upload": " · 点中央塔上缴信标", "hint.atk": " · 点红框敌人攻击",
       "meta.players": "人", "meta.round": "回合", "meta.events": "事件", "mode.br": "大逃杀", "mode.team": "团队赛",
       "diff.easy": "简单", "diff.medium": "普通", "diff.hard": "困难", "diff.expert": "专家",
+      "setup.subtitle": "大逃杀战术骰子桌游 · 网页版", "setup.players": "玩家数量：", "setup.mode": "模式：", "setup.map": "地图：", "setup.difficulty": "难度：", "setup.lang": "语言：", "setup.allai": "全部 AI（观战）", "setup.start": "开始游戏", "setup.tutorial": "📖 新手教学（1v1）",
+      "opt.br": "大逃杀（各自为战）", "opt.team2": "团队赛（2v2）", "opt.team3": "团队赛（3v3）", "opt.team2v2v2": "乱斗（2v2v2）", "opt.diffExpert": "专家（前瞻搜索·较慢）",
+      "opt.p2": "2 人", "opt.p3": "3 人", "opt.p4": "4 人", "opt.p5": "5 人", "opt.p6": "6 人",
+      "btn.heal": "治疗", "btn.barrier": "屏障", "btn.hideout": "藏身处", "btn.trap": "陷阱", "btn.end": "结束回合", "btn.restart": "重开",
     },
     en: {
       "legend.move": "Move/Reach", "legend.atk": "Attackable", "legend.you": "You", "legend.loot": "✋ Loot here",
@@ -46,6 +50,10 @@
       "hint.loot": " · click your hex to loot", "hint.upload": " · click the tower to turn in beacons", "hint.atk": " · click a red-framed enemy to attack",
       "meta.players": "p", "meta.round": "Round", "meta.events": "Events", "mode.br": "Battle Royale", "mode.team": "Team",
       "diff.easy": "Easy", "diff.medium": "Normal", "diff.hard": "Hard", "diff.expert": "Expert",
+      "setup.subtitle": "Battle-royale tactical dice game · web port", "setup.players": "Players:", "setup.mode": "Mode:", "setup.map": "Map:", "setup.difficulty": "Difficulty:", "setup.lang": "Language:", "setup.allai": "All AI (spectate)", "setup.start": "Start game", "setup.tutorial": "📖 Tutorial (1v1)",
+      "opt.br": "Battle Royale (free-for-all)", "opt.team2": "Team (2v2)", "opt.team3": "Team (3v3)", "opt.team2v2v2": "Rumble (2v2v2)", "opt.diffExpert": "Expert (look-ahead · slower)",
+      "opt.p2": "2 players", "opt.p3": "3 players", "opt.p4": "4 players", "opt.p5": "5 players", "opt.p6": "6 players",
+      "btn.heal": "Heal", "btn.barrier": "Barrier", "btn.hideout": "Hideout", "btn.trap": "Trap", "btn.end": "End turn", "btn.restart": "Restart",
     },
     fr: {
       "legend.move": "Déplacer/Portée", "legend.atk": "Attaquable", "legend.you": "Vous", "legend.loot": "✋ Ramasser ici",
@@ -61,6 +69,10 @@
       "hint.loot": " · cliquez votre case pour ramasser", "hint.upload": " · cliquez la tour pour rendre les balises", "hint.atk": " · cliquez un ennemi encadré en rouge",
       "meta.players": "j", "meta.round": "Tour", "meta.events": "Événements", "mode.br": "Battle Royale", "mode.team": "Équipe",
       "diff.easy": "Facile", "diff.medium": "Normal", "diff.hard": "Difficile", "diff.expert": "Expert",
+      "setup.subtitle": "Jeu de dés tactique battle-royale · portage web", "setup.players": "Joueurs :", "setup.mode": "Mode :", "setup.map": "Carte :", "setup.difficulty": "Difficulté :", "setup.lang": "Langue :", "setup.allai": "Tout IA (spectateur)", "setup.start": "Démarrer", "setup.tutorial": "📖 Tutoriel (1c1)",
+      "opt.br": "Battle Royale (chacun pour soi)", "opt.team2": "Équipe (2c2)", "opt.team3": "Équipe (3c3)", "opt.team2v2v2": "Mêlée (2c2c2)", "opt.diffExpert": "Expert (recherche · plus lent)",
+      "opt.p2": "2 joueurs", "opt.p3": "3 joueurs", "opt.p4": "4 joueurs", "opt.p5": "5 joueurs", "opt.p6": "6 joueurs",
+      "btn.heal": "Soigner", "btn.barrier": "Barrière", "btn.hideout": "Cachette", "btn.trap": "Piège", "btn.end": "Fin du tour", "btn.restart": "Recommencer",
     },
     es: {
       "legend.move": "Mover/Alcance", "legend.atk": "Atacable", "legend.you": "Tú", "legend.loot": "✋ Saquear aquí",
@@ -76,6 +88,10 @@
       "hint.loot": " · clic en tu casilla para saquear", "hint.upload": " · clic en la torre para entregar balizas", "hint.atk": " · clic en un enemigo con marco rojo",
       "meta.players": "j", "meta.round": "Ronda", "meta.events": "Eventos", "mode.br": "Battle Royale", "mode.team": "Equipo",
       "diff.easy": "Fácil", "diff.medium": "Normal", "diff.hard": "Difícil", "diff.expert": "Experto",
+      "setup.subtitle": "Juego de dados táctico battle-royale · versión web", "setup.players": "Jugadores:", "setup.mode": "Modo:", "setup.map": "Mapa:", "setup.difficulty": "Dificultad:", "setup.lang": "Idioma:", "setup.allai": "Todo IA (espectar)", "setup.start": "Empezar", "setup.tutorial": "📖 Tutorial (1c1)",
+      "opt.br": "Battle Royale (todos contra todos)", "opt.team2": "Equipo (2c2)", "opt.team3": "Equipo (3c3)", "opt.team2v2v2": "Refriega (2c2c2)", "opt.diffExpert": "Experto (búsqueda · más lento)",
+      "opt.p2": "2 jugadores", "opt.p3": "3 jugadores", "opt.p4": "4 jugadores", "opt.p5": "5 jugadores", "opt.p6": "6 jugadores",
+      "btn.heal": "Curar", "btn.barrier": "Barrera", "btn.hideout": "Refugio", "btn.trap": "Trampa", "btn.end": "Terminar turno", "btn.restart": "Reiniciar",
     },
   };
   let lang = (typeof localStorage !== "undefined" && localStorage.getItem("rl-lang")) || "zh";
@@ -527,6 +543,8 @@
   let aiSpeedIdx = 1;
   const AI_SPEEDS = [{ ms: 1100, key: "speed.slow" }, { ms: 650, key: "speed.med" }, { ms: 240, key: "speed.fast" }];
   function applySpeed() { aiDelay = AI_SPEEDS[aiSpeedIdx].ms; const sb = $("btn-speed"); if (sb) sb.textContent = T(AI_SPEEDS[aiSpeedIdx].key); }
+  // fill all static-chrome strings (setup screen, toolbar, options) for the current language
+  function applyStaticI18n() { document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = T(el.getAttribute("data-i18n")); }); }
   function ensureAiBanner() {
     let b = $("ai-banner");
     if (!b) { b = document.createElement("div"); b.id = "ai-banner"; ($("board-wrap") || document.body).appendChild(b); }
@@ -1082,7 +1100,8 @@
     { const tb = $("btn-tutorial"); if (tb) tb.addEventListener("click", startTutorial); }
     { const mb = $("btn-mute"); if (mb) mb.addEventListener("click", () => { const m = RL.sfx ? RL.sfx.toggle() : true; mb.textContent = m ? "🔇" : "🔊"; }); }
     { const sb = $("btn-speed"); if (sb) { applySpeed(); sb.addEventListener("click", () => { aiSpeedIdx = (aiSpeedIdx + 1) % AI_SPEEDS.length; applySpeed(); }); } }
-    { const ls = $("lang-select"); if (ls) { ls.value = lang; ls.addEventListener("change", () => { lang = ls.value; try { localStorage.setItem("rl-lang", lang); } catch (e) { } applySpeed(); if (G) render(); }); } }
+    { const ls = $("lang-select"); if (ls) { ls.value = lang; ls.addEventListener("change", () => { lang = ls.value; try { localStorage.setItem("rl-lang", lang); } catch (e) { } applyStaticI18n(); applySpeed(); if (G) render(); }); } }
+    applyStaticI18n();   // render static chrome in the saved language on load
     $("btn-restart").addEventListener("click", () => location.reload());
     const modeSel = $("mode-select"), pcSel = $("player-count");
     if (modeSel && pcSel) modeSel.addEventListener("change", () => {   // team modes fix the player count

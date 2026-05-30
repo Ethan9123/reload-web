@@ -10,26 +10,26 @@
 <div id="app">
   <section id="setup-screen" class="screen">
     <h1>RELOAD</h1>
-    <p class="subtitle">大逃杀战术骰子桌游 · 网页单机版（开发中）</p>
+    <p class="subtitle" data-i18n="setup.subtitle">大逃杀战术骰子桌游 · 网页单机版（开发中）</p>
     <div class="setup-box">
-      <label>玩家数量：
+      <label><span data-i18n="setup.players">玩家数量：</span>
         <select id="player-count">
-          <option value="2">2 人</option>
-          <option value="3">3 人</option>
-          <option value="4" selected>4 人</option>
-          <option value="5">5 人</option>
-          <option value="6">6 人</option>
+          <option value="2" data-i18n="opt.p2">2 人</option>
+          <option value="3" data-i18n="opt.p3">3 人</option>
+          <option value="4" selected data-i18n="opt.p4">4 人</option>
+          <option value="5" data-i18n="opt.p5">5 人</option>
+          <option value="6" data-i18n="opt.p6">6 人</option>
         </select>
       </label>
-      <label>模式：
+      <label><span data-i18n="setup.mode">模式：</span>
         <select id="mode-select">
-          <option value="battleRoyale" selected>大逃杀（各自为战）</option>
-          <option value="team">团队赛（2v2）</option>
-          <option value="team3v3">团队赛（3v3）</option>
-          <option value="team2v2v2">乱斗（2v2v2）</option>
+          <option value="battleRoyale" selected data-i18n="opt.br">大逃杀（各自为战）</option>
+          <option value="team" data-i18n="opt.team2">团队赛（2v2）</option>
+          <option value="team3v3" data-i18n="opt.team3">团队赛（3v3）</option>
+          <option value="team2v2v2" data-i18n="opt.team2v2v2">乱斗（2v2v2）</option>
         </select>
       </label>
-      <label>地图：<select id="map-select">
+      <label><span data-i18n="setup.map">地图：</span><select id="map-select">
         <option value="arcadia" selected>Arcadia 阿卡迪亚 (3-4)</option>
         <option value="imperial">帝国皇朝 (2-3)</option>
         <option value="transit">转运站 · 4传送门 (4-6)</option>
@@ -37,15 +37,15 @@
         <option value="metropolis">大都会 · 迷宫 (3-4)</option>
         <option value="reactor">反应炉 · 太阳能 (4-6)</option>
       </select></label>
-      <label>难度：
+      <label><span data-i18n="setup.difficulty">难度：</span>
         <select id="difficulty-select">
-          <option value="easy">简单</option>
-          <option value="medium" selected>普通</option>
-          <option value="hard">困难</option>
-          <option value="expert">专家（前瞻搜索·较慢）</option>
+          <option value="easy" data-i18n="diff.easy">简单</option>
+          <option value="medium" selected data-i18n="diff.medium">普通</option>
+          <option value="hard" data-i18n="diff.hard">困难</option>
+          <option value="expert" data-i18n="opt.diffExpert">专家（前瞻搜索·较慢）</option>
         </select>
       </label>
-      <label>语言 / Lang：
+      <label><span data-i18n="setup.lang">语言 / Lang：</span>
         <select id="lang-select">
           <option value="zh" selected>中文</option>
           <option value="en">English</option>
@@ -53,21 +53,21 @@
           <option value="es">Español</option>
         </select>
       </label>
-      <label><input type="checkbox" id="all-ai"> 全部 AI（观战）</label>
-      <button id="btn-start">开始游戏</button>
-      <button id="btn-tutorial">📖 新手教学（1v1）</button>
+      <label><input type="checkbox" id="all-ai"> <span data-i18n="setup.allai">全部 AI（观战）</span></label>
+      <button id="btn-start" data-i18n="setup.start">开始游戏</button>
+      <button id="btn-tutorial" data-i18n="setup.tutorial">📖 新手教学（1v1）</button>
     </div>
   </section>
 
   <section id="game-screen" class="screen hidden">
     <header id="topbar">
       <div id="game-info"></div>
-      <button id="btn-heal" class="small">治疗</button>
-      <button id="btn-barrier" class="small">屏障</button>
-      <button id="btn-hideout" class="small">藏身处</button>
-      <button id="btn-trap" class="small">陷阱</button>
-      <button id="btn-end" class="small">结束回合</button>
-      <button id="btn-restart" class="small">重开</button>
+      <button id="btn-heal" class="small" data-i18n="btn.heal">治疗</button>
+      <button id="btn-barrier" class="small" data-i18n="btn.barrier">屏障</button>
+      <button id="btn-hideout" class="small" data-i18n="btn.hideout">藏身处</button>
+      <button id="btn-trap" class="small" data-i18n="btn.trap">陷阱</button>
+      <button id="btn-end" class="small" data-i18n="btn.end">结束回合</button>
+      <button id="btn-restart" class="small" data-i18n="btn.restart">重开</button>
       <button id="btn-mute" class="small" title="音效开关">🔊</button>
       <button id="btn-speed" class="small" title="AI 回合速度">🐇 中速</button>
     </header>
@@ -83,10 +83,10 @@
   </section>
 </div>
 
-<script src="js/data.js?v=45"></script>
-<script src="js/engine.js?v=45"></script>
-<script src="js/ai.js?v=45"></script>
-<script src="js/sfx.js?v=45"></script>
-<script src="js/ui.js?v=45"></script>
+<script src="js/data.js?v=46"></script>
+<script src="js/engine.js?v=46"></script>
+<script src="js/ai.js?v=46"></script>
+<script src="js/sfx.js?v=46"></script>
+<script src="js/ui.js?v=46"></script>
 </body>
 </html>
