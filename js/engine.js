@@ -116,9 +116,10 @@
     const mode = opts.mode || "battleRoyale";
     const useAchievements = opts.achievements !== false;   // achievements module on by default
 
-    // choose characters (first = human unless allAI). opts.chars = explicit ids in seat order (tutorial/tests);
-    // otherwise base 4 by default, or the full roster with opts.allCharacters.
-    let chars;
+    // choose characters + which seat the human takes (seat order = turn order). opts.chars = explicit ids in
+    // seat order (tutorial/tests, human = seat 0). opts.humanChar = the human's picked character, placed at a
+    // RANDOM seat so turn order is random. Otherwise random draw: base 4 by default, full roster w/ allCharacters.
+    let chars, humanSeat = 0;
     if (opts.chars && opts.chars.length) {
       chars = opts.chars.map(id => CHARACTERS.find(c => c.id === id)).filter(Boolean);
       const used = new Set(chars.map(c => c.id)), rest = shuffle(CHARACTERS.filter(c => !used.has(c.id)), rnd);
@@ -127,9 +128,17 @@
     } else {
       let pool = opts.allCharacters ? CHARACTERS.slice() : CHARACTERS.filter(c => !c.set || c.set === "base");
       if (pool.length < numPlayers) pool = CHARACTERS.slice();
-      chars = shuffle(pool, rnd).slice(0, numPlayers);
+      const hc = (opts.humanChar && !opts.allAI) ? CHARACTERS.find(c => c.id === opts.humanChar) : null;
+      if (hc) {                                              // human picked a character → place it at a random seat
+        const others = shuffle(pool.filter(c => c.id !== hc.id), rnd).slice(0, numPlayers - 1);
+        humanSeat = Math.floor(rnd() * numPlayers);
+        chars = []; let oi = 0;
+        for (let i = 0; i < numPlayers; i++) chars.push(i === humanSeat ? hc : others[oi++]);
+      } else {
+        chars = shuffle(pool, rnd).slice(0, numPlayers);
+      }
     }
-    const players = chars.map((c, i) => newPlayer(i, c, opts.allAI ? false : i === 0));
+    const players = chars.map((c, i) => newPlayer(i, c, opts.allAI ? false : i === humanSeat));
     // Team Royale: teammates seated diagonally so turn order (clockwise) never gives back-to-back team turns
     // Team modes: 2v2 (4p) & 3v3 (6p) use 2 teams; 2v2v2 (6p) uses 3. team = idx % numTeams keeps teammates
     // out of back-to-back turn order. All team logic below keys off p.team / sameTeam, not the exact mode.

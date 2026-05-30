@@ -48,6 +48,7 @@
       "eq.ranged": "远程", "eq.range": "射程", "eq.dice": "白骰", "eq.twohand": "双手", "eq.hitbonus": "命中bonus", "eq.injury": "伤", "eq.light": "轻伤", "eq.close": "近战", "eq.armor": "护甲", "eq.skull": "骷髅", "eq.equip": "＋装备", "eq.unequip": "－卸下",
       "slotcn.head": "头部", "slotcn.torso": "躯干", "slotcn.hand": "手持", "slotcn.special": "道具",
       "terr.tower": "中央塔", "terr.jungle": "丛林", "terr.plains": "平原", "terr.mountain": "山地", "terr.village": "村庄", "terr.maze": "迷宫", "terr.solar": "太阳能阵列",
+      "cs.title": "选择你的角色", "cs.subtitle": "挑一个你喜欢的角色参战 · 出场顺位随机", "cs.back": "返回", "cs.start": "开始游戏",
     },
     en: {
       "legend.move": "Move/Reach", "legend.atk": "Attackable", "legend.you": "You", "legend.loot": "✋ Loot here",
@@ -80,6 +81,7 @@
       "eq.ranged": "Ranged", "eq.range": "Rng ", "eq.dice": " white", "eq.twohand": "2-handed", "eq.hitbonus": "hit bonus", "eq.injury": "injury", "eq.light": "light", "eq.close": "Melee", "eq.armor": "Armor", "eq.skull": "skull", "eq.equip": "＋Equip", "eq.unequip": "－Unequip",
       "slotcn.head": "Head", "slotcn.torso": "Torso", "slotcn.hand": "Hand", "slotcn.special": "Item",
       "terr.tower": "Tower", "terr.jungle": "Jungle", "terr.plains": "Plains", "terr.mountain": "Mountain", "terr.village": "Village", "terr.maze": "Maze", "terr.solar": "Solar Array",
+      "cs.title": "Choose your character", "cs.subtitle": "Pick a character you like — turn order is random", "cs.back": "Back", "cs.start": "Start game",
     },
     fr: {
       "legend.move": "Déplacer/Portée", "legend.atk": "Attaquable", "legend.you": "Vous", "legend.loot": "✋ Ramasser ici",
@@ -112,6 +114,7 @@
       "eq.ranged": "Distance", "eq.range": "Port. ", "eq.dice": " dés", "eq.twohand": "2 mains", "eq.hitbonus": "bonus", "eq.injury": "blessure", "eq.light": "légère", "eq.close": "Mêlée", "eq.armor": "Armure", "eq.skull": "crâne", "eq.equip": "＋Équiper", "eq.unequip": "－Retirer",
       "slotcn.head": "Tête", "slotcn.torso": "Torse", "slotcn.hand": "Main", "slotcn.special": "Objet",
       "terr.tower": "Tour", "terr.jungle": "Jungle", "terr.plains": "Plaine", "terr.mountain": "Montagne", "terr.village": "Village", "terr.maze": "Labyrinthe", "terr.solar": "Panneaux solaires",
+      "cs.title": "Choisissez votre personnage", "cs.subtitle": "Choisissez un personnage qui vous plaît — l'ordre de jeu est aléatoire", "cs.back": "Retour", "cs.start": "Démarrer",
     },
     es: {
       "legend.move": "Mover/Alcance", "legend.atk": "Atacable", "legend.you": "Tú", "legend.loot": "✋ Saquear aquí",
@@ -144,6 +147,7 @@
       "eq.ranged": "Distancia", "eq.range": "Alc. ", "eq.dice": " dados", "eq.twohand": "2 manos", "eq.hitbonus": "bono", "eq.injury": "daño", "eq.light": "leve", "eq.close": "Cuerpo", "eq.armor": "Armadura", "eq.skull": "calavera", "eq.equip": "＋Equipar", "eq.unequip": "－Quitar",
       "slotcn.head": "Cabeza", "slotcn.torso": "Torso", "slotcn.hand": "Mano", "slotcn.special": "Objeto",
       "terr.tower": "Torre", "terr.jungle": "Jungla", "terr.plains": "Llanura", "terr.mountain": "Montaña", "terr.village": "Pueblo", "terr.maze": "Laberinto", "terr.solar": "Panel solar",
+      "cs.title": "Elige tu personaje", "cs.subtitle": "Elige un personaje que te guste — el orden de turno es aleatorio", "cs.back": "Atrás", "cs.start": "Empezar",
     },
   };
   let lang = (typeof localStorage !== "undefined" && localStorage.getItem("rl-lang")) || "zh";
@@ -707,6 +711,30 @@
     if (!G.gameOver && !E.curP(G).human) await runAI();
   }
 
+  // ---- character select: human picks one character; turn order is randomized in the engine ----
+  let chosenChar = null;
+  function showCharSelect() {
+    chosenChar = null;
+    const grid = $("char-grid");
+    if (grid) {
+      grid.innerHTML = D.CHARACTERS.map(ch => {
+        const name = (lang === "zh" && ch.cn) ? ch.cn : ch.name;
+        const ab = ch.ability ? `<div class="cs-ab"><b>${TC("ability." + ch.ability.id + ".name", ch.ability.name)}</b><span>${TC("ability." + ch.ability.id + ".text", ch.ability.text)}</span></div>` : "";
+        return `<button class="cs-card" data-id="${ch.id}" style="--accent:${ch.color}">` +
+          `<span class="cs-emb">${emblemSVG({ color: ch.color, character: ch.id }, ch, 56)}</span>` +
+          `<div class="cs-name">${name}</div>${ab}</button>`;
+      }).join("");
+      grid.querySelectorAll(".cs-card").forEach(b => b.addEventListener("click", () => {
+        grid.querySelectorAll(".cs-card.sel").forEach(x => x.classList.remove("sel"));
+        b.classList.add("sel"); chosenChar = b.dataset.id;
+        const sb = $("btn-cs-start"); if (sb) sb.disabled = false;
+      }));
+    }
+    const sb = $("btn-cs-start"); if (sb) sb.disabled = true;
+    $("setup-screen").classList.add("hidden");
+    $("char-select").classList.remove("hidden");
+  }
+
   async function startGame() {
     const modeSel = $("mode-select"), mode = modeSel ? modeSel.value : "battleRoyale";
     let n = parseInt($("player-count").value, 10);
@@ -714,9 +742,11 @@
     else if (mode === "team3v3" || mode === "team2v2v2") n = 6;  // 3v3 / 2v2v2 are 6-player team modes
     const difficulty = ($("difficulty-select") || {}).value || "medium";
     const map = ($("map-select") || {}).value || "arcadia";
-    G = E.newGame({ numPlayers: n, mode, allAI: $("all-ai").checked, allCharacters: true, difficulty, map });
+    const allAI = $("all-ai").checked;
+    G = E.newGame({ numPlayers: n, mode, allAI, allCharacters: true, difficulty, map, humanChar: allAI ? null : chosenChar });
     window.G = G; lastAchSeq = 0;
     $("setup-screen").classList.add("hidden");
+    $("char-select").classList.add("hidden");
     $("game-screen").classList.remove("hidden");
     render();
     if (!E.isHumanTurn(G)) await runAI();
@@ -1170,7 +1200,9 @@
 
   function init() {
     if (typeof window !== "undefined") { window.__render = render; window.__combat = animateCombat; }   // dev/test hooks (forced re-render / play a combat overlay)
-    $("btn-start").addEventListener("click", startGame);
+    $("btn-start").addEventListener("click", () => { if ($("all-ai").checked) startGame(); else showCharSelect(); });
+    { const cs = $("btn-cs-start"); if (cs) cs.addEventListener("click", startGame); }
+    { const cb = $("btn-cs-back"); if (cb) cb.addEventListener("click", () => { $("char-select").classList.add("hidden"); $("setup-screen").classList.remove("hidden"); }); }
     { const tb = $("btn-tutorial"); if (tb) tb.addEventListener("click", startTutorial); }
     { const mb = $("btn-mute"); if (mb) mb.addEventListener("click", () => { const m = RL.sfx ? RL.sfx.toggle() : true; mb.textContent = m ? "🔇" : "🔊"; }); }
     { const sb = $("btn-speed"); if (sb) { applySpeed(); sb.addEventListener("click", () => { aiSpeedIdx = (aiSpeedIdx + 1) % AI_SPEEDS.length; applySpeed(); }); } }
