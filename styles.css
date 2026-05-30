@@ -54,6 +54,27 @@ button.small { padding: 4px 10px; font-size: 13px; cursor: pointer; }
 .team-badge.team0 { background: #1d3a5f; color: #9fd0ff; }
 .team-badge.team1 { background: #5f3a1d; color: #ffd09f; }
 .team-badge.team2 { background: #2f5f3a; color: #9fffc0; }
+/* interactive tutorial coach-marks */
+#btn-tutorial { margin-top: 8px; background: #2a3340; color: #f4d03f; border: 1px solid #f4d03f; }
+#tut-overlay { position: fixed; left: 14px; bottom: 14px; z-index: 70; max-width: 330px; }
+.tut-card { background: #1b2330; border: 2px solid #f4d03f; border-radius: 10px; padding: 11px 13px; box-shadow: 0 6px 26px rgba(0,0,0,.55); color: #e6e8ec; font-size: 13px; }
+.tut-head { display: flex; align-items: center; gap: 8px; font-weight: 700; color: #f4d03f; margin-bottom: 6px; }
+.tut-step { font-size: 11px; color: #9aa0ac; font-weight: 400; }
+.tut-x { margin-left: auto; background: none; border: none; color: #9aa0ac; cursor: pointer; font-size: 15px; line-height: 1; padding: 0 2px; }
+.tut-body { line-height: 1.55; margin-bottom: 10px; }
+.tut-body b { color: #f4d03f; }
+.tut-nav { display: flex; gap: 8px; justify-content: flex-end; }
+.tut-nav button { font-size: 12px; padding: 4px 11px; border-radius: 6px; border: 1px solid #3a4453; background: #2a3340; color: #e6e8ec; cursor: pointer; }
+.tut-nav button:disabled { opacity: .4; cursor: default; }
+.tut-nav .tut-next { background: #f4d03f; color: #1b2330; border-color: #f4d03f; font-weight: 700; }
+.tut-hl { outline: 3px solid #f4d03f !important; outline-offset: 2px; border-radius: 6px; }
+/* impact juice: a brief full-screen tint on big hits (opacity driven by JS) */
+#hit-flash { position: fixed; inset: 0; pointer-events: none; z-index: 55; opacity: 0; }
+/* character panel: fixed equipment slots (head / torso / hand1 / hand2) */
+.cb-slots { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.cb-slot { background: #11151c; border: 1px solid #2a3340; border-radius: 8px; padding: 6px; }
+.cb-slot-l { font-size: 11px; color: #9aa0ac; margin-bottom: 4px; font-weight: 700; }
+.cb-slot-x { font-size: 12px; text-align: center; padding: 14px 0; border: 1px dashed #333d4a; border-radius: 6px; }
 .pcard .pstat { font-size: 12px; color: #9aa0ac; }
 #log-panel h4 { margin: 12px 0 6px; }
 #log { font-size: 12px; color: #aab0bc; max-height: 220px; overflow: auto; }
@@ -85,6 +106,31 @@ button.small { padding: 4px 10px; font-size: 13px; cursor: pointer; }
 .die.line { background: #e8eef6; color: #11141a; }
 .die.inj { background: #7a2230; color: #ffb3bd; }
 .die.boost { background: #3aa84b; color: #eafff0; box-shadow: inset 0 0 0 1px #2c7d39, 0 0 6px rgba(58,168,75,0.5); }
+/* character panel styled like the physical board (injury zone + RELOAD dial + accent color) */
+.cb-board { position: relative; background: #11151c; border: 2px solid var(--accent, #2a2f3a); border-radius: 14px; padding: 16px 18px; width: min(900px, 95vw); max-height: 92vh; overflow: auto; }
+.cb-boardtop { display: flex; align-items: center; gap: 16px; border-bottom: 2px solid var(--accent); padding-bottom: 12px; }
+.cb-injury { flex: none; }
+.cb-zlabel { font-size: 11px; color: #9aa0ac; margin-bottom: 4px; font-weight: 700; letter-spacing: .5px; }
+.cb-skulls { display: flex; gap: 5px; }
+.cb-skull { width: 26px; height: 26px; border-radius: 5px; border: 1px solid #3a4150; background: #1b1f28; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+.cb-skull.on { background: #7a2230; color: #ffb3bd; border-color: #a83048; }
+.cb-namewrap { flex: 1; text-align: center; min-width: 0; }
+.cb-name2 { font-size: 30px; font-weight: 800; color: var(--accent); line-height: 1; letter-spacing: 1px; }
+.cb-you { font-size: 12px; vertical-align: middle; background: var(--accent); color: #0c0e12; border-radius: 4px; padding: 1px 6px; }
+.cb-en { font-size: 12px; color: #9aa0ac; margin-top: 5px; }
+.cb-dial { flex: none; width: 78px; height: 78px; border-radius: 50%; background: conic-gradient(var(--accent) calc(var(--p) * 1%), #2a3340 0); display: flex; align-items: center; justify-content: center; }
+.cb-dial-in { width: 60px; height: 60px; border-radius: 50%; background: #11151c; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.cb-dial-t { font-size: 9px; color: var(--accent); font-weight: 700; letter-spacing: .5px; }
+.cb-dial-p { font-size: 16px; font-weight: 800; color: #e6e8ec; }
+.cb-boardmain { display: flex; gap: 16px; margin-top: 14px; }
+.cb-actions { flex: none; display: flex; flex-direction: column; gap: 5px; }
+.cb-act { display: flex; align-items: center; gap: 7px; font-size: 12px; color: #aab0bc; background: #181d26; border: 1px solid #262c38; border-radius: 6px; padding: 4px 9px 4px 6px; }
+.cb-act-i { display: inline-flex; width: 22px; height: 22px; align-items: center; justify-content: center; background: #232a36; border-radius: 5px; font-size: 13px; }
+.cb-art { flex: none; }
+.cb-art .cb-card { height: 240px; }
+.cb-art .cb-cardfallback { height: 240px; width: 170px; }
+.cb-side { flex: 1; min-width: 0; }
+.cb-board .cb-ability { border-left-color: var(--accent); }
 .cb-sec { margin-top: 14px; }
 .cb-sec h3 { margin: 0 0 8px; font-size: 14px; color: #cdd2db; }
 .cb-equiphint { font-size: 11px; color: #5fd0e0; font-weight: 400; margin-left: 8px; }

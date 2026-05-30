@@ -116,10 +116,19 @@
     const mode = opts.mode || "battleRoyale";
     const useAchievements = opts.achievements !== false;   // achievements module on by default
 
-    // choose characters (first = human unless allAI). Base 4 by default; opts.allCharacters adds the expansion roster.
-    let pool = opts.allCharacters ? CHARACTERS.slice() : CHARACTERS.filter(c => !c.set || c.set === "base");
-    if (pool.length < numPlayers) pool = CHARACTERS.slice();
-    const chars = shuffle(pool, rnd).slice(0, numPlayers);
+    // choose characters (first = human unless allAI). opts.chars = explicit ids in seat order (tutorial/tests);
+    // otherwise base 4 by default, or the full roster with opts.allCharacters.
+    let chars;
+    if (opts.chars && opts.chars.length) {
+      chars = opts.chars.map(id => CHARACTERS.find(c => c.id === id)).filter(Boolean);
+      const used = new Set(chars.map(c => c.id)), rest = shuffle(CHARACTERS.filter(c => !used.has(c.id)), rnd);
+      while (chars.length < numPlayers && rest.length) chars.push(rest.pop());
+      chars = chars.slice(0, numPlayers);
+    } else {
+      let pool = opts.allCharacters ? CHARACTERS.slice() : CHARACTERS.filter(c => !c.set || c.set === "base");
+      if (pool.length < numPlayers) pool = CHARACTERS.slice();
+      chars = shuffle(pool, rnd).slice(0, numPlayers);
+    }
     const players = chars.map((c, i) => newPlayer(i, c, opts.allAI ? false : i === 0));
     // Team Royale: teammates seated diagonally so turn order (clockwise) never gives back-to-back team turns
     // Team modes: 2v2 (4p) & 3v3 (6p) use 2 teams; 2v2v2 (6p) uses 3. team = idx % numTeams keeps teammates
@@ -915,7 +924,7 @@
   // values later.) Steps follow the rulebook: roll -> skull -> combat
   // line -> small injuries -> weapon bonus -> fame/RELOAD.
   // ============================================================
-  const INJURY_ZONE = 5;
+  const INJURY_ZONE = 4;   // injury pool has 4 slots — the 4th injury forces a RELOAD (rulebook; 5 action dice, 4 lives)
   const byId = (id) => id && DATA.EQUIP_BY_ID[id];
 
   function rollDie(rnd) { const r = Math.floor(rnd() * 6) + 1; return r === 6 ? "skull" : r; }

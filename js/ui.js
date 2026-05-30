@@ -14,7 +14,17 @@
   const $ = (id) => document.getElementById(id);
   const SVGNS = "http://www.w3.org/2000/svg";
   const HEX = 46;
-  let G = null, aiRunning = false;
+  let G = null, aiRunning = false, _overSfx = false;
+  const SFX = (n) => { try { if (RL.sfx && RL.sfx[n]) RL.sfx[n](); } catch (e) { } };   // play a procedural sound (no-op if muted / unavailable)
+  function shake(px) {   // brief screen-shake on the board (impact feedback)
+    const el = $("board-wrap"); if (!el) return;
+    const t0 = performance.now(), dur = 280;
+    (function step(t) { const k = (t - t0) / dur; if (k >= 1) { el.style.transform = ""; return; } const a = px * (1 - k); el.style.transform = `translate(${(Math.random() * 2 - 1) * a}px,${(Math.random() * 2 - 1) * a}px)`; requestAnimationFrame(step); })(performance.now());
+  }
+  function flashHit(color) {   // a quick full-screen tint that fades out
+    let f = $("hit-flash"); if (!f) { f = document.createElement("div"); f.id = "hit-flash"; document.body.appendChild(f); }
+    f.style.background = color || "rgba(255,90,60,.28)"; f.style.transition = "none"; f.style.opacity = "0.85"; void f.offsetWidth; f.style.transition = "opacity .4s"; f.style.opacity = "0";
+  }
 
   const sleep = (ms) => new Promise(r => setTimeout(r, ms));
   function svgEl(tag, attrs) {
@@ -279,12 +289,13 @@
   function render() {
     renderBoard(); renderPlayers(); renderTop(); renderLog(); renderAchievements(); renderDiplomacy();
     if (G && (G._achSeq || 0) > lastAchSeq) { lastAchSeq = G._achSeq; if (G.lastAchievement) flashAchievement(G.lastAchievement); }
+    if (G && G.gameOver && !_overSfx) { _overSfx = true; SFX("win"); } else if (G && !G.gameOver) _overSfx = false;
   }
 
   async function onHex(key) {
     if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
     const p = E.curP(G);
-    if (G.needsParachute) { if (E.parachute(G, key)) render(); return; }
+    if (G.needsParachute) { if (E.parachute(G, key)) { SFX("parachute"); render(); } return; }
     const c = G.board[key];
     const occupants = E.playersOnHex(G, c.q, c.r).filter(x => x.idx !== p.idx).map(x => x.idx);
     if (occupants.length) {
@@ -299,11 +310,11 @@
       }
     }
     const curKey = E.hexKey(p.pos.q, p.pos.r);
-    if (key === curKey && E.canUpload(G, p)) { E.doActivate(G); render(); placeDieAnim(curKey); return; } // upload beacons at tower
-    if (key === curKey && E.lootOptions(G, p).length) { E.doLoot(G, 0); render(); placeDieAnim(curKey); return; }
+    if (key === curKey && E.canUpload(G, p)) { E.doActivate(G); SFX("upload"); render(); placeDieAnim(curKey); return; } // upload beacons at tower
+    if (key === curKey && E.lootOptions(G, p).length) { E.doLoot(G, 0); SFX("loot"); render(); placeDieAnim(curKey); return; }
     if (E.legalRuns(G, p).includes(key)) {
       const seq = G._trapSeq || 0;
-      E.doRun(G, key); render(); placeDieAnim(key);
+      E.doRun(G, key); SFX("move"); render(); placeDieAnim(key);
       if ((G._trapSeq || 0) > seq && G.lastTrap && (G.players[G.lastTrap.walker].human || G.players[G.lastTrap.owner].human)) await animateTrap(G.lastTrap);
       return;
     }
@@ -345,10 +356,10 @@
     if (!E.isHumanTurn(G)) await runAI();
   }
 
-  function act(fn) {
+  function act(fn, snd) {
     if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
     const p = E.curP(G), here = p.pos && E.hexKey(p.pos.q, p.pos.r);
-    if (fn(p)) { render(); if (here) placeDieAnim(here); }
+    if (fn(p)) { if (snd) SFX(snd); render(); if (here) placeDieAnim(here); }
   }
   function barrierEdgeTowardEnemy(p) {
     const empties = E.emptyEdges(G, p); if (!empties.length) return null;
@@ -410,31 +421,54 @@
     }
     return `<div class="cb-sec"><h3>可用道具（自由行动 · 用后弃置）</h3><div class="cb-uses">${rows}</div></div>`;
   }
+  // fixed-slot loadout (head / torso / hand1 / hand2), HUD-style
+  function slotChip(label, id, editable, blocked) {
+    const inner = blocked ? '<div class="cb-slot-x muted">双手武器占用</div>'
+      : id ? equipCardHTML(EQ[id], editable ? "unequip" : null)
+        : '<div class="cb-slot-x muted">— 空 —</div>';
+    return `<div class="cb-slot"><div class="cb-slot-l">${label}</div>${inner}</div>`;
+  }
+  function loadoutHTML(p, editable) {
+    const hand = p.equipped.hand || [], h0 = hand[0], two = h0 && EQ[h0] && EQ[h0].hands === 2;
+    return `<div class="cb-slots">${slotChip("头盔", p.equipped.head, editable)}${slotChip("护甲", p.equipped.torso, editable)}${slotChip("手 1", h0, editable)}${two ? slotChip("手 2", null, false, true) : slotChip("手 2", hand[1], editable)}</div>`;
+  }
   function openCharBoard(idx) {
     const p = G.players[idx], ch = CHAR[p.character];
     let ov = $("char-overlay");
     if (!ov) { ov = document.createElement("div"); ov.id = "char-overlay"; ov.addEventListener("click", (e) => { if (e.target === ov) closeCharBoard(); }); document.body.appendChild(ov); }
     const editable = p.human && E.curP(G) === p && !G.gameOver && E.canEquip(G, p);   // adjust equipment before assigning any die
     const equippedIds = [p.equipped.head, p.equipped.torso, ...(p.equipped.hand || [])].filter(Boolean);
-    const eqHTML = equippedIds.map(id => equipCardHTML(EQ[id], editable ? "unequip" : null)).join("") || '<span class="muted">无</span>';
     const packLeft = (p.backpack || []).slice();                 // backpack minus currently-equipped instances
     for (const id of equippedIds) { const i = packLeft.indexOf(id); if (i >= 0) packLeft.splice(i, 1); }
     const packHTML = packLeft.map(id => equipCardHTML(EQ[id], (editable && EQ[id] && EQ[id].slot !== "special") ? "equip" : null)).join("") || '<span class="muted">空</span>';
     const f = p.fame;
-    ov.innerHTML = `<div class="cb-panel" style="border-color:${p.color}">
+    ov.innerHTML = `<div class="cb-board" style="--accent:${p.color}">
       <button class="cb-close" title="关闭">✕</button>
-      <div class="cb-top">
-        <img class="cb-card" src="${ch.card}" alt="${p.name}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'cb-cardfallback',textContent:'${p.name}'}))">
-        <div class="cb-info">
-          <h2 style="color:${p.color}">${p.name}${p.human ? " (你)" : ""}</h2>
-          ${p.persona ? `<div class="cb-persona">「${p.persona.name}」${p.persona.archetype} · ${p.persona.dim}<div>${p.persona.blurb}</div></div>` : ""}
-          ${ch.ability ? `<div class="cb-ability"><b>${ch.ability.name}</b><div>${ch.ability.text}</div></div>` : '<div class="muted">（角色能力见左侧卡牌）</div>'}
-          <div class="cb-fame">名望 <b>${E.totalFame(p)}</b> ＝ 信标${f.beacon}·受伤${f.injury}·重整${f.reload}·陷阱${f.trap || 0}·成就${f.achievement || 0}${p.carryingBeacons ? `　｜　携带信标 ${p.carryingBeacons}（需到中央塔上缴）` : ""}</div>
-          ${p.achievementsWon && p.achievementsWon.length ? `<div class="cb-fame">🏅 成就：${p.achievementsWon.map(id => (ACH[id] ? ACH[id].cn : id)).join("、")}</div>` : ""}
+      <div class="cb-boardtop">
+        <div class="cb-injury">
+          <div class="cb-zlabel">傷害區 / RELOAD</div>
+          <div class="cb-skulls">${Array.from({ length: E.INJURY_ZONE }, (_, i) => `<span class="cb-skull${i < p.injuries ? " on" : ""}">${i < p.injuries ? "☠" : ""}</span>`).join("")}</div>
+        </div>
+        <div class="cb-namewrap">
+          <div class="cb-name2">${ch.cn || ch.name}${p.human ? ' <span class="cb-you">你</span>' : ""}</div>
+          <div class="cb-en">${ch.name}${p.team != null ? ` · 队${p.team + 1}` : ""}</div>
+        </div>
+        <div class="cb-dial" style="--p:${Math.round(p.injuries / E.INJURY_ZONE * 100)}">
+          <div class="cb-dial-in"><div class="cb-dial-t">RELOAD</div><div class="cb-dial-p">${Math.round(p.injuries / E.INJURY_ZONE * 100)}%</div></div>
+        </div>
+      </div>
+      <div class="cb-boardmain">
+        <div class="cb-actions">${[["➤", "移动"], ["✋", "掠夺"], ["⚙", "启动"], ["🔨", "建造"], ["✚", "治疗"], ["🔫", "远程"], ["🗡", "近战"]].map(a => `<div class="cb-act"><span class="cb-act-i">${a[0]}</span>${a[1]}</div>`).join("")}</div>
+        <div class="cb-art"><img class="cb-card" src="${ch.card}" alt="${p.name}" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'cb-cardfallback',textContent:'${p.name}'}))"></div>
+        <div class="cb-side">
+          ${ch.ability ? `<div class="cb-ability"><b>${ch.ability.name}</b><div>${ch.ability.text}</div></div>` : ""}
+          ${p.persona ? `<div class="cb-persona">「${p.persona.name}」${p.persona.archetype}<div>${p.persona.blurb}</div></div>` : ""}
+          <div class="cb-fame">名望 <b>${E.totalFame(p)}</b>　信标${f.beacon}·受伤${f.injury}·重整${f.reload}·陷阱${f.trap || 0}·成就${f.achievement || 0}${p.carryingBeacons ? `　｜ 携带信标 ${p.carryingBeacons}` : ""}</div>
+          ${p.achievementsWon && p.achievementsWon.length ? `<div class="cb-fame">🏅 ${p.achievementsWon.map(id => (ACH[id] ? ACH[id].cn : id)).join("、")}</div>` : ""}
           ${diceRowsHTML(p)}
         </div>
       </div>
-      <div class="cb-sec"><h3>已装备（${SLOT_CN.head}1 / ${SLOT_CN.torso}1 / ${SLOT_CN.hand}2）${editable ? '<span class="cb-equiphint">分配骰子前可点击调整</span>' : ""}</h3><div class="ecards">${eqHTML}</div></div>
+      <div class="cb-sec"><h3>装备槽位 ${editable ? '<span class="cb-equiphint">分配骰子前可点击更换</span>' : ""}</h3>${loadoutHTML(p, editable)}</div>
       ${specialUseHTML(p)}
       <div class="cb-sec"><h3>背包（${p.backpack.length}）</h3><div class="ecards">${packHTML}</div></div>
     </div>`;
@@ -451,7 +485,7 @@
       if (itemId === "tactical_explosive") target = E.explosiveTargets(G, p)[+btn.dataset.ti];
       if (!E.useSpecialItem(G, itemId, target)) return;
       if (itemId === "tactical_explosive" && target) {                 // show the blast on the board
-        closeCharBoard(); render(); await vfxExplosion(target.key); openCharBoard(idx);
+        closeCharBoard(); render(); SFX("throwItem"); await vfxExplosion(target.key); openCharBoard(idx);
       } else { render(); openCharBoard(idx); }                          // pain killer / energy drink: refresh panel in place
     }));
     ov.style.display = "flex";
@@ -484,7 +518,7 @@
     groups.forEach((g, gi) => [...body.querySelectorAll(`[data-g="${gi}"] .adie`)].forEach((el, i) => all.push({ el, v: g.values[i] })));
     const t0 = Date.now();
     await new Promise(res => { const iv = setInterval(() => { all.forEach(d => { if (!d.el.classList.contains("settled")) d.el.textContent = rollFace(); }); if (Date.now() - t0 > 620) { clearInterval(iv); res(); } }, 70); });
-    for (const d of all) { d.el.textContent = DFACE(d.v); d.el.classList.remove("rolling"); d.el.classList.add("settled"); if (d.v === "skull") d.el.classList.add("skull"); await sleep(55); }
+    for (const d of all) { d.el.textContent = DFACE(d.v); d.el.classList.remove("rolling"); d.el.classList.add("settled"); if (d.v === "skull") d.el.classList.add("skull"); SFX("dice"); await sleep(55); }
     rEl.textContent = resultText || ""; if (resultClass) rEl.classList.add(resultClass);
     await sleep(850); ov.style.display = "none";
   }
@@ -510,7 +544,7 @@
     // PHASE 1 — roll (tumble -> settle), skulls marked
     const t0 = Date.now();
     await new Promise(res => { const iv = setInterval(() => { all.forEach(d => { if (!d.el.classList.contains("settled")) d.el.textContent = rollFace(); }); if (Date.now() - t0 > 600) { clearInterval(iv); res(); } }, 70); });
-    for (const d of all) { d.el.textContent = DFACE(d.v); d.el.classList.remove("rolling"); d.el.classList.add("settled"); if (d.v === "skull") d.el.classList.add("skull"); }
+    for (const d of all) { d.el.textContent = DFACE(d.v); d.el.classList.remove("rolling"); d.el.classList.add("settled"); if (d.v === "skull") d.el.classList.add("skull"); SFX("dice"); }
     await sleep(450);
     // PHASE 2 — skull step
     const aS = rep.aSkulls || 0, dS = rep.dSkulls || 0;
@@ -537,6 +571,8 @@
     // PHASE 4 — result
     rEl.className = "dz-result " + (rep.reload ? "big" : (rep.dealt > 0 ? "hit" : ""));
     rEl.textContent = rep.reload ? `💥 ${T.name} 被迫 RELOAD！` : (rep.dealt > 0 ? `命中！造成 ${rep.dealt} 点伤` : "未造成伤害");
+    if (rep.reload) { SFX("reload"); shake(14); flashHit("rgba(227,66,75,.32)"); }
+    else if (rep.dealt > 0) { if (rep.type === "close") SFX("melee"); shake(6); flashHit("rgba(255,200,90,.16)"); }
     await sleep(1100);
     ov.style.display = "none";
   }
@@ -553,6 +589,7 @@
   }
   function animateHeal(roll) {
     if (!roll) return Promise.resolve();
+    SFX("heal");
     const p = G.players[roll.by];
     return animateRoll(`${p.name} 治疗`, [{ label: "治疗骰", color: "#5fd0e0", values: [roll.value] }],
       roll.value === "skull" ? `骷髅！恢复 ${roll.healed} 点` : `恢复 ${roll.healed} 点`, "hit");
@@ -585,6 +622,7 @@
   }
   function vfxGunshot(fromKey, toKey) {
     const a = pxOf(fromKey), b = pxOf(toKey), g = vfxGroup(); if (!a || !b || !g) return Promise.resolve();
+    SFX("shoot");
     const tracer = svgEl("line", { x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: "#ffd86b", "stroke-width": 3, "stroke-linecap": "round", opacity: 0.95 });
     const flash = svgEl("circle", { cx: a.x, cy: a.y, r: 7, fill: "#fff3b0" });
     g.appendChild(tracer); g.appendChild(flash);
@@ -602,6 +640,7 @@
   }
   function vfxExplosion(key) {
     const c = pxOf(key), g = vfxGroup(); if (!c || !g) return Promise.resolve();
+    SFX("explosion"); shake(9);
     const ring = svgEl("circle", { cx: c.x, cy: c.y, r: 4, fill: "none", stroke: "#ff7a2c", "stroke-width": 4 });
     const core = svgEl("circle", { cx: c.x, cy: c.y, r: 6, fill: "#ffe07a" });
     g.appendChild(ring); g.appendChild(core);
@@ -635,7 +674,7 @@
       <div class="tz-result" id="tzRes"></div></div>`;
     ov.style.display = "flex";
     const mine = ov.querySelector("#tzMine"), walk = ov.querySelector("#tzWalk"), res = ov.querySelector("#tzRes");
-    mine.classList.add("shake");                                   // tension: the unknown mine rattles
+    mine.classList.add("shake"); SFX("mine");                      // tension: the unknown mine rattles
     await sleep(750);
     walk.textContent = RPS_SYM[rep.w]; walk.classList.add("pop");  // walker reveals their choice
     await sleep(560);
@@ -707,9 +746,54 @@
     "btn-restart": "重新开始游戏。",
   };
 
+  // ---- interactive 1v1 tutorial: Betty (you) vs Echo (AI) on Imperial Dynasty, step-by-step coach marks ----
+  const TUT_STEPS = [
+    { text: "欢迎！你是<b>红方·炸弹贝蒂</b>，对手是<b>艾可（AI）</b>，地图<b>帝国皇朝</b>（外圈全是信标）。目标：赚最多<b>名望</b>。跟着提示走，随时可点 ✕ 退出教学。" },
+    { text: "<b>跳伞</b>：棋盘上<b>黄色虚线</b>的格子是可降落点——点其中一个降落（之后会自动判定是否被气流吹偏一格）。" },
+    { text: "<b>移动</b>：点<b>青色描边</b>的相邻格移动，花 1 颗骰；<b>上山要 2 颗</b>。" },
+    { text: "<b>撿信标</b>：走到有 🔆 信标的格子，<b>点当前格</b>把信标捡起携带；带到<b>中央塔</b>再点它『上传』换名望（光囤不上传不得分）。" },
+    { text: "<b>建造（贝蒂招牌）</b>：用底部的<b>陷阱/屏障/藏身处</b>按钮放建造物。贝蒂最适合<b>埋陷阱</b>围杀对手。", sel: "#btn-trap" },
+    { text: "<b>查看装备</b>：点左侧<b>你的角色卡</b>看装备和骰子。对手艾可会<b>隐形</b>——贴脸<b>近战</b>比远程更靠谱。", sel: "#players-area" },
+    { text: "<b>攻击</b>：当敌人进入你的射程，它的格子会出现<b>红框</b>——点红框发动战斗。<b>近战会结束你的回合</b>，先想好骰子怎么分配。" },
+    { text: "<b>战斗结算</b>：弹出掷骰动画——骰子<b>逐颗比大小</b>、<b>骷髅最强</b>、伤害够了对方就 <b>RELOAD</b>（噴装、回跳伞区）。打中艾可会让她<b>现身</b>。" },
+    { text: "<b>治疗</b>：点『治疗』按钮回血——<b>同格有敌人时不能治</b>。", sel: "#btn-heal" },
+    { text: "<b>结束回合</b>：点『结束回合』——没用完的骰子会变成<b>防御</b>，然后翻一张<b>事件卡</b>。", sel: "#btn-end" },
+    { text: "<b>事件 / 毒区</b>：右下是<b>事件日志</b>。毒区会从外圈向内扩散，<b>回合末别站在毒里</b>（除非你在穹顶或自己的藏身处）。", sel: "#log-panel" },
+    { text: "<b>取胜</b>：事件牌抽完 = 终局，<b>名望最高者获胜</b>。教学结束，开始你的第一局吧！" },
+  ];
+  let tutI = -1;
+  function tutClearHL() { document.querySelectorAll(".tut-hl").forEach(e => e.classList.remove("tut-hl")); }
+  function tutEnd() { tutClearHL(); const ov = $("tut-overlay"); if (ov) ov.style.display = "none"; tutI = -1; }
+  function tutShow() {
+    let ov = $("tut-overlay");
+    if (!ov) { ov = document.createElement("div"); ov.id = "tut-overlay"; document.body.appendChild(ov); }
+    const s = TUT_STEPS[tutI]; tutClearHL();
+    if (s.sel) { const t = document.querySelector(s.sel); if (t) t.classList.add("tut-hl"); }
+    ov.innerHTML = `<div class="tut-card">
+      <div class="tut-head">📖 新手教学 <span class="tut-step">${tutI + 1}/${TUT_STEPS.length}</span><button class="tut-x" title="结束教学">✕</button></div>
+      <div class="tut-body">${s.text}</div>
+      <div class="tut-nav"><button class="tut-prev"${tutI === 0 ? " disabled" : ""}>上一步</button><button class="tut-next">${tutI === TUT_STEPS.length - 1 ? "完成 ✓" : "下一步 ▶"}</button></div>
+    </div>`;
+    ov.style.display = "block";
+    ov.querySelector(".tut-x").addEventListener("click", tutEnd);
+    ov.querySelector(".tut-prev").addEventListener("click", () => { if (tutI > 0) { tutI--; tutShow(); } });
+    ov.querySelector(".tut-next").addEventListener("click", () => { if (tutI < TUT_STEPS.length - 1) { tutI++; tutShow(); } else tutEnd(); });
+  }
+  async function startTutorial() {
+    G = E.newGame({ numPlayers: 2, mode: "battleRoyale", map: "imperial", difficulty: "easy", seed: 73, chars: ["betty", "echo"] });
+    window.G = G; lastAchSeq = 0;
+    $("setup-screen").classList.add("hidden");
+    $("game-screen").classList.remove("hidden");
+    render();
+    tutI = 0; tutShow();
+    if (!E.isHumanTurn(G)) await runAI();
+  }
+
   function init() {
     if (typeof window !== "undefined") window.__render = render;   // dev/test hook for forced re-render
     $("btn-start").addEventListener("click", startGame);
+    { const tb = $("btn-tutorial"); if (tb) tb.addEventListener("click", startTutorial); }
+    { const mb = $("btn-mute"); if (mb) mb.addEventListener("click", () => { const m = RL.sfx ? RL.sfx.toggle() : true; mb.textContent = m ? "🔇" : "🔊"; }); }
     $("btn-restart").addEventListener("click", () => location.reload());
     const modeSel = $("mode-select"), pcSel = $("player-count");
     if (modeSel && pcSel) modeSel.addEventListener("change", () => {   // team modes fix the player count
@@ -727,9 +811,9 @@
       if (targets.length > 1) { targetIdx = await pickHealTarget(p, targets); if (targetIdx == null) return; } // let the player choose self vs teammate
       if (E.doHeal(G, targetIdx)) { render(); await animateHeal(G.lastRoll); }
     });
-    $("btn-barrier").addEventListener("click", () => act(p => { const e = barrierEdgeTowardEnemy(p); return e != null && E.doBuildBarrier(G, e); }));
-    $("btn-hideout").addEventListener("click", () => act(p => E.canBuild(G, p) && E.doBuildHideout(G)));
-    $("btn-trap").addEventListener("click", () => act(() => E.doBuildTrap(G)));
+    $("btn-barrier").addEventListener("click", () => act(p => { const e = barrierEdgeTowardEnemy(p); return e != null && E.doBuildBarrier(G, e); }, "build"));
+    $("btn-hideout").addEventListener("click", () => act(p => E.canBuild(G, p) && E.doBuildHideout(G), "build"));
+    $("btn-trap").addEventListener("click", () => act(() => E.doBuildTrap(G), "mine"));
     Object.keys(BTN_TIP).forEach(id => { const b = $(id); if (b) bindTip(b, BTN_TIP[id]); });
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
