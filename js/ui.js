@@ -155,6 +155,8 @@
     },
   };
   let lang = (typeof localStorage !== "undefined" && localStorage.getItem("rl-lang")) || "zh";
+  const L = (zh, en) => (lang === "zh" ? zh : en);   // quick bilingual literal (for strings not in the i18n table)
+  let barrierMode = false;                            // true while the player is picking a hex edge to wall
   function T(key, vars) {
     const d = LANG[lang] || LANG.zh;
     let s = d[key] != null ? d[key] : (LANG.zh[key] != null ? LANG.zh[key] : key);
@@ -384,7 +386,7 @@
       else if (hl.para.has(key)) { poly.setAttribute("stroke", "#f4d03f"); poly.setAttribute("stroke-width", "4"); poly.setAttribute("stroke-dasharray", "6 4"); }
       else if (hl.run.has(key)) { poly.setAttribute("stroke", "#5fd0e0"); poly.setAttribute("stroke-width", "3"); }
       else if (key === curKey) { poly.setAttribute("stroke", "#fff"); poly.setAttribute("stroke-width", "3"); }
-      poly.addEventListener("click", () => onHex(key));
+      poly.addEventListener("click", (ev) => onHex(key, ev));
       bindTip(poly, () => hexTip(c));
       svg.appendChild(poly);
       // map tokens — drawn procedurally (no image assets): toxin tint, portal rings, dome, beacon, supply box
@@ -408,6 +410,22 @@
       }
       if (c.trap != null) svg.appendChild(Object.assign(svgEl("text", { x: x - 18, y: y + 20, "font-size": "14", fill: "#e3424b" }), { textContent: "⚠" }));
       c.hideouts.forEach((ownerIdx, hi) => { const op = G.players[ownerIdx]; if (!op) return; const hx = x + 13 + hi * 7, hy = y - 14; svg.appendChild(svgEl("polygon", { points: `${hx - 6},${hy + 3} ${hx},${hy - 5} ${hx + 6},${hy + 3}`, fill: op.color, stroke: "#0c0e12", "stroke-width": 1, "pointer-events": "none" })); svg.appendChild(svgEl("rect", { x: hx - 5, y: hy + 3, width: 10, height: 7, fill: op.color, stroke: "#0c0e12", "stroke-width": 1, "pointer-events": "none" })); });
+    }
+    // barrier edge-picker: clickable, pulsing handles on the current player's empty edges
+    if (barrierMode && E.isHumanTurn(G)) {
+      const me = E.curP(G);
+      if (me.pos && E.canBuild(G, me)) {
+        const { x, y } = hexToPixel(me.pos.q, me.pos.r), cs = corners(x, y);
+        for (const e of E.emptyEdges(G, me)) {
+          const p1 = cs[e], p2 = cs[(e + 1) % 6];
+          const hl = svgEl("line", { x1: p1[0], y1: p1[1], x2: p2[0], y2: p2[1], stroke: "#f4d03f", "stroke-width": 7, "stroke-linecap": "round", opacity: 0.85 });
+          hl.innerHTML = '<animate attributeName="opacity" values="0.35;1;0.35" dur="0.8s" repeatCount="indefinite"/>';
+          svg.appendChild(hl);
+          const hit = svgEl("line", { x1: p1[0], y1: p1[1], x2: p2[0], y2: p2[1], stroke: "transparent", "stroke-width": 22, "stroke-linecap": "round", cursor: "pointer" });
+          hit.addEventListener("click", (ev) => { ev.stopPropagation(); placeBarrierEdge(e); });
+          svg.appendChild(hit);
+        }
+      }
     }
     // minis — original colored game-piece standees with per-character emblem (no art files)
     for (const c of cells) {
@@ -634,32 +652,66 @@
     renderGameOver();
   }
 
-  async function onHex(key) {
+  // every legal thing the human could do at the clicked hex (drives the confirm menu)
+  function hexActionOptions(p, key) {
+    const c = G.board[key]; if (!c) return [];
+    const curKey = E.hexKey(p.pos.q, p.pos.r), opts = [];
+    const occ = E.playersOnHex(G, c.q, c.r).filter(x => x.idx !== p.idx).map(x => x.idx);
+    const ct = E.closeTargets(G, p), rt = E.rangedTargets(G, p);
+    const closeTgt = occ.find(i => ct.includes(i)), rangedTgt = occ.find(i => rt.includes(i));
+    if (closeTgt != null) opts.push({ kind: "close", icon: "🗡", label: L("近战", "Close combat") + ` · ${G.players[closeTgt].name}`, tgt: closeTgt, key });
+    if (rangedTgt != null) opts.push({ kind: "ranged", icon: "🔫", label: L("远程射击", "Ranged shot") + ` · ${G.players[rangedTgt].name}`, tgt: rangedTgt, key });
+    if (key === curKey && E.canUpload(G, p)) opts.push({ kind: "activate", icon: "📡", label: L("上缴信标（地点效果）", "Upload beacons"), key });
+    if (key === curKey && E.lootOptions(G, p).length) opts.push({ kind: "loot", icon: "🎒", label: L("捡起地上的东西", "Loot here"), key });
+    if (E.legalRuns(G, p).includes(key)) opts.push({ kind: "move", icon: "🏃", label: L("移动到这里", "Move here"), key });
+    return opts;
+  }
+  async function runHexAction(o) {
     if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
     const p = E.curP(G);
-    if (G.needsParachute) { if (E.parachute(G, key)) { SFX("parachute"); render(); } return; }
-    const c = G.board[key];
-    const occupants = E.playersOnHex(G, c.q, c.r).filter(x => x.idx !== p.idx).map(x => x.idx);
-    if (occupants.length) {
-      // pick an actually-attackable enemy on this hex (skip teammates / out-of-reach occupants)
-      const ct = E.closeTargets(G, p), rt = E.rangedTargets(G, p);
-      const closeTgt = occupants.find(idx => ct.includes(idx));
-      if (closeTgt != null) { E.doClose(G, closeTgt); render(); await animateCombat(G.lastCombat); await endTurn(); return; } // close ends turn
-      const rangedTgt = occupants.find(idx => rt.includes(idx));
-      if (rangedTgt != null) {
-        const aKey = E.hexKey(p.pos.q, p.pos.r), tKey = key;     // capture hexes before resolution (target may RELOAD)
-        E.doRanged(G, rangedTgt, 3); render(); await vfxGunshot(aKey, tKey); await animateCombat(G.lastCombat); return;
-      }
-    }
-    const curKey = E.hexKey(p.pos.q, p.pos.r);
-    if (key === curKey && E.canUpload(G, p)) { E.doActivate(G); SFX("upload"); render(); placeDieAnim(curKey); return; } // upload beacons at tower
-    if (key === curKey && E.lootOptions(G, p).length) { E.doLoot(G, 0); SFX("loot"); render(); placeDieAnim(curKey); return; }
-    if (E.legalRuns(G, p).includes(key)) {
+    if (o.kind === "close") { E.doClose(G, o.tgt); render(); await animateCombat(G.lastCombat); await endTurn(); return; }   // close ends turn
+    if (o.kind === "ranged") { const aKey = E.hexKey(p.pos.q, p.pos.r); E.doRanged(G, o.tgt, 3); render(); await vfxGunshot(aKey, o.key); await animateCombat(G.lastCombat); return; }
+    if (o.kind === "activate") { E.doActivate(G); SFX("upload"); render(); consumeActionFeed(); return; }
+    if (o.kind === "loot") { E.doLoot(G, 0); SFX("loot"); render(); consumeActionFeed(); return; }
+    if (o.kind === "move") {
       const seq = G._trapSeq || 0;
-      E.doRun(G, key); SFX("move"); render(); placeDieAnim(key);
+      E.doRun(G, o.key); SFX("move"); render(); consumeActionFeed();
       if ((G._trapSeq || 0) > seq && G.lastTrap && (G.players[G.lastTrap.walker].human || G.players[G.lastTrap.owner].human)) await animateTrap(G.lastTrap);
-      return;
     }
+  }
+  async function onHex(key, ev) {
+    if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
+    if (barrierMode) { barrierMode = false; clearAiBanner(); render(); return; }   // clicking a hex cancels edge-select
+    const p = E.curP(G);
+    if (G.needsParachute) { if (E.parachute(G, key)) { SFX("parachute"); render(); } return; }
+    const opts = hexActionOptions(p, key);
+    if (!opts.length) return;
+    // a lone unambiguous move just happens; anything else (esp. attacking an opponent) asks first
+    if (opts.length === 1 && opts[0].kind === "move") { runHexAction(opts[0]); return; }
+    showActionMenu(opts, ev);
+  }
+  // floating "what do you want to do here?" menu near the click
+  function showActionMenu(opts, ev) {
+    closeActionMenu();
+    const m = document.createElement("div"); m.id = "action-menu";
+    m.innerHTML = `<div class="am-title">${L("你想做什么？", "What do you want to do?")}</div>` +
+      opts.map((o, i) => `<button class="am-opt" data-i="${i}"><span>${o.icon}</span>${o.label}</button>`).join("") +
+      `<button class="am-opt am-cancel">✋ ${L("误触 / 取消", "Cancel")}</button>`;
+    document.body.appendChild(m);
+    const px = ev ? ev.clientX : innerWidth / 2, py = ev ? ev.clientY : innerHeight / 2;
+    const r = m.getBoundingClientRect();
+    m.style.left = Math.max(6, Math.min(px, innerWidth - r.width - 8)) + "px";
+    m.style.top = Math.max(6, Math.min(py, innerHeight - r.height - 8)) + "px";
+    m.querySelectorAll(".am-opt[data-i]").forEach(b => b.addEventListener("click", () => { const o = opts[+b.dataset.i]; closeActionMenu(); runHexAction(o); }));
+    m.querySelector(".am-cancel").addEventListener("click", closeActionMenu);
+    setTimeout(() => document.addEventListener("click", closeActionMenuOutside, { once: true }), 0);
+  }
+  function closeActionMenu() { const m = $("action-menu"); if (m) m.remove(); }
+  function closeActionMenuOutside(e) { const m = $("action-menu"); if (m && !m.contains(e.target)) m.remove(); }
+  // place a wall on the chosen edge of the current hex (barrier edge-picker)
+  function placeBarrierEdge(edge) {
+    if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
+    if (E.doBuildBarrier(G, edge)) { SFX("build"); barrierMode = false; clearAiBanner(); render(); consumeActionFeed(); }
   }
 
   // ---- AI turn visualization: telegraph who's acting, animate the move, surface combat ----
@@ -730,6 +782,7 @@
       const afterPos = p.pos ? { q: p.pos.q, r: p.pos.r } : null;
       if (beforePos && afterPos && (beforePos.q !== afterPos.q || beforePos.r !== afterPos.r))
         await animateAIMove(beforePos, afterPos, p.color);                    // show the move
+      await consumeActionFeed({ skipMove: true, delay: Math.min(260, Math.max(120, aiDelay / 2)) });   // show the dice the AI placed (loot/build/heal/upload)
 
       if (G.lastCombat && G.lastCombat !== beforeCombat) {                    // a fight happened this turn
         const rep = G.lastCombat, human = G.players[rep.a].human || G.players[rep.t].human;
@@ -748,6 +801,7 @@
 
   async function endTurn() {
     if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
+    barrierMode = false; clearAiBanner();   // never carry edge-select mode across turns
     E.endTurn(G); render();
     if (!G.gameOver && !E.curP(G).human) await runAI();
   }
@@ -797,7 +851,7 @@
     const map = ($("map-select") || {}).value || "arcadia";
     const allAI = $("all-ai").checked;
     G = E.newGame({ numPlayers: n, mode, allAI, allCharacters: true, difficulty, map, humanChar: allAI ? null : chosenChar });
-    window.G = G; lastAchSeq = 0;
+    window.G = G; lastAchSeq = 0; lastActSeq = 0;
     $("setup-screen").classList.add("hidden");
     $("char-select").classList.add("hidden");
     $("game-screen").classList.remove("hidden");
@@ -807,19 +861,9 @@
 
   function act(fn, snd) {
     if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
+    if (barrierMode) { barrierMode = false; clearAiBanner(); }   // a different action exits edge-select mode
     const p = E.curP(G), here = p.pos && E.hexKey(p.pos.q, p.pos.r);
     if (fn(p)) { if (snd) SFX(snd); render(); if (here) placeDieAnim(here); }
-  }
-  function barrierEdgeTowardEnemy(p) {
-    const empties = E.emptyEdges(G, p); if (!empties.length) return null;
-    const enemies = G.players.filter(x => x.idx !== p.idx && x.pos);
-    if (!enemies.length) return empties[0];
-    let best = empties[0], bd = Infinity;
-    for (const e of empties) {
-      const n = { q: p.pos.q + D.HEX_DIRS[e].q, r: p.pos.r + D.HEX_DIRS[e].r };
-      for (const en of enemies) { const d = E.hexDistance(n, en.pos); if (d < bd) { bd = d; best = e; } }
-    }
-    return best;
   }
   // ---- character board overlay (real character card + dice + equipment cards) ----
   const STAR_COLOR = { 1: "#3aa84b", 2: "#3b82c4", 3: "#b06bd6" };
@@ -1062,20 +1106,40 @@
       roll.value === "skull" ? `骷髅！恢复 ${roll.healed} 点` : `恢复 ${roll.healed} 点`, "hit");
   }
   // an action die "drops" onto the target hex (placed, not rolled)
-  function placeDieAnim(key) {
-    const svg = $("board"), c = key && G.board[key]; if (!svg || !c) return;
+  // ---- per-action dice animation: every action drops a die showing its VALUE + an action glyph ----
+  const ACT_GLYPH = { run: "🏃", portal: "🌀", loot: "🎒", activate: "📡", heal: "➕", barrier: "🧱", trap: "💣", hideout: "🏠", demolish: "🛠" };
+  const dieFace = (v) => (v === "skull" ? "💀" : v);
+  function animateActionDie(entry) {
+    const svg = $("board"); if (!svg || !entry || !entry.hex) return Promise.resolve();
+    const c = G.board[entry.hex]; if (!c) return Promise.resolve();
     const { x, y } = hexToPixel(c.q, c.r);
+    const col = (G.players[entry.by] && G.players[entry.by].color) || "#e8eef6";
     const g = svgEl("g", { "pointer-events": "none" });
-    g.appendChild(svgEl("rect", { x: x - 11, y: y - 11, width: 22, height: 22, rx: 5, fill: "#e8eef6", stroke: "#11141a", "stroke-width": 1.5 }));
+    g.appendChild(svgEl("rect", { x: x - 13, y: y - 13, width: 26, height: 26, rx: 5, fill: "#eef2f8", stroke: "#11141a", "stroke-width": 1.5 }));
+    g.appendChild(svgEl("rect", { x: x - 13, y: y - 13, width: 26, height: 26, rx: 5, fill: "none", stroke: col, "stroke-width": 2.5 }));
+    g.appendChild(Object.assign(svgEl("text", { x, y: y + 6, "text-anchor": "middle", "font-size": 16, "font-weight": 700, fill: "#11141a" }), { textContent: dieFace(entry.die) }));
+    g.appendChild(Object.assign(svgEl("text", { x, y: y - 19, "text-anchor": "middle", "font-size": 14 }), { textContent: ACT_GLYPH[entry.kind] || "🎲" }));
     svg.appendChild(g);
-    const t0 = performance.now(), dur = 470;
-    (function step(t) {
-      const k = Math.min(1, (t - t0) / dur);
-      g.setAttribute("transform", `translate(0,${(-26 * (1 - k) * (1 - k)).toFixed(1)})`);
-      g.setAttribute("opacity", (k < 0.65 ? 1 : 1 - (k - 0.65) / 0.35).toFixed(2));
-      if (k < 1) requestAnimationFrame(step); else g.remove();
-    })(performance.now());
+    return animateRAF(560, k => {
+      g.setAttribute("transform", `translate(0,${(-30 * (1 - k) * (1 - k)).toFixed(1)})`);
+      g.setAttribute("opacity", (k < 0.7 ? 1 : 1 - (k - 0.7) / 0.3).toFixed(2));
+    }).then(() => g.remove());
   }
+  let lastActSeq = 0;
+  // animate every new engine action since we last looked (bumps the cursor synchronously so nothing replays)
+  async function consumeActionFeed(opts) {
+    opts = opts || {};
+    const f = G && G.actionFeed; if (!f) return;
+    const fresh = f.filter(e => e.seq > lastActSeq);
+    if (fresh.length) lastActSeq = fresh[fresh.length - 1].seq;
+    if (opts.silent) return;   // advance the cursor only (caller shows its own animation, e.g. animateHeal)
+    for (const e of fresh) {
+      if (opts.skipMove && (e.kind === "run" || e.kind === "portal")) continue;
+      const pr = animateActionDie(e);
+      if (opts.delay) await sleep(opts.delay); else if (opts.await && pr) await pr;
+    }
+  }
+  function placeDieAnim() { consumeActionFeed(); }   // back-compat: show the action die(s) just produced
 
   // ---- board VFX: gunshot tracer/sparks + explosions (procedural — no sprite art) ----
   // VFX append transient SVG nodes to #board; the next render() clears them, and they only run
@@ -1244,7 +1308,7 @@
   }
   async function startTutorial() {
     G = E.newGame({ numPlayers: 2, mode: "battleRoyale", map: "imperial", difficulty: "easy", seed: 73, chars: ["betty", "echo"] });
-    window.G = G; lastAchSeq = 0;
+    window.G = G; lastAchSeq = 0; lastActSeq = 0;
     $("setup-screen").classList.add("hidden");
     $("game-screen").classList.remove("hidden");
     render();
@@ -1273,13 +1337,21 @@
     $("btn-end").addEventListener("click", endTurn);
     $("btn-heal").addEventListener("click", async () => {
       if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
+      if (barrierMode) { barrierMode = false; clearAiBanner(); }
       const p = E.curP(G), targets = E.healTargets(G, p);
       if (!targets.length) return;
       let targetIdx = targets[0];
       if (targets.length > 1) { targetIdx = await pickHealTarget(p, targets); if (targetIdx == null) return; } // let the player choose self vs teammate
-      if (E.doHeal(G, targetIdx)) { render(); await animateHeal(G.lastRoll); }
+      if (E.doHeal(G, targetIdx)) { render(); consumeActionFeed({ silent: true }); await animateHeal(G.lastRoll); }  // animateHeal is the heal visual; just advance the feed cursor
     });
-    $("btn-barrier").addEventListener("click", () => act(p => { const e = barrierEdgeTowardEnemy(p); return e != null && E.doBuildBarrier(G, e); }, "build"));
+    $("btn-barrier").addEventListener("click", () => {
+      if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
+      const p = E.curP(G);
+      if (!E.canBuild(G, p) || !E.emptyEdges(G, p).length) return;
+      barrierMode = !barrierMode; render();
+      if (barrierMode) aiBanner(L("点击高亮的六边形边来放置屏障（再点「屏障」取消）", "Click a highlighted hex edge to build a wall (click 屏障 again to cancel)"), p.color);
+      else clearAiBanner();
+    });
     $("btn-hideout").addEventListener("click", () => act(p => E.canBuild(G, p) && E.doBuildHideout(G), "build"));
     $("btn-trap").addEventListener("click", () => act(() => E.doBuildTrap(G), "mine"));
     Object.keys(BTN_TIP).forEach(id => { const b = $(id); if (b) bindTip(b, () => T(BTN_TIP[id])); });
