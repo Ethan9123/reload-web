@@ -99,6 +99,10 @@ A(closeSkullVsVest(5, "machete") === 0, "Machete's skull (no ignoreArmor) is abs
   p.equipped = { head: null, torso: "arachnid_pack", hand: [] }; p.backpack = ["arachnid_pack", "crossbow", "semi_auto_pistol", "survival_knife"];
   A(E.equipItem(g, p, "crossbow") && E.equipItem(g, p, "semi_auto_pistol") && E.equipItem(g, p, "survival_knife"), "Arachnid Pack lets a 3rd hand weapon equip");
   A(p.equipped.hand.length === 3, "three one-hand weapons equipped (extra slot)");
+  // swapping the torso away from the Arachnid Pack must drop the now-illegal 3rd hand weapon
+  p.backpack.push("military_vest");
+  A(E.equipItem(g, p, "military_vest"), "swap torso to Military Vest");
+  A(p.equipped.hand.length === 2, "extra hand weapon dropped when the Arachnid Pack is replaced");
 }
 
 // 9) new close-modifies resolve (Power Glove adds 2 to the lowest die)

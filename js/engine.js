@@ -894,11 +894,13 @@
     // the live assigned count, because taking an injury can pop a spent die and reset assigned to 0 mid-turn.
     return state.phase === "action" && !p.hasActed && (p.combatLine || []).length === 0 && !p._closeEndedTurn;
   }
+  // drop excess hand gear if the hand cap shrank (e.g. swapping the torso away from an Arachnid Pack)
+  function enforceHandCap(p) { while (handSlotsUsed(p) > handCap(p) && p.equipped.hand.length) p.equipped.hand.pop(); }
   function equipItem(state, p, id) {
     if (!canEquip(state, p)) return false;
     const e = byId(id); if (!e || !p.backpack.includes(id) || e.slot === "special") return false;
-    if (e.slot === "head") { p.equipped.head = id; return true; }
-    if (e.slot === "torso") { p.equipped.torso = id; return true; }
+    if (e.slot === "head") { p.equipped.head = id; enforceHandCap(p); return true; }
+    if (e.slot === "torso") { p.equipped.torso = id; enforceHandCap(p); return true; }   // a torso swap can lower the cap
     if (e.slot === "hand") {
       if (p.equipped.hand.includes(id)) return false;
       if (handSlotsUsed(p) + (e.hands || 1) > handCap(p)) return false;   // respects two-handed weapons + Arachnid Pack
@@ -909,7 +911,7 @@
   function unequipItem(state, p, id) {
     if (!canEquip(state, p)) return false;
     if (p.equipped.head === id) { p.equipped.head = null; return true; }
-    if (p.equipped.torso === id) { p.equipped.torso = null; return true; }
+    if (p.equipped.torso === id) { p.equipped.torso = null; enforceHandCap(p); return true; }   // losing Arachnid Pack drops the extra hand slot
     const i = p.equipped.hand.indexOf(id); if (i >= 0) { p.equipped.hand.splice(i, 1); return true; }
     return false;
   }
