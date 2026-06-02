@@ -801,6 +801,7 @@
 
   async function endTurn() {
     if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
+    barrierMode = false; clearAiBanner();   // never carry edge-select mode across turns
     E.endTurn(G); render();
     if (!G.gameOver && !E.curP(G).human) await runAI();
   }
@@ -860,6 +861,7 @@
 
   function act(fn, snd) {
     if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
+    if (barrierMode) { barrierMode = false; clearAiBanner(); }   // a different action exits edge-select mode
     const p = E.curP(G), here = p.pos && E.hexKey(p.pos.q, p.pos.r);
     if (fn(p)) { if (snd) SFX(snd); render(); if (here) placeDieAnim(here); }
   }
@@ -1130,6 +1132,7 @@
     const f = G && G.actionFeed; if (!f) return;
     const fresh = f.filter(e => e.seq > lastActSeq);
     if (fresh.length) lastActSeq = fresh[fresh.length - 1].seq;
+    if (opts.silent) return;   // advance the cursor only (caller shows its own animation, e.g. animateHeal)
     for (const e of fresh) {
       if (opts.skipMove && (e.kind === "run" || e.kind === "portal")) continue;
       const pr = animateActionDie(e);
@@ -1334,11 +1337,12 @@
     $("btn-end").addEventListener("click", endTurn);
     $("btn-heal").addEventListener("click", async () => {
       if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
+      if (barrierMode) { barrierMode = false; clearAiBanner(); }
       const p = E.curP(G), targets = E.healTargets(G, p);
       if (!targets.length) return;
       let targetIdx = targets[0];
       if (targets.length > 1) { targetIdx = await pickHealTarget(p, targets); if (targetIdx == null) return; } // let the player choose self vs teammate
-      if (E.doHeal(G, targetIdx)) { render(); await animateHeal(G.lastRoll); }
+      if (E.doHeal(G, targetIdx)) { render(); consumeActionFeed({ silent: true }); await animateHeal(G.lastRoll); }  // animateHeal is the heal visual; just advance the feed cursor
     });
     $("btn-barrier").addEventListener("click", () => {
       if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
