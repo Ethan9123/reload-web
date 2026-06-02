@@ -92,8 +92,9 @@
       boost: false,
       boostDice: 0,                    // Energy Drink green boost dice this turn: spendable on actions, but NOT usable in combat or as injury
 
-      fame: { injury: 0, beacon: 0, teamSpirit: 0, reload: 0, trap: 0, achievement: 0, flag: 0 },
+      fame: { injury: 0, beacon: 0, teamSpirit: 0, reload: 0, trap: 0, achievement: 0, flag: 0, crown: 0 },
       carryingFlag: null,              // Capture the Flag: team whose flag this player carries, or null
+      carryingCrown: false,            // Hunter's Crown event: holding the king-of-the-hill token (scored at turn start)
       achievementsWon: [],             // ids of achievement cards this player has claimed
       fameTrackPos: 0,
       pos: null,                       // axial {q,r}; null = off-map (parachute)
@@ -226,6 +227,7 @@
     const state = {
       mode, numPlayers, difficulty, map: MAP.name, maxRing, isTeam: TEAMS > 0, rnd, board, players,
       flags, captures: flags ? [0, 0] : null,    // Capture the Flag state
+      crown: null,                                // Hunter's Crown event: { at: hexKey|null, carrier: idx|null } once dropped
       firstPlayer: 0, activePlayer: 0, round: 1,
       decks, fameSupply,
       eventsResolved: 0, eventTotal: eventCount,
@@ -247,7 +249,7 @@
   function playersOnHex(state, q, r) {
     return state.players.filter(p => p.pos && p.pos.q === q && p.pos.r === r);
   }
-  function totalFame(p) { return p.fame.injury + p.fame.beacon + p.fame.teamSpirit + p.fame.reload + (p.fame.trap || 0) + (p.fame.achievement || 0) + (p.fame.flag || 0); }
+  function totalFame(p) { return p.fame.injury + p.fame.beacon + p.fame.teamSpirit + p.fame.reload + (p.fame.trap || 0) + (p.fame.achievement || 0) + (p.fame.flag || 0) + (p.fame.crown || 0); }
   // ---- teams (Team Royale) ----
   function sameTeam(a, b) { return a && b && a.team != null && a.team === b.team; }
   function teammates(state, p) { return state.players.filter(x => x !== p && sameTeam(x, p)); }
@@ -408,7 +410,7 @@
   function mostMetric(state, p, metric) {
     if (metric === "reload") return p.fame.reload;
     if (metric === "beacon") return p.fame.beacon;
-    if (metric === "variety") return ["injury", "beacon", "teamSpirit", "reload", "trap", "achievement", "flag"].filter(k => p.fame[k] > 0).length;
+    if (metric === "variety") return ["injury", "beacon", "teamSpirit", "reload", "trap", "achievement", "flag", "crown"].filter(k => p.fame[k] > 0).length;
     if (metric === "threeStar") return [p.equipped.head, p.equipped.torso, ...p.equipped.hand, ...p.backpack].map(byId).filter(e => e && e.star === 3).length;
     return 0;
   }
@@ -480,6 +482,12 @@
     autoEquip(p);                                        // MVP: auto-equip best weapon/armor (no equip UI yet)
     // Solar Array terrain: starting your turn on it grants +1 boost die (energy — non-combat, like Energy Drink).
     if (p.pos) { const _c = state.board[hexKey(p.pos.q, p.pos.r)]; if (_c && TERRAIN[_c.terrain].energy) { p.boostDice += 1; p.defensePool += 1; p.actionDice = Math.max(p.actionDice, p.defensePool); log(state, `☀ ${p.name} 在太阳能阵列充能 +1 行动骰`, "solarCharge", { name: p.name }); } }
+    // Hunter's Crown: holding it into the start of your turn banks it as permanent fame (out of circulation).
+    if (p.carryingCrown && state.crown) {
+      p.carryingCrown = false; state.crown = { at: null, carrier: null };
+      log(state, `👑 ${p.name} 将狩猎之冠纳入名望榜 (+${CROWN_FAME})`, "crownScore", { name: p.name, n: CROWN_FAME });
+      gainFame(state, p, "crown", CROWN_FAME);
+    }
     // NOTE: carried beacons are NOT auto-scored. Per rules they stay in temp storage
     // until the player Activates the Central Tower to upload them (see doActivate).
     state.needsParachute = (p.pos == null);
@@ -619,6 +627,7 @@
     if (!tok) return false;
     spendDice(state, p, 1, 1); recordAction(state, p, "loot", 1); cell.tokens.splice(cell.tokens.indexOf(tok), 1);
     if (tok.kind === "beacon") { p.carryingBeacons += 1; log(state, `${p.name} 拾取信标（需带到中央塔上缴）`, "lootBeacon", { name: p.name }); }
+    else if (tok.kind === "crown") { grabCrown(state, p); }
     else if (tok.kind === "supply") {
       const dk = "equip" + (tok.star || 2), xk = "discard" + (tok.star || 2);
       const draws = p.character === "korat" ? 3 : 2;        // Korat — Gift From Father: +1 card
@@ -645,6 +654,7 @@
     const tok = cell.tokens[tokenIdx]; if (!tok || !isLootable(tok)) return false;   // never drone-loot a CTF flag
     spendDice(state, p, 1, 1); recordAction(state, p, "loot", 1); cell.tokens.splice(tokenIdx, 1); p._droneUsed = true;
     if (tok.kind === "beacon") { p.carryingBeacons += 1; log(state, `🤖 ${p.name} 的无人机巴兹拾取信标`, "droneBeacon", { name: p.name }); }
+    else if (tok.kind === "crown") { grabCrown(state, p); }   // Hunter's Crown is grabbable by the drone too
     else if (tok.kind === "supply") {
       const dk = "equip" + (tok.star || 2), xk = "discard" + (tok.star || 2);
       const a = state.decks[dk].pop(), b = state.decks[dk].pop();
@@ -703,6 +713,56 @@
     log(state, `🏁 ${p.name} 将旗帜带回基地，夺旗成功！ +${FLAG_CAPTURE_FAME} 名望`, "scoreFlag", { name: p.name, n: FLAG_CAPTURE_FAME });
     gainFame(state, p, "flag", FLAG_CAPTURE_FAME);
     return true;
+  }
+
+  // ---- Hunter's Crown event: a king-of-the-hill fame token ----
+  const CROWN_FAME = 3;                 // fame banked when you hold the crown into the start of your turn (or at game end)
+  function placeCrown(state) {          // drop the crown on a random outer-ring, non-tower, toxin-free hex
+    // there's only one crown in play. If a player already holds it (waiting to bank it), a second crown
+    // event is a no-op — don't strip it from them or they'd lose the promised start-of-turn fame.
+    if (state.crown && state.crown.carrier != null) { log(state, "　狩猎之冠已被携带，事件无效", "crownHeld", {}); return; }
+    const ring = state.maxRing != null ? state.maxRing : 2;
+    const free = Object.keys(state.board).filter(k => { const c = state.board[k]; return !c.hasTower && !c.toxin; });
+    // prefer the outer ring; then any toxin-free non-tower hex; only land on toxin as a last resort
+    let cands = free.filter(k => ringFromTower(state, state.board[k]) === ring);
+    if (!cands.length) cands = free;
+    if (!cands.length) cands = Object.keys(state.board).filter(k => !state.board[k].hasTower);
+    if (!cands.length) return;
+    const key = cands[Math.floor(state.rnd() * cands.length)];
+    // a crown already lying on the board relocates; otherwise it's freshly dropped
+    for (const k in state.board) state.board[k].tokens = state.board[k].tokens.filter(t => t.kind !== "crown");
+    state.board[key].tokens.push({ kind: "crown" });
+    state.crown = { at: key, carrier: null };
+  }
+  function grabCrown(state, p) {        // called from doLoot when looting the crown token
+    if (!state.crown) state.crown = { at: null, carrier: null };
+    p.carryingCrown = true; state.crown.at = null; state.crown.carrier = p.idx;
+    log(state, `👑 ${p.name} 夺得了狩猎之冠！（回合开始时计入名望）`, "grabCrown", { name: p.name });
+  }
+  function dropCrownOnHex(state, p) {   // crown-holder reloaded with no attacker: it falls where they stood
+    p.carryingCrown = false;
+    const cell = p.pos && state.board[hexKey(p.pos.q, p.pos.r)];
+    if (cell) { cell.tokens.push({ kind: "crown" }); state.crown = { at: hexKey(p.pos.q, p.pos.r), carrier: null }; }
+    else state.crown = { at: null, carrier: null };
+  }
+  // ---- Earthquake/Shockwave event: every player on the map re-rolls their top combat-line die ----
+  function earthquakeReroll(state) {
+    for (const p of state.players) {
+      if (!p.pos || p.reloadZone) continue;
+      const onMountain = TERRAIN[state.board[hexKey(p.pos.q, p.pos.r)].terrain] === TERRAIN.mountain;
+      const rolls = onMountain ? 2 : 1;                       // mountains shake harder: re-roll the top two
+      p.combatLine = sortCombatLine(p.combatLine);
+      const n = Math.min(rolls, p.combatLine.length); if (n === 0) continue;
+      const kept = p.combatLine.slice(n);                     // dice below the top-n are untouched
+      let skulls = 0; const rerolled = [];                    // re-roll the ORIGINAL top-n distinct dice
+      for (let i = 0; i < n; i++) { const face = rollDie(state.rnd); if (face === "skull") skulls++; else rerolled.push(face); }
+      p.combatLine = sortCombatLine(rerolled.concat(kept));   // skull dice drop out (taken as injuries)
+      if (skulls > 0) {
+        log(state, `🌐 地震：${p.name} 掷出 ${skulls} 个骷髅，受到 ${skulls} 点伤`, "quakeHit", { name: p.name, n: skulls });
+        // the skull dice already left the combat line above, so don't pull additional dice via the hierarchy
+        if (takeInjuries(state, p, skulls, { hierarchy: false })) reloadPlayer(state, p, null);
+      }
+    }
   }
 
   // BFS first-step toward a target hex (respects walls; ignores portals). For AI navigation.
@@ -940,6 +1000,10 @@
       const c = state.decks.equip2.pop(); if (c) lo.backpack.push(c); log(state, `　落后的 ${lo.name} 抽 1 张 2★ 装备`, "giftProducers", { name: lo.name });
     } else if (id === "gift_sponsors") {
       for (const p of state.players) p.carryingBeacons += 1; log(state, "　每位玩家 +1 携带信标", "giftSponsors", {});
+    } else if (id === "crown") {
+      placeCrown(state); log(state, "　狩猎之冠降临外圈（Loot 拾取，回合开始或终局计入名望）", "crownDrop", {});
+    } else if (id === "earthquake") {
+      earthquakeReroll(state);
     } else if (id === "announcement") {
       resolveAnnouncement(state);
     }
@@ -947,6 +1011,7 @@
 
   function endGame(state) {
     state.gameOver = true;
+    for (const p of state.players) if (p.carryingCrown) { p.carryingCrown = false; gainFame(state, p, "crown", CROWN_FAME); log(state, `👑 ${p.name} 终局时持有狩猎之冠 (+${CROWN_FAME})`, "crownEndgame", { name: p.name, n: CROWN_FAME }); }
     scoreMostAchievements(state);   // award End-of-Game (MOST) achievements before final scoring
     if (state.isTeam) {    // team with the most fame; tie-break by team Achievement then RELOAD fame
       const teams = [...new Set(state.players.map(p => p.team))];
@@ -1188,6 +1253,10 @@
     if (cell) for (let i = 0; i < p.carryingBeacons; i++) cell.tokens.push({ kind: "beacon" });
     p.carryingBeacons = 0;
     if (p.carryingFlag != null && state.flags) { returnFlagHome(state, p.carryingFlag); p.carryingFlag = null; }   // dropped flag resets to its base
+    if (p.carryingCrown) {   // Hunter's Crown: a player who reloads you steals it; otherwise it drops where you fell
+      if (attacker) { p.carryingCrown = false; attacker.carryingCrown = true; state.crown = { at: null, carrier: attacker.idx }; log(state, `👑 ${attacker.name} 从 ${p.name} 手中夺走狩猎之冠！`, "crownSteal", { name: attacker.name, from: p.name }); }
+      else dropCrownOnHex(state, p);
+    }
     for (const id of [p.equipped.head, p.equipped.torso, ...p.equipped.hand, ...p.backpack]) {
       const e = byId(id); if (e && state.decks["discard" + e.star]) state.decks["discard" + e.star].push(id);
     }
@@ -1307,6 +1376,8 @@
     canUpload, doActivate, bfsStep, resolveEvent,
     // Capture the Flag
     baseKeyOf, canGrabFlag, grabFlag, canScoreFlag, scoreFlag,
+    // Hunter's Crown + Earthquake events
+    placeCrown, grabCrown, earthquakeReroll, CROWN_FAME,
     // build/heal API
     canHeal, doHeal, canBuild, emptyEdges, doBuildBarrier, doDemolish, doBuildHideout, doDemolishHideout, doBuildTrap,
     // special-item API

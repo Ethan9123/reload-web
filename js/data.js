@@ -247,6 +247,7 @@
     trap:       { name: "Trap",        supply: 99 },
     achievement: { name: "Achievement", supply: 30 },   // Achievements module fame (its own token color)
     flag:       { name: "Flag",        supply: 30 },     // Capture the Flag captures (奪旗賽)
+    crown:      { name: "Crown",       supply: 10 },     // Hunter's Crown event fame (king-of-the-hill token)
   };
 
   // ---- Achievements module (Reload modules rulebook). 8 cards: 4 "next" + 4 "most". ----
@@ -483,6 +484,11 @@
     gift_fans:      { name: "Gift from the Fans 粉丝馈赠", count: 1, desc: "每位玩家抽 1 张 1★ 装备" },
     gift_producers: { name: "Gift from the Producers 制作人馈赠", count: 1, desc: "名望最低者抽 1 张 2★ 装备" },
     gift_sponsors:  { name: "Gift from the Sponsors 赞助商馈赠", count: 1, desc: "每位玩家 +1 携带信标" },
+    // Hunter's Crown: a king-of-the-hill fame token drops in the outer ring. Loot it; you score it at the
+    // start of your turn (or game end) — but if you're reloaded while holding it, the killer steals it.
+    crown:          { name: "Hunter's Crown 狩猎之冠", count: 2, desc: "外圈降下王冠：可拾取，回合开始或终局时计入名望；被击退则被夺走" },
+    // Earthquake/Shockwave: everyone on the map re-rolls their top combat-line die; a rolled skull is an injury.
+    earthquake:     { name: "Earthquake 地震", count: 2, desc: "在场玩家重掷战斗线最高骰（山地重掷最高两颗），骰出骷髅即受伤" },
     // Achievements module: 2 Announcement cards score MOST achievements mid-game + refresh a NEXT card.
     announcement:   { name: "Announcement 战报", count: 2, desc: "结算「最多」成就并刷新一张「下一位」成就", achievementsOnly: true },
   };

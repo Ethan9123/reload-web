@@ -399,6 +399,7 @@
       // Capture-the-Flag: home-base disc (team-tinted) + planted flag token
       if (G.flags && c.base != null) { const col = TEAM_COLOR[c.base] || "#888"; svg.appendChild(svgEl("circle", { cx: x, cy: y, r: HEX * 0.62, fill: col, "fill-opacity": 0.14, stroke: col, "stroke-width": 2, "stroke-dasharray": "5 4", "pointer-events": "none" })); }
       c.tokens.filter(k => k.kind === "flag").forEach(k => { const col = TEAM_COLOR[k.team] || "#888"; svg.appendChild(svgEl("line", { x1: x - 9, y1: y - 22, x2: x - 9, y2: y + 4, stroke: "#3a2a14", "stroke-width": 2, "pointer-events": "none" })); svg.appendChild(svgEl("polygon", { points: `${x - 9},${y - 22} ${x + 11},${y - 17} ${x - 9},${y - 12}`, fill: col, stroke: "#0c0e12", "stroke-width": 1, "pointer-events": "none" })); });
+      if (c.tokens.some(k => k.kind === "crown")) svg.appendChild(svgText(x, y - 13, "👑", 18, "#f4d03f", 1));   // Hunter's Crown event token (lootable)
     }
     // walls/barriers (neutral gray, player-owned colored) + trap/hideout markers
     for (const { c, x, y } of pix) {
@@ -441,6 +442,7 @@
         const ox = here.length > 1 ? Math.cos(ang) * 14 : 0, oy = here.length > 1 ? Math.sin(ang) * 10 : 0;
         drawMini(svg, p, CHAR[p.character], x + ox, y + oy, p.idx === G.activePlayer);
         if (G.flags && p.carryingFlag != null) { const col = TEAM_COLOR[p.carryingFlag] || "#888", fx = x + ox + 10, fy = y + oy - 26; svg.appendChild(svgEl("line", { x1: fx, y1: fy, x2: fx, y2: fy + 16, stroke: "#3a2a14", "stroke-width": 1.6, "pointer-events": "none" })); svg.appendChild(svgEl("polygon", { points: `${fx},${fy} ${fx + 13},${fy + 4} ${fx},${fy + 8}`, fill: col, stroke: "#0c0e12", "stroke-width": 1, "pointer-events": "none" })); }
+        if (p.carryingCrown) svg.appendChild(svgText(x + ox - 11, y + oy - 18, "👑", 13, "#f4d03f", 1));   // crown carry indicator
       });
     }
   }
@@ -463,6 +465,7 @@
         `<div class="pstat">${T("pc.fame")} ${E.totalFame(p)} · ${T("pc.dmg")} ${p.injuries} · ${T("pc.def")} ${p.defensePool}/${p.actionDice}${p.boostDice ? ` <span style="color:#5fd06f">+${p.boostDice}⚡</span>` : ""}${assigned}${combat} · ${T("pc.pack")} ${p.backpack.length}` +
         (p.carryingBeacons ? ` · ${T("pc.carry")} ${p.carryingBeacons}` : "") +
         (p.carryingFlag != null ? ` · 🚩` : "") +
+        (p.carryingCrown ? ` · 👑` : "") +
         ` · ${p.pos ? T("pc.onmap") : T("pc.waitdrop")}</div></div></div>`;
       d.style.cursor = "pointer";
       d.addEventListener("click", () => openCharBoard(p.idx));
