@@ -456,7 +456,7 @@
     p.actionDice = START_ACTION_DICE - p.injuries;       // injuries reduce available dice
     p.defensePool = p.actionDice; p.assigned = 0; p.assignedDice = []; p.boost = false; p.boostDice = 0; p.combatLine = [];
     p._closeEndedTurn = false; p._noMove = false; p.hasActed = false; p._gaveThisTurn = false; p._runBonus = false; p._runBonusUsed = false;
-    p._freeBuildUsed = false; p._revealed = false; p._droneUsed = false;   // Betty free-build / Echo cloak / Cody drone reset each turn
+    p._freeBuildUsed = false; p._revealed = false; p._droneUsed = false; p._wallCombo = 0;   // Betty free-build / Echo cloak / Cody drone / wall-combo reset each turn
     for (const x of state.players) x._injFameTurn = 0;   // DOUBLE TROUBLE counts injury fame within a single turn
     state.lastAchievement = null;
     autoEquip(p);                                        // MVP: auto-equip best weapon/armor (no equip UI yet)
@@ -544,6 +544,7 @@
     }
     p.assigned = p.assignedDice.length;
     p.hasActed = true;                                        // locks equipment for the rest of the turn (survives injury die-pops)
+    p._wallCombo = 0;                                         // spending a die on any action ends a pending free 2nd-wall
   }
   function moveAssignedDiceToCombatLine(p) {
     p.actionDice = START_ACTION_DICE - p.injuries;
@@ -722,12 +723,17 @@
     return out;
   }
   function wallsUsed(state, p) { return p.team != null ? teamBarriers(state, p.team) : p.barriersUsed; }
-  function doBuildBarrier(state, edge) {
+  // A single Build action places UP TO 2 walls (rules 09:25). combo=true is the free 2nd wall of the same
+  // action: it skips the die cost and bypasses the dice requirement, but only right after a paid 1st wall.
+  function doBuildBarrier(state, edge, combo) {
     const p = curP(state);
-    if (!canBuild(state, p) || wallsUsed(state, p) >= SETUP_WALLS || !emptyEdges(state, p).includes(edge)) return false; // teams share the 6-wall limit
-    payBuild(state, p);
+    if (combo) { if (p._wallCombo !== 1 || state.phase !== "action" || !noEnemyHere(state, p)) return false; }
+    else if (!canBuild(state, p)) return false;
+    if (wallsUsed(state, p) >= SETUP_WALLS || !emptyEdges(state, p).includes(edge)) return false;  // teams share the 6-wall limit
+    if (!combo) payBuild(state, p);
     state.board[hexKey(p.pos.q, p.pos.r)].walls[edge] = p.idx; p.barriersUsed++;
-    recordAction(state, p, "barrier", 1);
+    p._wallCombo = combo ? 0 : 1;                  // a paid 1st wall opens a free 2nd; the 2nd closes it
+    if (!combo) recordAction(state, p, "barrier", 1);
     log(state, `${p.name} 建造屏障`, "buildBarrier", { name: p.name }); return true;
   }
   function doDemolish(state, edge) {
@@ -913,9 +919,9 @@
     if (p.character === "kaiser" && p.injuries > 0) {      // Kaiser — Regeneration: heal 1 injury at End Phase
       p.injuries -= 1; p.actionDice = START_ACTION_DICE - p.injuries;
     }
-    // End phase Auto-Heal: only Battle Royale uses the Auto-Heal board side (every OTHER player not in
-    // toxin with >=2 injuries heals 1). Team Royale uses the non-Auto-Heal side, so skip it. (rules p.4)
-    if (!state.isTeam) for (const o of state.players) {
+    // End phase Auto-Heal board side: Battle Royale AND 2v2v2 use it (every OTHER player not in toxin
+    // with >=2 injuries heals 1). 2v2 / 3v3 Team Royale use the non-Auto-Heal side, so skip it. (rules p.4 + 18:11)
+    if (!state.isTeam || state.mode === "team2v2v2") for (const o of state.players) {
       if (o === p || o.injuries < 2 || !o.pos) continue;
       const oc = state.board[hexKey(o.pos.q, o.pos.r)];
       if (oc && (oc.toxin || oc.toxinIcon) && !hasFriendlyHideout(state, o)) continue;   // not while standing in toxin
