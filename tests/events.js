@@ -23,8 +23,15 @@ const tb = tox(g2); E.resolveEvent(g2, "contamination");
 A(tox(g2) > tb, `Contamination spreads toxin (${tb} -> ${tox(g2)})`);
 
 let g3 = E.newGame({ numPlayers: 4, seed: 3, allAI: true });
-const sb = sup(g3); E.resolveEvent(g3, "supply_drop");
-A(sup(g3) === sb + 2, `Supply Drop adds 2 boxes (${sb} -> ${sup(g3)})`);
+// Supply Drop refills EACH village; villages start full, so loot one empty first
+const vk = Object.keys(g3.board).find(k => g3.board[k].terrain === "village");
+g3.board[vk].tokens = g3.board[vk].tokens.filter(t => t.kind !== "supply");
+E.resolveEvent(g3, "supply_drop");
+A(g3.board[vk].tokens.some(t => t.kind === "supply" && t.star === 2), "1st Supply Drop refills a looted village with a 2★ box");
+// the 2nd Supply Drop escalates to 3★ (empty a village again to receive it)
+g3.board[vk].tokens = g3.board[vk].tokens.filter(t => t.kind !== "supply");
+E.resolveEvent(g3, "supply_drop");
+A(g3.board[vk].tokens.some(t => t.kind === "supply" && t.star === 3), "2nd Supply Drop escalates to a 3★ box");
 E.resolveEvent(g3, "ex_tech");
 A(Object.values(g3.board).some(c => c.tokens.some(t => t.star === 3)), "Ex-Tech Drop places 3★ supply");
 

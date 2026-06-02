@@ -237,7 +237,7 @@
       diplomacy: { truce: {}, rep: players.map(() => 50), focus: null, offers: [], feed: [] },
       phase: "start", needsParachute: false,
       gameOver: false, winner: null, superstar: false,
-      _turnsTaken: 0, _eventsDone: false,
+      _turnsTaken: 0, _eventsDone: false, _supplyDrops: 0,   // count of resolved Supply Drops (1st=2★, later=3★)
       log: [],
     };
     beginTurn(state);
@@ -983,13 +983,18 @@
       for (const k in state.board) { const c = state.board[k]; if (!c.toxin && !c.dome && ringFromTower(state, c) === fr) { c.toxin = true; n++; } }
       state._toxinFrontier = Math.max(0, fr - 1);
       log(state, `　毒气扩张：${n} 格被污染`, "toxinSpread", { n });
-    } else if (id === "supply_drop" || id === "ex_tech") {
-      const star = id === "ex_tech" ? 3 : 2; let n = 0;
-      for (const k of shuffle(Object.keys(state.board), state.rnd)) {
-        if (n >= 2) break; const c = state.board[k];
-        if (!c.hasTower && !(id === "supply_drop" && c.tokens.some(t => t.kind === "supply"))) { c.tokens.push({ kind: "supply", star }); n++; }
-      }
-      log(state, `　空投：${n} 个 ${star}★ 补给箱`, "supplyDrop", { n, star });
+    } else if (id === "supply_drop") {
+      // Supply Drop refills EACH village (playthroughs: "a 2★ box to each village; the 2nd drop is 3★").
+      const star = (state._supplyDrops || 0) === 0 ? 2 : 3; state._supplyDrops = (state._supplyDrops || 0) + 1;
+      let n = 0;
+      for (const k in state.board) { const c = state.board[k]; if (TERRAIN[c.terrain] === TERRAIN.village && !c.tokens.some(t => t.kind === "supply")) { c.tokens.push({ kind: "supply", star }); n++; } }
+      log(state, `　补给空投：${n} 个 ${star}★ 补给箱补满村庄`, "supplyDrop", { n, star });
+    } else if (id === "ex_tech") {
+      // Ex-Tech Drop: roll a die → a 3★ box on the outermost hex of that zone (and its opposite ⇒ up to 2 outer hexes).
+      const ring = state.maxRing != null ? state.maxRing : 2;
+      const outer = shuffle(Object.keys(state.board).filter(k => { const c = state.board[k]; return !c.hasTower && ringFromTower(state, c) === ring && !c.tokens.some(t => t.kind === "supply"); }), state.rnd);
+      let n = 0; for (const k of outer) { if (n >= 2) break; state.board[k].tokens.push({ kind: "supply", star: 3 }); n++; }
+      log(state, `　高科技空投：${n} 个 3★ 补给箱`, "exTechDrop", { n });
     } else if (id === "dome") {
       state.board[towerKey(state)].dome = true; log(state, "　穹顶降临中央塔（安全区）", "domeEvent", {});
     } else if (id === "gift_fans") {
