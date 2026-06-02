@@ -414,7 +414,8 @@
     // barrier edge-picker: clickable, pulsing handles on the current player's empty edges
     if (barrierMode && E.isHumanTurn(G)) {
       const me = E.curP(G);
-      if (me.pos && E.canBuild(G, me)) {
+      // draw handles when a build is affordable OR a free 2nd wall is pending (which needs no die)
+      if (me.pos && (E.canBuild(G, me) || me._wallCombo === 1)) {
         const { x, y } = hexToPixel(me.pos.q, me.pos.r), cs = corners(x, y);
         for (const e of E.emptyEdges(G, me)) {
           const p1 = cs[e], p2 = cs[(e + 1) % 6];
@@ -708,10 +709,14 @@
   }
   function closeActionMenu() { const m = $("action-menu"); if (m) m.remove(); }
   function closeActionMenuOutside(e) { const m = $("action-menu"); if (m && !m.contains(e.target)) m.remove(); }
-  // place a wall on the chosen edge of the current hex (barrier edge-picker)
+  // place a wall on the chosen edge; a single Build action may place up to 2 walls (the 2nd is free)
   function placeBarrierEdge(edge) {
     if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
-    if (E.doBuildBarrier(G, edge)) { SFX("build"); barrierMode = false; clearAiBanner(); render(); consumeActionFeed(); }
+    const p = E.curP(G), combo = p._wallCombo === 1;   // this click is the free 2nd wall of the action
+    if (!E.doBuildBarrier(G, edge, combo)) return;
+    SFX("build"); render(); if (!combo) consumeActionFeed();
+    if (p._wallCombo === 1 && E.emptyEdges(G, p).length) aiBanner(L("可再放 1 面屏障（同一建造，免费）— 或点别处结束", "Place a 2nd wall free (same build) — or click elsewhere to finish"), p.color);
+    else { barrierMode = false; clearAiBanner(); }
   }
 
   // ---- AI turn visualization: telegraph who's acting, animate the move, surface combat ----
