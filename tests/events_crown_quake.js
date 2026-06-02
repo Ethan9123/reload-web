@@ -99,6 +99,45 @@ function anyHex(g) { return Object.keys(g.board).find(k => !g.board[k].hasTower)
   A(changedSomewhere, "earthquake otherwise just re-rolls the top combat-line die");
 }
 
+// 5b) one skull on a single-die re-roll removes exactly ONE die, not two (Codex P2)
+{
+  // find a seed whose first earthquake roll for player 0 is a skull
+  let checked = false;
+  for (let s = 0; s < 80 && !checked; s++) {
+    const g = game(900 + s);
+    const p = g.players[0]; placeOnBoard(g, p, anyHex(g));
+    p.combatLine = [4, 3, 2]; p.injuries = 0; p.actionDice = 5;
+    E.earthquakeReroll(g);
+    if (p.injuries === 1) {   // exactly one skull happened on the single top-die re-roll
+      A(p.combatLine.length === 2, "one earthquake skull removes exactly one combat-line die (4,3,2 -> two remain, no double-drop)");
+      checked = true;
+    }
+  }
+  A(checked, "exercised the single-skull earthquake case");
+}
+
+// 5c) on a mountain, the re-roll touches the top TWO dice — never re-rolls the same die twice
+{
+  // combat line [5,4,1] on a mountain (die faces are 1-5; 6 is the skull face). No-skull rolls keep
+  // the bottom die (1) and the line length; the original top pair [5,4] should not always both survive.
+  let ok = true, sawTwoChanged = false, sawNoSkull = false;
+  for (let s = 0; s < 60; s++) {
+    const g = game(1300 + s);
+    const p = g.players[0];
+    const mk = Object.keys(g.board).find(k => g.board[k].terrain === "mountain");
+    if (!mk) { ok = false; break; }
+    placeOnBoard(g, p, mk); p.combatLine = [5, 4, 1]; p.injuries = 0; p.actionDice = 5;
+    E.earthquakeReroll(g);
+    if (p.injuries === 0) {   // no skulls this run: still 3 dice, bottom 1 preserved
+      sawNoSkull = true;
+      if (p.combatLine.length !== 3 || !p.combatLine.includes(1)) ok = false;
+      if (!(p.combatLine.includes(5) && p.combatLine.includes(4))) sawTwoChanged = true;   // the original 5&4 didn't both survive -> both were re-rolled
+    }
+  }
+  A(ok && sawNoSkull, "mountain earthquake keeps the untouched bottom die and the line length (no-skull case)");
+  A(sawTwoChanged, "mountain earthquake re-rolls TWO distinct top dice (original 5,4 don't always both survive)");
+}
+
 // 6) earthquake ignores players not on the board (parachute/reloaded)
 {
   const g = game(15);

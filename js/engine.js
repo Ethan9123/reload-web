@@ -746,16 +746,16 @@
       if (!p.pos || p.reloadZone) continue;
       const onMountain = TERRAIN[state.board[hexKey(p.pos.q, p.pos.r)].terrain] === TERRAIN.mountain;
       const rolls = onMountain ? 2 : 1;                       // mountains shake harder: re-roll the top two
-      let skulls = 0;
       p.combatLine = sortCombatLine(p.combatLine);
-      for (let i = 0; i < rolls && p.combatLine.length; i++) {
-        const face = rollDie(state.rnd);
-        if (face === "skull") { p.combatLine.shift(); skulls++; }   // a rolled skull is taken as an injury (die leaves the line)
-        else { p.combatLine[0] = face; p.combatLine = sortCombatLine(p.combatLine); }
-      }
+      const n = Math.min(rolls, p.combatLine.length); if (n === 0) continue;
+      const kept = p.combatLine.slice(n);                     // dice below the top-n are untouched
+      let skulls = 0; const rerolled = [];                    // re-roll the ORIGINAL top-n distinct dice
+      for (let i = 0; i < n; i++) { const face = rollDie(state.rnd); if (face === "skull") skulls++; else rerolled.push(face); }
+      p.combatLine = sortCombatLine(rerolled.concat(kept));   // skull dice drop out (taken as injuries)
       if (skulls > 0) {
         log(state, `🌐 地震：${p.name} 掷出 ${skulls} 个骷髅，受到 ${skulls} 点伤`, "quakeHit", { name: p.name, n: skulls });
-        if (takeInjuries(state, p, skulls)) reloadPlayer(state, p, null);
+        // the skull dice already left the combat line above, so don't pull additional dice via the hierarchy
+        if (takeInjuries(state, p, skulls, { hierarchy: false })) reloadPlayer(state, p, null);
       }
     }
   }
