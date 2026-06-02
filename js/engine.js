@@ -356,6 +356,12 @@
 
   // log entry = { s: source(zh) string, k: i18n key, p: params }; the UI formats k/p per language, falling back to s.
   function log(state, msg, k, p) { state.log.unshift(k ? { s: msg, k, p } : msg); if (state.log.length > 120) state.log.pop(); }
+  // a UI-facing feed of "an action die of value <die> was placed for <kind> at <hex>" — drives the per-action
+  // dice animation for both the human and the AI (combat has its own overlay, so it isn't recorded here).
+  function recordAction(state, p, kind, die) {
+    (state.actionFeed || (state.actionFeed = [])).push({ by: p.idx, kind, die: die == null ? 1 : die, hex: p.pos ? hexKey(p.pos.q, p.pos.r) : null, seq: (state._actSeq = (state._actSeq || 0) + 1) });
+    if (state.actionFeed.length > 60) state.actionFeed.shift();
+  }
   function curP(state) { return state.players[state.activePlayer]; }
   function isHumanTurn(state) { return !state.gameOver && curP(state).human; }
 
@@ -575,6 +581,7 @@
     if (blitzBonusStep(p)) { p._runBonus = false; p._runBonusUsed = true; p.hasActed = true; log(state, `⚡ ${p.name} 疾速：追加一步`, "blitzStep", { name: p.name }); }  // free bonus hex
     else { spendDice(state, p, portalJump ? 1 : runCost(state, toKey, p), 1); if (p.character === "blitz" && !p._runBonusUsed) p._runBonus = true; } // a paid Run unlocks the bonus step
     const c = state.board[toKey]; p.pos = { q: c.q, r: c.r };
+    recordAction(state, p, portalJump ? "portal" : "run", 1);
     log(state, `${p.name} ${portalJump ? "穿越传送门到" : "移动到"} ${c.terrain}`, portalJump ? "portal" : "move", { name: p.name, terrain: c.terrain });
     if (c.trap != null && c.trap !== p.idx) resolveTrap(state, p, c.trap, toKey); // step on enemy trap
     return true;
@@ -589,7 +596,7 @@
     if (p.defensePool < 1) return false;
     const cell = state.board[hexKey(p.pos.q, p.pos.r)], tok = cell.tokens[tokenIdx];
     if (!tok) return false;
-    spendDice(state, p, 1, 1); cell.tokens.splice(tokenIdx, 1);
+    spendDice(state, p, 1, 1); recordAction(state, p, "loot", 1); cell.tokens.splice(tokenIdx, 1);
     if (tok.kind === "beacon") { p.carryingBeacons += 1; log(state, `${p.name} 拾取信标（需带到中央塔上缴）`, "lootBeacon", { name: p.name }); }
     else if (tok.kind === "supply") {
       const dk = "equip" + (tok.star || 2), xk = "discard" + (tok.star || 2);
@@ -615,7 +622,7 @@
     if (key !== here && !neighbors(state, p.pos.q, p.pos.r).includes(key)) return false;   // current or adjacent only
     const cell = state.board[key]; if (!cell) return false;
     const tok = cell.tokens[tokenIdx]; if (!tok) return false;
-    spendDice(state, p, 1, 1); cell.tokens.splice(tokenIdx, 1); p._droneUsed = true;
+    spendDice(state, p, 1, 1); recordAction(state, p, "loot", 1); cell.tokens.splice(tokenIdx, 1); p._droneUsed = true;
     if (tok.kind === "beacon") { p.carryingBeacons += 1; log(state, `🤖 ${p.name} 的无人机巴兹拾取信标`, "droneBeacon", { name: p.name }); }
     else if (tok.kind === "supply") {
       const dk = "equip" + (tok.star || 2), xk = "discard" + (tok.star || 2);
@@ -633,7 +640,7 @@
   function doActivate(state) {
     const p = curP(state);
     if (!canUpload(state, p)) return false;
-    spendDice(state, p, 1, 1);
+    spendDice(state, p, 1, 1); recordAction(state, p, "activate", 1);
     const n = p.carryingBeacons;
     log(state, `${p.name} 在中央塔上传 ${n} 个信标 → +${n} 名望`, "upload", { name: p.name, n });
     gainFame(state, p, "beacon", n); p.carryingBeacons = 0;
@@ -678,7 +685,7 @@
     if (p.character === "emmet" && die !== "skull") die = rollDie(state.rnd);   // Emmet — Field Medic: re-roll the heal die (skull = +1)
     const base = target === p ? 1 : 2;                                          // healing a teammate restores 2 (rules p.8)
     const heal = Math.min(target.injuries, base + (die === "skull" ? 1 : 0));   // skull +1
-    spendDice(state, p, 1, die);
+    spendDice(state, p, 1, die); recordAction(state, p, "heal", die);
     target.injuries -= heal; target.actionDice = START_ACTION_DICE - target.injuries; target.defensePool += heal;
     if (target !== p) { log(state, `${p.name} 治疗队友 ${target.name}：掷${die === "skull" ? "骷髅" : die}，恢复 ${heal} 点（+1 团队精神）`, "healMate", { name: p.name, mate: target.name, heal }); gainFame(state, p, "teamSpirit", 1); }
     else log(state, `${p.name} 治疗：掷${die === "skull" ? "骷髅(+2)" : die}，恢复 ${heal} 点伤`, "healSelf", { name: p.name, heal });
@@ -720,6 +727,7 @@
     if (!canBuild(state, p) || wallsUsed(state, p) >= SETUP_WALLS || !emptyEdges(state, p).includes(edge)) return false; // teams share the 6-wall limit
     payBuild(state, p);
     state.board[hexKey(p.pos.q, p.pos.r)].walls[edge] = p.idx; p.barriersUsed++;
+    recordAction(state, p, "barrier", 1);
     log(state, `${p.name} 建造屏障`, "buildBarrier", { name: p.name }); return true;
   }
   function doDemolish(state, edge) {
@@ -728,7 +736,7 @@
     if (cell.walls[edge] == null) return false;
     const owner = cell.walls[edge]; delete cell.walls[edge];
     if (typeof owner === "number" && state.players[owner]) state.players[owner].barriersUsed = Math.max(0, state.players[owner].barriersUsed - 1);
-    payBuild(state, p); log(state, `${p.name} 拆除屏障`, "demolishBarrier", { name: p.name }); return true;
+    payBuild(state, p); recordAction(state, p, "demolish", 1); log(state, `${p.name} 拆除屏障`, "demolishBarrier", { name: p.name }); return true;
   }
   function doBuildHideout(state) {
     const p = curP(state); if (!canBuild(state, p)) return false;
@@ -736,6 +744,7 @@
     if (state.board[k].hideouts.length) return false;
     if (p.hideout && state.board[p.hideout]) state.board[p.hideout].hideouts = state.board[p.hideout].hideouts.filter(h => h !== p.idx);
     payBuild(state, p); state.board[k].hideouts.push(p.idx); p.hideout = k;
+    recordAction(state, p, "hideout", 1);
     log(state, `${p.name} 设置藏身处`, "buildHideout", { name: p.name }); return true;
   }
   function doDemolishHideout(state, ownerIdx) {
@@ -746,13 +755,14 @@
     if (idx < 0) return false;
     const owner = cell.hideouts.splice(idx, 1)[0];
     if (state.players[owner]) state.players[owner].hideout = null;
-    payBuild(state, p); log(state, `${p.name} 拆除藏身处`, "demolishHideout", { name: p.name }); return true;
+    payBuild(state, p); recordAction(state, p, "demolish", 1); log(state, `${p.name} 拆除藏身处`, "demolishHideout", { name: p.name }); return true;
   }
   function doBuildTrap(state) {
     const p = curP(state); if (!canBuild(state, p) || p.trapsUsed >= SETUP_TRAPS) return false;
     const cell = state.board[hexKey(p.pos.q, p.pos.r)];
     if (cell.trap != null) return false;
     payBuild(state, p); cell.trap = p.idx; p.trapsUsed++;
+    recordAction(state, p, "trap", 1);
     log(state, `${p.name} 埋设陷阱`, "buildTrap", { name: p.name });
     // Team Spirit: building a trap in the same hex as a teammate scores +1 (rules 002 modules)
     if (playersOnHex(state, p.pos.q, p.pos.r).some(x => x !== p && sameTeam(x, p))) {
