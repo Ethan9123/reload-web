@@ -367,8 +367,9 @@
     else if (e.armor) stats = "护甲" + (e.armor.skullReduce ? ` 骷髅-${e.armor.skullReduce}` : "") + (e.armor.smallInjuryReduce ? ` 轻伤-${e.armor.smallInjuryReduce}` : "");
     const clk = action ? ` ecard-clk" data-eq="${e.id}" data-act="${action}` : "";
     const tag = action === "equip" ? `<span class="ecard-act eq">＋装备</span>` : action === "unequip" ? `<span class="ecard-act un">－卸下</span>` : "";
+    const partial = e.partial ? ` <span class="ecard-partial" title="特殊效果暂以文字呈现，基础攻击照常结算">⚙</span>` : "";
     return `<div class="ecard${clk}" style="border-top-color:${sc}">
-      <div class="ecard-h"><span class="ecard-name">${e.name}</span><span class="ecard-star" style="color:${sc}">${"★".repeat(e.star)}</span></div>
+      <div class="ecard-h"><span class="ecard-name">${e.name}${partial}</span><span class="ecard-star" style="color:${sc}">${"★".repeat(e.star)}</span></div>
       <div class="ecard-meta">${SLOT_CN[e.slot] || e.slot}${stats ? " · " + stats : ""}</div>
       <div class="ecard-eff">${e.effect || ""}</div>${tag}</div>`;
   }
