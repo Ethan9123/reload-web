@@ -46,15 +46,16 @@
 
   // ---- build equipment decks ----
   // exact 1-star quantities from rulebook p.12; 2-star from available subset.
-  const STAR1_QTY = {
+  const STAR1_QTY = {   // 1-star deck = 32 cards (duplicates of the 13 types)
     energy_drink: 4, pain_killer: 4, ap_ammo: 2, bow_arrow: 2, collapsible_baton: 2,
-    light_helmet: 2, riot_vest: 2, sickle: 2, tactical_explosive: 2, tool_kit: 2,
+    light_helmet: 3, riot_vest: 3, sickle: 2, tactical_explosive: 2, tool_kit: 2,
+    explosive_trap: 2, grenade: 2, stun_grenade: 2,
   };
   function buildEquipDeck(star, rnd) {
     const deck = [];
     for (const e of EQUIPMENT) {
       if (e.star !== star) continue;
-      const qty = star === 1 ? (STAR1_QTY[e.id] || 1) : 2;
+      const qty = e.qty || (star === 1 ? (STAR1_QTY[e.id] || 1) : 1);   // 2★ ≈ 20, 3★ Ex-Tech = 1 of each type
       for (let i = 0; i < qty; i++) deck.push(e.id);
     }
     return shuffle(deck, rnd);
@@ -801,7 +802,7 @@
     const onTurn = state.phase === "action" && curP(state) === p;
     return specialItems(p).filter(e => {
       if (e.id === "pain_killer") return p.injuries > 0;
-      if (e.id === "energy_drink") return onTurn;
+      if (e.id === "energy_drink" || e.id === "adrenaline_mask") return onTurn;
       if (e.id === "tactical_explosive") return onTurn && explosiveTargets(state, p).length > 0;
       return false;
     });
@@ -813,11 +814,11 @@
       if (p.injuries <= 0) return false;
       p.injuries -= 1; p.actionDice = START_ACTION_DICE - p.injuries; p.defensePool += 1;
       log(state, `💊 ${p.name} 使用止痛药，恢复 1 点伤`, "usePainkiller", { name: p.name });
-    } else if (itemId === "energy_drink") {
+    } else if (itemId === "energy_drink" || itemId === "adrenaline_mask") {
       if (state.phase !== "action") return false;
       p.defensePool += 1; p.boostDice = (p.boostDice || 0) + 1;   // boost die: spendable on actions, not combat / injury
       p.actionDice = Math.max(p.actionDice, p.defensePool);       // allow the extra die to exist beyond the injury-reduced base
-      log(state, `🥤 ${p.name} 喝下能量饮料，本回合 +1 行动骰（不可用于战斗/承伤）`, "useEnergy", { name: p.name });
+      log(state, `🥤 ${p.name} 使用 ${e.name}，本回合 +1 行动骰（不可用于战斗/承伤）`, "useEnergy", { name: p.name });
     } else if (itemId === "tactical_explosive") {
       if (state.phase !== "action" || !target) return false;
       // enforce the same/adjacent range rule in the engine itself (don't trust the caller's target)
@@ -912,7 +913,7 @@
     }
     // End phase toxin (inert until events add toxin tokens): toxin hex & not safe -> 1 injury
     if (p.pos) {
-      const cell = state.board[hexKey(p.pos.q, p.pos.r)], safe = hasFriendlyHideout(state, p);
+      const cell = state.board[hexKey(p.pos.q, p.pos.r)], safe = hasFriendlyHideout(state, p) || equipFlag(p, "toxinImmune");  // Healing Armor immunity
       if ((cell.toxin || cell.toxinIcon) && !safe) { log(state, `${p.name} 处于毒气区，受到 1 点伤害`, "toxinDamage", { name: p.name }); if (takeInjuries(state, p, 1)) reloadPlayer(state, p, null); }
     }
     state._turnsTaken++;
@@ -954,16 +955,20 @@
     }
     return { skullReduce: sk, smallInjuryReduce: si };
   }
+  // sum / detect a passive modifier across equipped gear (Jet Pack rangeBonus, Sniper Helmet diceBonus, Tactical Helmet cancelsStealth, Arachnid Pack extraHand)
+  function equipSum(p, key) { let s = 0; for (const id of [p.equipped.head, p.equipped.torso, ...p.equipped.hand]) { const e = byId(id); if (e && e[key]) s += e[key]; } return s; }
+  function equipFlag(p, key) { for (const id of [p.equipped.head, p.equipped.torso, ...p.equipped.hand]) { const e = byId(id); if (e && e[key]) return true; } return false; }
+  function handCap(p) { return 2 + equipSum(p, "extraHand"); }   // Arachnid Pack grants a 3rd hand slot
   function autoEquip(p) {
     const get = (pred) => p.backpack.map(byId).filter(e => e && pred(e));
     const ranged = get(e => e.combat === "ranged").sort((a, b) => (b.dice || 0) - (a.dice || 0));
     const close = get(e => e.combat === "close");
     const heads = get(e => e.slot === "head"), torsos = get(e => e.slot === "torso");
     p.equipped = { head: heads[0] ? heads[0].id : null, torso: torsos[0] ? torsos[0].id : null, hand: [] };
-    // hand slots: 2 single-hand OR 1 two-hand (rules 04:08)
-    let used = 0;
-    const tryHand = (e) => { if (!e) return; const need = e.hands || 1; if (used + need <= 2) { p.equipped.hand.push(e.id); used += need; } };
-    tryHand(ranged[0]); tryHand(close[0]);
+    // hand slots: 2 single-hand OR 1 two-hand (rules 04:08); +1 with an Arachnid Pack equipped
+    const cap = handCap(p); let used = 0;
+    const tryHand = (e) => { if (!e) return; const need = e.hands || 1; if (used + need <= cap) { p.equipped.hand.push(e.id); used += need; } };
+    tryHand(ranged[0]); tryHand(close[0]); tryHand(ranged[1]); tryHand(close[1]);
   }
   // ---- manual equip (rules 04:00): chosen at turn start, locked once an action die is assigned ----
   function handSlotsUsed(p) { return p.equipped.hand.reduce((s, id) => s + (((byId(id) || {}).hands) || 1), 0); }
@@ -972,14 +977,16 @@
     // the live assigned count, because taking an injury can pop a spent die and reset assigned to 0 mid-turn.
     return state.phase === "action" && !p.hasActed && (p.combatLine || []).length === 0 && !p._closeEndedTurn;
   }
+  // drop excess hand gear if the hand cap shrank (e.g. swapping the torso away from an Arachnid Pack)
+  function enforceHandCap(p) { while (handSlotsUsed(p) > handCap(p) && p.equipped.hand.length) p.equipped.hand.pop(); }
   function equipItem(state, p, id) {
     if (!canEquip(state, p)) return false;
     const e = byId(id); if (!e || !p.backpack.includes(id) || e.slot === "special") return false;
-    if (e.slot === "head") { p.equipped.head = id; return true; }
-    if (e.slot === "torso") { p.equipped.torso = id; return true; }
+    if (e.slot === "head") { p.equipped.head = id; enforceHandCap(p); return true; }
+    if (e.slot === "torso") { p.equipped.torso = id; enforceHandCap(p); return true; }   // a torso swap can lower the cap
     if (e.slot === "hand") {
       if (p.equipped.hand.includes(id)) return false;
-      if (handSlotsUsed(p) + (e.hands || 1) > 2) return false;   // respects two-handed weapons
+      if (handSlotsUsed(p) + (e.hands || 1) > handCap(p)) return false;   // respects two-handed weapons + Arachnid Pack
       p.equipped.hand.push(id); return true;
     }
     return false;
@@ -987,7 +994,7 @@
   function unequipItem(state, p, id) {
     if (!canEquip(state, p)) return false;
     if (p.equipped.head === id) { p.equipped.head = null; return true; }
-    if (p.equipped.torso === id) { p.equipped.torso = null; return true; }
+    if (p.equipped.torso === id) { p.equipped.torso = null; enforceHandCap(p); return true; }   // losing Arachnid Pack drops the extra hand slot
     const i = p.equipped.hand.indexOf(id); if (i >= 0) { p.equipped.hand.splice(i, 1); return true; }
     return false;
   }
@@ -1000,6 +1007,14 @@
     else if (mod === "twoOrThreeTo4") { const i = rolled.findIndex(v => v === 2 || v === 3); if (i >= 0) rolled[i] = 4; }
     else if (mod === "highestToSkull") { let i = -1, hi = -1; for (let k = 0; k < rolled.length; k++) { const v = rolled[k]; if (typeof v === "number" && v > hi) { hi = v; i = k; } } if (i >= 0) rolled[i] = "skull"; }
     else if (mod === "fourToFive") { const i = rolled.findIndex(v => v === 4); if (i >= 0) rolled[i] = 5; }
+    else if (mod === "lowestTo4") { let i = -1, lo = 99; for (let k = 0; k < rolled.length; k++) { const v = rolled[k]; if (typeof v === "number" && v < lo) { lo = v; i = k; } } if (i >= 0 && rolled[i] < 4) rolled[i] = 4; }       // Hand Axe
+    else if (mod === "twoOrThreeToSkull") { const i = rolled.findIndex(v => v === 2 || v === 3); if (i >= 0) rolled[i] = "skull"; }  // Machete
+    else if (mod === "oneOrTwoTo4") { const i = rolled.findIndex(v => v === 1 || v === 2); if (i >= 0) rolled[i] = 4; }              // Tactical Tomahawk
+    else if (mod === "twoOrThreeTo5") { const i = rolled.findIndex(v => v === 2 || v === 3); if (i >= 0) rolled[i] = 5; }            // Force Rod
+    // "add to any one die" — boost the HIGHEST die still below 5 (the strongest single-die play), capped at 5
+    else if (mod === "addTwoToOne" || mod === "addOneToOne") { const add = mod === "addTwoToOne" ? 2 : 1; let i = -1, best = -1; for (let k = 0; k < rolled.length; k++) { const v = rolled[k]; if (typeof v === "number" && v < 5 && v > best) { best = v; i = k; } } if (i >= 0) rolled[i] = Math.min(5, rolled[i] + add); }   // Power Glove / Shock Gauntlet
+    else if (mod === "twoAndThreeToSkull") { for (let k = 0; k < rolled.length; k++) if (rolled[k] === 2 || rolled[k] === 3) rolled[k] = "skull"; }                                                                                            // Sonic Cleaver
+    else if (mod === "highLowTo4") { let hi = -1, hiI = -1, lo = 99, loI = -1; for (let k = 0; k < rolled.length; k++) { const v = rolled[k]; if (typeof v !== "number") continue; if (v > hi) { hi = v; hiI = k; } if (v < lo) { lo = v; loI = k; } } if (hiI >= 0) rolled[hiI] = 4; if (loI >= 0) rolled[loI] = 4; }   // Warrior Chainsaw
   }
   function hasStealth(p) {
     if (p.character === "echo" && !p._revealed) return true;     // Echo — Cloak: innate stealth until she takes part in combat
@@ -1035,13 +1050,14 @@
   function rangedTargets(state, A) {
     const w = equippedRanged(A);
     if (!w || !A.pos || combatDice(A) < 1 || state.phase !== "action") return [];   // boost die can't be used in combat
-    const out = [];
+    const out = [], r = w.range || [0, 0];
+    const maxR = r[1] + equipSum(A, "rangeBonus") + (A.character === "diana" ? 1 : 0);   // Jet Pack/Tactical Helmet + Diana (Huntress)
+    const seesThroughStealth = equipFlag(A, "cancelsStealth");   // Tactical Helmet
     for (const t of state.players) {
       if (t === A || !t.pos || t.reloadZone || sameTeam(A, t)) continue;   // no friendly fire
-      const d = hexDistance(A.pos, t.pos), r = w.range || [0, 0];
-      const rangeBonus = A.character === "diana" ? 1 : 0;                  // Diana — Huntress: range +1
-      if (d < (r[0] || 0) || d > (r[1] + rangeBonus)) continue;
-      if (d >= 1 && hasStealth(t)) continue; // stealth: only targetable by ranged from same hex
+      const d = hexDistance(A.pos, t.pos);
+      if (d < (r[0] || 0) || d > maxR) continue;
+      if (d >= 1 && hasStealth(t) && !seesThroughStealth) continue; // stealth: only targetable by ranged from same hex
       if (d >= 1 && !hasLOS(state, A.pos, t.pos, A.idx)) continue;
       out.push(t.idx);
     }
@@ -1121,7 +1137,7 @@
     const w = equippedRanged(A); assignValue = assignValue || 3;
     if (A.character === "echo") A._revealed = true;                        // firing reveals Echo
     spendDice(state, A, 1, assignValue);
-    const shooterDice = rollDice(state.rnd, w.dice || 2);
+    const shooterDice = rollDice(state.rnd, Math.min(4, (w.dice || 2) + equipSum(A, "diceBonus")));   // Sniper Helmet +1 die (max 4)
     if (A.character === "duke") bumpOneDie(shooterDice, assignValue, w);   // Duke — Sharpshooter
     if (A.character === "diana") rerollLowestDie(state, shooterDice);      // Diana — Huntress: re-roll one shooting die
     const defRaw = rollDice(state.rnd, ownedDice(T));
@@ -1174,8 +1190,11 @@
     if (A.character === "butcher") rerollLowestDie(state, aRaw);          // Butcher — Brawler: re-roll lowest combat-line die
     if (T.character === "butcher") rerollLowestDie(state, tRaw);          // (his dice, whether attacking or defending)
     const aR = splitRoll(aRaw), tR = splitRoll(tRaw);
+    const NOARMOR = { skullReduce: 0, smallInjuryReduce: 0 };
     const aArm = armorOf(A), tArm = armorOf(T);
-    const aSk = Math.max(0, aR.skulls - tArm.skullReduce), tSk = Math.max(0, tR.skulls - aArm.skullReduce);
+    const tArmEff = (aCW && aCW.ignoreArmor) ? NOARMOR : tArm;   // A's weapon ignores T's armor
+    const aArmEff = (tCW && tCW.ignoreArmor) ? NOARMOR : aArm;   // T's weapon ignores A's armor
+    const aSk = Math.max(0, aR.skulls - tArmEff.skullReduce), tSk = Math.max(0, tR.skulls - aArmEff.skullReduce);
     let aDealt = 0, tDealt = 0, aReload = false, tReload = false;
     // skull step: loser's lowest dice -> injury, removed from the combat line before compare
     if (aSk > tSk) { const ex = aSk - tSk; tR.line.splice(Math.max(0, tR.line.length - ex), ex); aDealt += ex; tReload = takeInjuries(state, T, ex, { hierarchy: false }); }
@@ -1190,8 +1209,8 @@
       } else if (a != null && t == null) tSmall++;       // unopposed: player WITHOUT a die takes small injury
       else if (t != null && a == null) aSmall++;
     }
-    const tc = applySmallInjuries(tR.line, Math.max(0, tSmall - tArm.smallInjuryReduce)); if (tc) { aDealt += tc; if (takeInjuries(state, T, tc, { hierarchy: false })) tReload = true; }
-    const ac = applySmallInjuries(aR.line, Math.max(0, aSmall - aArm.smallInjuryReduce)); if (ac) { tDealt += ac; if (takeInjuries(state, A, ac, { hierarchy: false })) aReload = true; }
+    const tc = applySmallInjuries(tR.line, Math.max(0, tSmall - tArmEff.smallInjuryReduce)); if (tc) { aDealt += tc; if (takeInjuries(state, T, tc, { hierarchy: false })) tReload = true; }
+    const ac = applySmallInjuries(aR.line, Math.max(0, aSmall - aArmEff.smallInjuryReduce)); if (ac) { tDealt += ac; if (takeInjuries(state, A, ac, { hierarchy: false })) aReload = true; }
     if (tReload) { reloadPlayer(state, T, A); awardNextAchievement(state, A, "closeReload"); } else if (aDealt > 0) { gainFame(state, A, "injury", 1); }  // MARTIAL ARTIST
     if (aReload) { reloadPlayer(state, A, T); awardNextAchievement(state, T, "closeReload"); } else if (tDealt > 0) { gainFame(state, T, "injury", 1); }
     log(state, `🗡 近战 ${A.name} vs ${T.name}：造成 ${aDealt} / 受到 ${tDealt}`, "melee", { a: A.name, t: T.name, aDealt, tDealt });

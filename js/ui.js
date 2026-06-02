@@ -832,8 +832,9 @@
     else if (e.armor) stats = T("eq.armor") + (e.armor.skullReduce ? ` ${T("eq.skull")}-${e.armor.skullReduce}` : "") + (e.armor.smallInjuryReduce ? ` ${T("eq.light")}-${e.armor.smallInjuryReduce}` : "");
     const clk = action ? ` ecard-clk" data-eq="${e.id}" data-act="${action}` : "";
     const tag = action === "equip" ? `<span class="ecard-act eq">${T("eq.equip")}</span>` : action === "unequip" ? `<span class="ecard-act un">${T("eq.unequip")}</span>` : "";
+    const partial = e.partial ? ` <span class="ecard-partial" title="特殊效果暂以文字呈现，基础攻击照常结算">⚙</span>` : "";
     return `<div class="ecard${clk}" style="border-top-color:${sc}">
-      <div class="ecard-h"><span class="ecard-name">${TC("equip." + e.id + ".name", e.name)}</span><span class="ecard-star" style="color:${sc}">${"★".repeat(e.star)}</span></div>
+      <div class="ecard-h"><span class="ecard-name">${TC("equip." + e.id + ".name", e.name)}${partial}</span><span class="ecard-star" style="color:${sc}">${"★".repeat(e.star)}</span></div>
       <div class="ecard-meta">${T("slotcn." + e.slot)}${stats ? " · " + stats : ""}</div>
       <div class="ecard-eff">${TC("equip." + e.id + ".effect", e.effect || "")}</div>${tag}</div>`;
   }

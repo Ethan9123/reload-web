@@ -16,7 +16,7 @@ assert(E.supplyHexCount(g) === 4, "4 supply hexes (villages)");
 assert(g.players.length === 4, "4 players");
 assert(g.players.every(p => p.backpack.length === 1), "each player keeps 1 starting 1-star");
 assert(g.players.every(p => p.defensePool === 5), "each player starts with 5 action dice");
-assert(g.decks.equip1.length === 24 - 4 * 2, "1-star deck = 24 minus 8 drawn at setup");
+assert(g.decks.equip1.length === 32 - 4 * 2, "1-star deck = 32 minus 8 drawn at setup");
 // determinism: same seed -> same first player backpack
 const g2 = E.newGame({ numPlayers: 4, seed: 42, allAI: true });
 assert(JSON.stringify(g.players[0].backpack) === JSON.stringify(g2.players[0].backpack), "seed is deterministic");
