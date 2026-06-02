@@ -408,7 +408,7 @@
   function mostMetric(state, p, metric) {
     if (metric === "reload") return p.fame.reload;
     if (metric === "beacon") return p.fame.beacon;
-    if (metric === "variety") return ["injury", "beacon", "teamSpirit", "reload", "trap", "achievement"].filter(k => p.fame[k] > 0).length;
+    if (metric === "variety") return ["injury", "beacon", "teamSpirit", "reload", "trap", "achievement", "flag"].filter(k => p.fame[k] > 0).length;
     if (metric === "threeStar") return [p.equipped.head, p.equipped.torso, ...p.equipped.hand, ...p.backpack].map(byId).filter(e => e && e.star === 3).length;
     return 0;
   }

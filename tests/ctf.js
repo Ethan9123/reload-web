@@ -108,6 +108,16 @@ const A = (c, m) => { if (!c) { console.error("  FAIL:", m); fails++; } else con
   A(ctf.superstarFame > br.superstarFame, "CTF Superstar threshold is longer than Battle Royale");
 }
 
+// 5e) Jack-of-All-Trades variety metric counts flag fame (Codex P2)
+{
+  const g = E.newGame({ numPlayers: 4, mode: "captureFlag", seed: 10, allAI: true });
+  const p = g.players[0];
+  p.fame = { injury: 1, beacon: 1, teamSpirit: 0, reload: 0, trap: 0, achievement: 0, flag: 0 };
+  const before = E.mostMetric(g, p, "variety");
+  p.fame.flag = 5;
+  A(E.mostMetric(g, p, "variety") === before + 1, "variety metric counts flag as a distinct fame source");
+}
+
 // 6) flag fame counts toward total fame
 {
   const g = E.newGame({ numPlayers: 4, mode: "captureFlag", seed: 6, allAI: true });
