@@ -55,6 +55,16 @@ function anyHex(g) { return Object.keys(g.board).find(k => !g.board[k].hasTower)
   A(E.totalFame(p) >= E.CROWN_FAME, "crown fame counts toward total fame");
 }
 
+// 2b) a SECOND crown event must not strip a player who is holding the crown (Codex P2)
+{
+  const g = game(18);
+  const p = g.players[0];
+  p.carryingCrown = true; g.crown = { at: null, carrier: p.idx };
+  E.placeCrown(g);   // second crown event while p still holds it
+  A(p.carryingCrown && g.crown.carrier === p.idx, "holding the crown survives a second crown event (no silent loss)");
+  A(!Object.keys(g.board).some(k => g.board[k].tokens.some(t => t.kind === "crown")), "no duplicate crown token is dropped while one is carried");
+}
+
 // 3) being reloaded while holding the crown hands it to the killer
 {
   const g = game(13);

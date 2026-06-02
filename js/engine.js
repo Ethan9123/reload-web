@@ -718,6 +718,9 @@
   // ---- Hunter's Crown event: a king-of-the-hill fame token ----
   const CROWN_FAME = 3;                 // fame banked when you hold the crown into the start of your turn (or at game end)
   function placeCrown(state) {          // drop the crown on a random outer-ring, non-tower, toxin-free hex
+    // there's only one crown in play. If a player already holds it (waiting to bank it), a second crown
+    // event is a no-op — don't strip it from them or they'd lose the promised start-of-turn fame.
+    if (state.crown && state.crown.carrier != null) { log(state, "　狩猎之冠已被携带，事件无效", "crownHeld", {}); return; }
     const ring = state.maxRing != null ? state.maxRing : 2;
     const free = Object.keys(state.board).filter(k => { const c = state.board[k]; return !c.hasTower && !c.toxin; });
     // prefer the outer ring; then any toxin-free non-tower hex; only land on toxin as a last resort
@@ -726,8 +729,7 @@
     if (!cands.length) cands = Object.keys(state.board).filter(k => !state.board[k].hasTower);
     if (!cands.length) return;
     const key = cands[Math.floor(state.rnd() * cands.length)];
-    if (state.crown && state.crown.carrier != null) { const h = state.players[state.crown.carrier]; if (h) h.carryingCrown = false; }
-    // a crown already on the board moves; otherwise it's freshly dropped
+    // a crown already lying on the board relocates; otherwise it's freshly dropped
     for (const k in state.board) state.board[k].tokens = state.board[k].tokens.filter(t => t.kind !== "crown");
     state.board[key].tokens.push({ kind: "crown" });
     state.crown = { at: key, carrier: null };
