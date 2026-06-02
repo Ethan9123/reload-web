@@ -719,7 +719,10 @@
   const CROWN_FAME = 3;                 // fame banked when you hold the crown into the start of your turn (or at game end)
   function placeCrown(state) {          // drop the crown on a random outer-ring, non-tower, toxin-free hex
     const ring = state.maxRing != null ? state.maxRing : 2;
-    let cands = Object.keys(state.board).filter(k => { const c = state.board[k]; return !c.hasTower && !c.toxin && ringFromTower(state, c) === ring; });
+    const free = Object.keys(state.board).filter(k => { const c = state.board[k]; return !c.hasTower && !c.toxin; });
+    // prefer the outer ring; then any toxin-free non-tower hex; only land on toxin as a last resort
+    let cands = free.filter(k => ringFromTower(state, state.board[k]) === ring);
+    if (!cands.length) cands = free;
     if (!cands.length) cands = Object.keys(state.board).filter(k => !state.board[k].hasTower);
     if (!cands.length) return;
     const key = cands[Math.floor(state.rnd() * cands.length)];

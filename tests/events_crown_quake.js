@@ -25,6 +25,19 @@ function anyHex(g) { return Object.keys(g.board).find(k => !g.board[k].hasTower)
   A(E.lootOptions(g, p).some(t => t.kind === "crown"), "the crown IS a lootable token (a generic Loot can pick it up)");
 }
 
+// 1b) crown never lands on toxin while a toxin-free non-tower hex exists (Codex P2)
+{
+  const g = game(17);
+  // toxify the entire outer ring so the preferred candidates are gone, but leave inner hexes clean
+  const tc = g.board[Object.keys(g.board).find(k => g.board[k].hasTower)];
+  const ring = g.maxRing;
+  for (const k in g.board) { const c = g.board[k]; if (!c.hasTower && E.hexDistance({ q: c.q, r: c.r }, { q: tc.q, r: tc.r }) === ring) c.toxin = true; }
+  const cleanLeft = Object.keys(g.board).some(k => !g.board[k].hasTower && !g.board[k].toxin);
+  A(cleanLeft, "setup: toxin-free non-tower hexes still exist after toxifying the outer ring");
+  E.placeCrown(g);
+  A(g.crown && !g.board[g.crown.at].toxin, "crown falls on a toxin-free hex when one is available");
+}
+
 // 2) loot the crown -> carrying; banked as fame at the START of your NEXT turn (out of circulation)
 {
   const g = game(12);
