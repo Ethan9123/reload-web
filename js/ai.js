@@ -207,6 +207,8 @@
     }
     const tower = E.towerKey(state);
     if (p.carryingBeacons > 0) { if (stepToward(E, state, p, tower)) return "acted"; }
+    // Hunter's Crown: a dropped crown is a free +fame token — go grab it (it banks at the start of your next turn)
+    if (!p.carryingCrown) { const crowns = tokenHexes(E, state, "crown"); if (crowns.length && stepToward(E, state, p, nearestTarget(E, state, p, crowns))) return "acted"; }
     const beacons = tokenHexes(E, state, "beacon");
     if (beacons.length) { if (stepToward(E, state, p, nearestTarget(E, state, p, beacons))) return "acted"; }
     const supplies = tokenHexes(E, state, "supply");
