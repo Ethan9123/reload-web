@@ -20,6 +20,9 @@ assert(g.decks.equip1.length === 32 - 4 * 2, "1-star deck = 32 minus 8 drawn at 
 // determinism: same seed -> same first player backpack
 const g2 = E.newGame({ numPlayers: 4, seed: 42, allAI: true });
 assert(JSON.stringify(g.players[0].backpack) === JSON.stringify(g2.players[0].backpack), "seed is deterministic");
+// opts.chars forces the matchup (used by the tutorial)
+const gc = E.newGame({ numPlayers: 2, seed: 1, allAI: true, chars: ["betty", "echo"] });
+assert(gc.players[0].character === "betty" && gc.players[1].character === "echo", "opts.chars seats explicit characters in seat order");
 
 console.log(fails ? `SMOKE FAILED (${fails})` : "SMOKE PASSED");
 process.exitCode = fails ? 1 : 0;

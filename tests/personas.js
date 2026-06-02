@@ -53,7 +53,7 @@ function rangedScenario(seed, personaId) {
   const tk = E.towerKey(g), tc = g.board[tk]; p.pos = { q: tc.q, r: tc.r };
   // both foes share our hex (d=0 -> ranged sees both, no LOS issues). f1 is easier (injured), f2 is the grudge.
   const f1 = g.players[1], f2 = g.players[2];
-  f1.pos = { q: tc.q, r: tc.r }; f1.reloadZone = false; f1.injuries = 2; f1.actionDice = 3; f1.defensePool = 3;  // not near-death (no closeKill)
+  f1.pos = { q: tc.q, r: tc.r }; f1.reloadZone = false; f1.injuries = 1; f1.actionDice = 4; f1.defensePool = 4;  // injured but not near-death (INJURY_ZONE=4 => nearDeath at >=2, so no closeKill)
   f2.pos = { q: tc.q, r: tc.r }; f2.reloadZone = false; f2.injuries = 0; f2.actionDice = 5; f2.defensePool = 5;
   p._lastAttacker = 2;
   const rt = E.rangedTargets(g, p);

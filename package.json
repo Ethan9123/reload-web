@@ -1,0 +1,16 @@
+{
+  "name": "reload-web",
+  "version": "1.0.0",
+  "description": "Open-source, fan-made web port of the RELOAD battle-royale tactical dice board game — vanilla JS, no build step.",
+  "license": "MIT",
+  "private": true,
+  "homepage": "https://ethan9123.github.io/reload-web/",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Ethan9123/reload-web"
+  },
+  "scripts": {
+    "test": "node tools/run_tests.js",
+    "start": "python devserver.py"
+  }
+}
