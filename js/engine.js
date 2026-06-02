@@ -654,6 +654,7 @@
     const tok = cell.tokens[tokenIdx]; if (!tok || !isLootable(tok)) return false;   // never drone-loot a CTF flag
     spendDice(state, p, 1, 1); recordAction(state, p, "loot", 1); cell.tokens.splice(tokenIdx, 1); p._droneUsed = true;
     if (tok.kind === "beacon") { p.carryingBeacons += 1; log(state, `🤖 ${p.name} 的无人机巴兹拾取信标`, "droneBeacon", { name: p.name }); }
+    else if (tok.kind === "crown") { grabCrown(state, p); }   // Hunter's Crown is grabbable by the drone too
     else if (tok.kind === "supply") {
       const dk = "equip" + (tok.star || 2), xk = "discard" + (tok.star || 2);
       const a = state.decks[dk].pop(), b = state.decks[dk].pop();

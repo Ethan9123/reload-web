@@ -64,6 +64,24 @@ function anyHex(g) { return Object.keys(g.board).find(k => !g.board[k].hasTower)
   A(g.board[k].tokens.some(t => t.kind === "crown") && g.crown.at === k, "the crown drops onto the hex where they fell");
 }
 
+// 4c) Cody & Buzz's drone grabs an adjacent crown correctly (Codex P2)
+{
+  const g = game(16);
+  E.placeCrown(g);
+  const p = g.players.find(x => x.character === "codybuzz") || g.players[0];
+  p.character = "codybuzz"; g.activePlayer = p.idx; g.phase = "action"; g.needsParachute = false; p._droneUsed = false;
+  const ck = g.crown.at, cc = g.board[ck];
+  const nb = E.neighbors ? null : null;   // place the drone adjacent to the crown
+  // stand on a neighbour of the crown hex
+  const adj = Object.keys(g.board).find(k => { const c = g.board[k]; return E.hexDistance({ q: c.q, r: c.r }, { q: cc.q, r: cc.r }) === 1; });
+  placeOnBoard(g, p, adj); p.actionDice = 5; p.defensePool = 5;
+  const opt = E.droneLootOptions(g, p).find(o => o.kind === "crown");
+  A(!!opt, "drone loot options include the adjacent crown");
+  A(E.doDroneLoot(g, opt.key, opt.tokenIdx), "drone loots the crown");
+  A(p.carryingCrown && g.crown.carrier === p.idx, "drone-looting the crown sets the carrier (not lost/stale)");
+  A(!Object.keys(g.board).some(k => g.board[k].tokens.some(t => t.kind === "crown")), "crown token removed from the board after drone loot");
+}
+
 // 5) earthquake: a skull on the re-roll injures; otherwise the top die just changes
 {
   // force the RNG into a skull on the first roll by searching seeds where the top die becomes a skull
