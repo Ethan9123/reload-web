@@ -1,0 +1,90 @@
+// node tests/ctf.js — Capture the Flag (奪旗賽): bases, flags, grab, score, reset on capture/RELOAD.
+const E = require("../js/engine.js");
+require("../js/ai.js");
+const AI = global.RL.ai;
+let fails = 0;
+const A = (c, m) => { if (!c) { console.error("  FAIL:", m); fails++; } else console.log("  ok:", m); };
+
+// 1) setup: 2 teams, 2 bases on opposite ends, each base holds its own flag
+{
+  const g = E.newGame({ numPlayers: 4, mode: "captureFlag", seed: 1, allAI: true });
+  A(g.isTeam && g.flags && g.flags.length === 2, "CTF is a 2-team mode with a flags state");
+  const b0 = E.baseKeyOf(g, 0), b1 = E.baseKeyOf(g, 1);
+  A(b0 && b1 && b0 !== b1, "two distinct team bases assigned");
+  A(g.flags[0].home === b0 && g.flags[0].at === b0 && g.flags[1].home === b1, "each flag starts at its own base");
+  A(g.board[b0].tokens.some(t => t.kind === "flag" && t.team === 0), "team-0 flag token sits on base 0");
+  A(g.players.every(p => p.team === 0 || p.team === 1), "players split into 2 teams");
+  // parachute deploys at your own base
+  const p0 = g.players[0]; A(E.legalParachute(g).includes(E.baseKeyOf(g, p0.team)), "parachute options include your own base");
+}
+
+// 2) grab the ENEMY flag at the enemy base
+{
+  const g = E.newGame({ numPlayers: 4, mode: "captureFlag", seed: 2, allAI: true });
+  const p = g.players[0]; const et = p.team === 0 ? 1 : 0;
+  const eb = E.baseKeyOf(g, et);
+  g.activePlayer = p.idx; g.phase = "action"; g.needsParachute = false;
+  p.pos = { q: g.board[eb].q, r: g.board[eb].r }; p.actionDice = 5; p.defensePool = 5; p.carryingFlag = null;
+  A(E.canGrabFlag(g, p), "can grab the enemy flag while on the enemy base");
+  A(E.grabFlag(g) && p.carryingFlag === et, "grabFlag picks up the enemy flag");
+  A(g.flags[et].carrier === p.idx && g.flags[et].at == null, "flag now carried (not on a hex)");
+  A(!g.board[eb].tokens.some(t => t.kind === "flag" && t.team === et), "flag token removed from the enemy base");
+  // can't grab a second flag while already carrying
+  A(!E.canGrabFlag(g, p), "cannot grab another flag while already carrying one");
+}
+
+// 3) cannot grab your OWN flag
+{
+  const g = E.newGame({ numPlayers: 4, mode: "captureFlag", seed: 3, allAI: true });
+  const p = g.players[0]; const ownBase = E.baseKeyOf(g, p.team);
+  g.activePlayer = p.idx; g.phase = "action"; g.needsParachute = false;
+  p.pos = { q: g.board[ownBase].q, r: g.board[ownBase].r }; p.actionDice = 5; p.defensePool = 5;
+  A(!E.canGrabFlag(g, p), "standing on your own base does not let you grab your own flag");
+}
+
+// 4) score: carry the enemy flag to your own base -> flag fame + capture + flag resets home
+{
+  const g = E.newGame({ numPlayers: 4, mode: "captureFlag", seed: 4, allAI: true });
+  const p = g.players[0]; const et = p.team === 0 ? 1 : 0;
+  const ownBase = E.baseKeyOf(g, p.team), enemyBase = E.baseKeyOf(g, et);
+  g.activePlayer = p.idx; g.phase = "action"; g.needsParachute = false;
+  p.pos = { q: g.board[ownBase].q, r: g.board[ownBase].r }; p.actionDice = 5; p.defensePool = 5;
+  p.carryingFlag = et; g.flags[et].carrier = p.idx; g.flags[et].at = null;
+  const fame0 = p.fame.flag, cap0 = g.captures[p.team];
+  A(E.canScoreFlag(g, p), "can score while carrying the enemy flag on your own base");
+  A(E.scoreFlag(g), "scoreFlag succeeds");
+  A(p.fame.flag === fame0 + 5 && p.carryingFlag == null, "scoring grants flag fame and drops the carry");
+  A(g.captures[p.team] === cap0 + 1, "capture counter increments");
+  A(g.flags[et].at === enemyBase && g.board[enemyBase].tokens.some(t => t.kind === "flag" && t.team === et), "captured flag resets to its home base");
+}
+
+// 5) RELOAD drops a carried flag back home
+{
+  const g = E.newGame({ numPlayers: 4, mode: "captureFlag", seed: 5, allAI: true });
+  const p = g.players[0], a = g.players.find(x => x.team !== p.team); const et = p.team === 0 ? 1 : 0;
+  const tk = E.towerKey(g) || E.baseKeyOf(g, p.team);
+  p.pos = { q: g.board[tk].q, r: g.board[tk].r }; p.carryingFlag = et; g.flags[et].carrier = p.idx; g.flags[et].at = null;
+  E.reloadPlayer(g, p, a);
+  A(p.carryingFlag == null && g.flags[et].at === g.flags[et].home, "RELOAD returns the carried flag to its base");
+}
+
+// 6) flag fame counts toward total fame
+{
+  const g = E.newGame({ numPlayers: 4, mode: "captureFlag", seed: 6, allAI: true });
+  const p = g.players[0]; const tot0 = E.totalFame(p); p.fame.flag += 5;
+  A(E.totalFame(p) === tot0 + 5, "flag fame counts toward total fame");
+}
+
+// 7) regression — all-AI CTF games complete (and someone tends to capture)
+{
+  let crashed = 0, capSeen = false;
+  for (let s = 0; s < 15; s++) {
+    try { let h = E.newGame({ numPlayers: 4, mode: "captureFlag", seed: s + 1900, allAI: true }); let n = 0; while (!h.gameOver && n++ < 6000) AI.takeTurn(h); if (!h.gameOver) crashed++; if (h.captures && (h.captures[0] + h.captures[1]) > 0) capSeen = true; }
+    catch (e) { crashed++; console.error("  seed", s, e.message); }
+  }
+  A(crashed === 0, "15 all-AI CTF games complete without error");
+  A(capSeen, "the AI manages to capture flags");
+}
+
+console.log(fails ? `CTF TEST FAILED (${fails})` : "CTF TEST PASSED");
+process.exitCode = fails ? 1 : 0;

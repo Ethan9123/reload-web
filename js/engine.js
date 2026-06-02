@@ -92,7 +92,8 @@
       boost: false,
       boostDice: 0,                    // Energy Drink green boost dice this turn: spendable on actions, but NOT usable in combat or as injury
 
-      fame: { injury: 0, beacon: 0, teamSpirit: 0, reload: 0, trap: 0, achievement: 0 },
+      fame: { injury: 0, beacon: 0, teamSpirit: 0, reload: 0, trap: 0, achievement: 0, flag: 0 },
+      carryingFlag: null,              // Capture the Flag: team whose flag this player carries, or null
       achievementsWon: [],             // ids of achievement cards this player has claimed
       fameTrackPos: 0,
       pos: null,                       // axial {q,r}; null = off-map (parachute)
@@ -143,7 +144,7 @@
     // Team Royale: teammates seated diagonally so turn order (clockwise) never gives back-to-back team turns
     // Team modes: 2v2 (4p) & 3v3 (6p) use 2 teams; 2v2v2 (6p) uses 3. team = idx % numTeams keeps teammates
     // out of back-to-back turn order. All team logic below keys off p.team / sameTeam, not the exact mode.
-    const TEAMS = (mode === "team" || mode === "team3v3") ? 2 : mode === "team2v2v2" ? 3 : 0;
+    const TEAMS = (mode === "team" || mode === "team3v3" || mode === "captureFlag") ? 2 : mode === "team2v2v2" ? 3 : 0;
     if (TEAMS) for (const p of players) p.team = p.idx % TEAMS;
     // assign a distinct AI persona to each player (drives the automa's style); can be disabled with personas:false
     if (opts.personas !== false && DATA.PERSONAS && DATA.PERSONAS.length) {
@@ -175,6 +176,18 @@
     }
     for (const p of (MAP.portals || [])) { const c = board[hexKey(p.q, p.r)]; if (c) c.portal = true; }
     for (const w of (MAP.neutralWalls || [])) { const c = board[hexKey(w.q, w.r)]; if (c) c.walls[w.edge] = "n"; }
+
+    // ---- Capture the Flag (奪旗賽): give each team a base on opposite ends; each base starts with its own flag ----
+    let flags = null;
+    if (mode === "captureFlag") {
+      const keys = Object.keys(board).filter(k => !board[k].hasTower);   // bases aren't the central tower
+      let b0 = keys[0], b1 = keys[1], far = -1;
+      for (const a of keys) for (const c of keys) { const d = hexDistance(board[a], board[c]); if (d > far) { far = d; b0 = a; b1 = c; } }
+      board[b0].base = 0; board[b1].base = 1;
+      board[b0].tokens.push({ kind: "flag", team: 0 });
+      board[b1].tokens.push({ kind: "flag", team: 1 });
+      flags = [{ home: b0, at: b0, carrier: null }, { home: b1, at: b1, carrier: null }];
+    }
 
     // decks
     const eventCount = (SETUP.eventRandom[numPlayers] || 16) + 2 + (useAchievements ? 2 : 0); // +2 supply drops (+2 announcements w/ module)
@@ -212,6 +225,7 @@
 
     const state = {
       mode, numPlayers, difficulty, map: MAP.name, maxRing, isTeam: TEAMS > 0, rnd, board, players,
+      flags, captures: flags ? [0, 0] : null,    // Capture the Flag state
       firstPlayer: 0, activePlayer: 0, round: 1,
       decks, fameSupply,
       eventsResolved: 0, eventTotal: eventCount,
@@ -233,7 +247,7 @@
   function playersOnHex(state, q, r) {
     return state.players.filter(p => p.pos && p.pos.q === q && p.pos.r === r);
   }
-  function totalFame(p) { return p.fame.injury + p.fame.beacon + p.fame.teamSpirit + p.fame.reload + (p.fame.trap || 0) + (p.fame.achievement || 0); }
+  function totalFame(p) { return p.fame.injury + p.fame.beacon + p.fame.teamSpirit + p.fame.reload + (p.fame.trap || 0) + (p.fame.achievement || 0) + (p.fame.flag || 0); }
   // ---- teams (Team Royale) ----
   function sameTeam(a, b) { return a && b && a.team != null && a.team === b.team; }
   function teammates(state, p) { return state.players.filter(x => x !== p && sameTeam(x, p)); }
@@ -366,7 +380,11 @@
   function isHumanTurn(state) { return !state.gameOver && curP(state).human; }
 
   function towerKey(state) { for (const k in state.board) if (state.board[k].hasTower) return k; return null; }
+  // Capture the Flag helpers
+  function baseKeyOf(state, team) { if (!state.flags) return null; for (const k in state.board) if (state.board[k].base === team) return k; return null; }
   function legalParachute(state) {
+    // Capture the Flag: deploy at your own team's base (HQ) and its neighbours
+    if (state.flags) { const bk = baseKeyOf(state, curP(state).team); if (bk) return [bk, ...neighbors(state, state.board[bk].q, state.board[bk].r)]; }
     const tk = towerKey(state); if (!tk) return [];
     return [tk, ...neighbors(state, state.board[tk].q, state.board[tk].r)];
   }
@@ -645,6 +663,43 @@
     const n = p.carryingBeacons;
     log(state, `${p.name} 在中央塔上传 ${n} 个信标 → +${n} 名望`, "upload", { name: p.name, n });
     gainFame(state, p, "beacon", n); p.carryingBeacons = 0;
+    return true;
+  }
+
+  // ---- Capture the Flag actions (奪旗賽) ----
+  const FLAG_CAPTURE_FAME = 5;          // fame awarded for returning an enemy flag to your base
+  function enemyTeamOf(p) { return p.team === 0 ? 1 : 0; }
+  function onOwnBase(state, p) { return p.pos && state.board[hexKey(p.pos.q, p.pos.r)].base === p.team; }
+  // grab the enemy flag while standing on the enemy base (it must be home there, and you're empty-handed)
+  function canGrabFlag(state, p) {
+    if (!state.flags || state.phase !== "action" || p.defensePool < 1 || p.carryingFlag != null || !p.pos) return false;
+    const et = enemyTeamOf(p), key = hexKey(p.pos.q, p.pos.r);
+    return state.board[key].base === et && state.flags[et].at === key;
+  }
+  function grabFlag(state) {
+    const p = curP(state); if (!canGrabFlag(state, p)) return false;
+    const et = enemyTeamOf(p), cell = state.board[hexKey(p.pos.q, p.pos.r)];
+    const i = cell.tokens.findIndex(t => t.kind === "flag" && t.team === et); if (i < 0) return false;
+    spendDice(state, p, 1, 1); recordAction(state, p, "loot", 1);
+    cell.tokens.splice(i, 1); p.carryingFlag = et; state.flags[et].carrier = p.idx; state.flags[et].at = null;
+    log(state, `🚩 ${p.name} 夺取了队伍${et + 1}的旗帜！`, "grabFlag", { name: p.name, team: et + 1 });
+    return true;
+  }
+  // return a carried enemy flag home (token back on its base) — on capture or when the carrier RELOADs
+  function returnFlagHome(state, team) {
+    const f = state.flags[team]; const home = state.board[f.home];
+    if (home && !home.tokens.some(t => t.kind === "flag" && t.team === team)) home.tokens.push({ kind: "flag", team });
+    f.at = f.home; f.carrier = null;
+  }
+  // submit a carried enemy flag at your own base -> flag fame + capture
+  function canScoreFlag(state, p) { return !!state.flags && state.phase === "action" && p.defensePool >= 1 && p.carryingFlag != null && onOwnBase(state, p); }
+  function scoreFlag(state) {
+    const p = curP(state); if (!canScoreFlag(state, p)) return false;
+    const t = p.carryingFlag;
+    spendDice(state, p, 1, 1); recordAction(state, p, "activate", 1);
+    p.carryingFlag = null; returnFlagHome(state, t); state.captures[p.team] = (state.captures[p.team] || 0) + 1;
+    log(state, `🏁 ${p.name} 将旗帜带回基地，夺旗成功！ +${FLAG_CAPTURE_FAME} 名望`, "scoreFlag", { name: p.name, n: FLAG_CAPTURE_FAME });
+    gainFame(state, p, "flag", FLAG_CAPTURE_FAME);
     return true;
   }
 
@@ -1130,6 +1185,7 @@
       state.players.some(x => x !== attacker && sameTeam(x, attacker) && x.pos && x.pos.q === p.pos.q && x.pos.r === p.pos.r);
     if (cell) for (let i = 0; i < p.carryingBeacons; i++) cell.tokens.push({ kind: "beacon" });
     p.carryingBeacons = 0;
+    if (p.carryingFlag != null && state.flags) { returnFlagHome(state, p.carryingFlag); p.carryingFlag = null; }   // dropped flag resets to its base
     for (const id of [p.equipped.head, p.equipped.torso, ...p.equipped.hand, ...p.backpack]) {
       const e = byId(id); if (e && state.decks["discard" + e.star]) state.decks["discard" + e.star].push(id);
     }
@@ -1247,6 +1303,8 @@
     SUPERSTAR_FAME, superstarThreshold, curP, isHumanTurn, legalParachute, parachute,
     legalRuns, doRun, lootOptions, doLoot, droneLootOptions, doDroneLoot, endTurn, beginTurn, towerKey,
     canUpload, doActivate, bfsStep, resolveEvent,
+    // Capture the Flag
+    baseKeyOf, canGrabFlag, grabFlag, canScoreFlag, scoreFlag,
     // build/heal API
     canHeal, doHeal, canBuild, emptyEdges, doBuildBarrier, doDemolish, doBuildHideout, doDemolishHideout, doBuildTrap,
     // special-item API

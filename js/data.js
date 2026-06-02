@@ -246,6 +246,7 @@
     // separate counter (placeholder supply) since the rules call it a fame source.
     trap:       { name: "Trap",        supply: 99 },
     achievement: { name: "Achievement", supply: 30 },   // Achievements module fame (its own token color)
+    flag:       { name: "Flag",        supply: 30 },     // Capture the Flag captures (奪旗賽)
   };
 
   // ---- Achievements module (Reload modules rulebook). 8 cards: 4 "next" + 4 "most". ----
