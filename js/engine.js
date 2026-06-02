@@ -990,7 +990,9 @@
       for (const k in state.board) { const c = state.board[k]; if (TERRAIN[c.terrain] === TERRAIN.village && !c.tokens.some(t => t.kind === "supply")) { c.tokens.push({ kind: "supply", star }); n++; } }
       log(state, `　补给空投：${n} 个 ${star}★ 补给箱补满村庄`, "supplyDrop", { n, star });
     } else if (id === "ex_tech") {
-      // Ex-Tech Drop: roll a die → a 3★ box on the outermost hex of that zone (and its opposite ⇒ up to 2 outer hexes).
+      // Ex-Tech Drop: two 3★ boxes land in the outer ring. (The tabletop game targets specific zone
+      // sectors by die roll; this engine has no per-hex zone markers — like Contamination & the Crown,
+      // it works in rings — so we place on random supply-free outermost-ring hexes.)
       const ring = state.maxRing != null ? state.maxRing : 2;
       const outer = shuffle(Object.keys(state.board).filter(k => { const c = state.board[k]; return !c.hasTower && ringFromTower(state, c) === ring && !c.tokens.some(t => t.kind === "supply"); }), state.rnd);
       let n = 0; for (const k of outer) { if (n >= 2) break; state.board[k].tokens.push({ kind: "supply", star: 3 }); n++; }
