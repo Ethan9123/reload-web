@@ -414,7 +414,8 @@
     // barrier edge-picker: clickable, pulsing handles on the current player's empty edges
     if (barrierMode && E.isHumanTurn(G)) {
       const me = E.curP(G);
-      if (me.pos && E.canBuild(G, me)) {
+      // draw handles when a build is affordable OR a free 2nd wall is pending (which needs no die)
+      if (me.pos && (E.canBuild(G, me) || me._wallCombo === 1)) {
         const { x, y } = hexToPixel(me.pos.q, me.pos.r), cs = corners(x, y);
         for (const e of E.emptyEdges(G, me)) {
           const p1 = cs[e], p2 = cs[(e + 1) % 6];
