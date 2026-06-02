@@ -85,6 +85,29 @@ const A = (c, m) => { if (!c) { console.error("  FAIL:", m); fails++; } else con
   A(g.board[own].tokens.some(t => t.kind === "flag"), "the flag token is untouched by looting the beacon");
 }
 
+// 5c) Cody & Buzz's drone must not loot a flag token either (Codex P1 #2)
+{
+  const g = E.newGame({ numPlayers: 4, mode: "captureFlag", seed: 8, allAI: true });
+  const p = g.players.find(x => x.character === "codybuzz") || g.players[0];
+  p.character = "codybuzz"; const own = E.baseKeyOf(g, p.team);
+  g.activePlayer = p.idx; g.phase = "action"; g.needsParachute = false; p._droneUsed = false;
+  p.pos = { q: g.board[own].q, r: g.board[own].r }; p.actionDice = 5; p.defensePool = 5;
+  g.board[own].tokens = g.board[own].tokens.filter(t => t.kind === "flag");   // base holds only its flag
+  A(E.droneLootOptions(g, p).every(o => o.kind !== "flag"), "drone loot options never include a flag");
+  const flagIdx = g.board[own].tokens.findIndex(t => t.kind === "flag");
+  A(E.doDroneLoot(g, own, flagIdx) === false, "doDroneLoot refuses a flag token");
+  A(g.board[own].tokens.some(t => t.kind === "flag"), "the flag survives a drone-loot attempt");
+}
+
+// 5d) CTF uses the longer team Superstar track, not the short Battle-Royale one (Codex P2)
+{
+  const ctf = E.newGame({ numPlayers: 4, mode: "captureFlag", seed: 9, allAI: true });
+  const team = E.newGame({ numPlayers: 4, mode: "team", seed: 9, allAI: true });
+  const br = E.newGame({ numPlayers: 4, mode: "battleRoyale", seed: 9, allAI: true });
+  A(ctf.superstarFame === team.superstarFame, "CTF Superstar threshold matches the 2v2 team track");
+  A(ctf.superstarFame > br.superstarFame, "CTF Superstar threshold is longer than Battle Royale");
+}
+
 // 6) flag fame counts toward total fame
 {
   const g = E.newGame({ numPlayers: 4, mode: "captureFlag", seed: 6, allAI: true });

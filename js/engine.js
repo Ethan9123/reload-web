@@ -361,7 +361,7 @@
   function superstarThreshold(mode, numPlayers) {
     // Team Royale uses the longer track; the rulebook also recommends the longer 2-player Team track
     // for any 2-player game ("If playing with 2 players it is recommended ... use the 2 player Team Royale variant").
-    const longTrack = mode === "team" || mode === "team3v3" || mode === "team2v2v2" || mode === "twoPlayer" || numPlayers === 2;
+    const longTrack = mode === "team" || mode === "team3v3" || mode === "team2v2v2" || mode === "captureFlag" || mode === "twoPlayer" || numPlayers === 2;
     const mids = longTrack ? 4 : 2;
     return TRACK_PIECE_SPACES.start + mids * TRACK_PIECE_SPACES.middle + TRACK_PIECE_SPACES.end;
   }
@@ -633,7 +633,7 @@
   function droneLootOptions(state, p) {
     if (!p || p.character !== "codybuzz" || !p.pos || state.phase !== "action" || p.defensePool < 1 || p._droneUsed) return [];   // drone: once per turn
     const out = [], here = hexKey(p.pos.q, p.pos.r), cells = [here, ...neighbors(state, p.pos.q, p.pos.r)];
-    for (const k of cells) state.board[k].tokens.forEach((tok, i) => out.push({ key: k, tokenIdx: i, kind: tok.kind, star: tok.star }));
+    for (const k of cells) state.board[k].tokens.forEach((tok, i) => { if (isLootable(tok)) out.push({ key: k, tokenIdx: i, kind: tok.kind, star: tok.star }); });   // CTF flags are not drone-lootable
     return out;
   }
   function doDroneLoot(state, key, tokenIdx) {
@@ -642,7 +642,7 @@
     const here = hexKey(p.pos.q, p.pos.r);
     if (key !== here && !neighbors(state, p.pos.q, p.pos.r).includes(key)) return false;   // current or adjacent only
     const cell = state.board[key]; if (!cell) return false;
-    const tok = cell.tokens[tokenIdx]; if (!tok) return false;
+    const tok = cell.tokens[tokenIdx]; if (!tok || !isLootable(tok)) return false;   // never drone-loot a CTF flag
     spendDice(state, p, 1, 1); recordAction(state, p, "loot", 1); cell.tokens.splice(tokenIdx, 1); p._droneUsed = true;
     if (tok.kind === "beacon") { p.carryingBeacons += 1; log(state, `🤖 ${p.name} 的无人机巴兹拾取信标`, "droneBeacon", { name: p.name }); }
     else if (tok.kind === "supply") {
