@@ -33,6 +33,8 @@ python devserver.py        # 然后打开 http://localhost:8765
 ```
 （或直接用浏览器打开 `index.html`。）
 
+**Windows：** 双击 **`run.bat`** 即可启动本地服务器并打开浏览器开玩。想分享给别人就运行 **`pack.bat`**，它会打包出 `reload-web-dist.zip`（仅含已纳入版本库的文件，不含无法再分发的美术素材）；对方解压后双击 `run.bat` 即可游玩。
+
 ## ✅ 测试
 纯 Node.js，无依赖：
 ```bash

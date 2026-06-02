@@ -33,6 +33,8 @@ python devserver.py        # then open http://localhost:8765
 ```
 (Or simply open `index.html` in a browser.)
 
+**Windows:** just double-click **`run.bat`** to launch the local server and open your browser. To share a copy, run **`pack.bat`** — it builds `reload-web-dist.zip` (tracked files only, so no non-redistributable art); the recipient unzips and double-clicks `run.bat`.
+
 ## ✅ Tests
 Pure Node.js, no dependencies:
 ```bash
