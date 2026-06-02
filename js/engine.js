@@ -928,8 +928,8 @@
     else if (mod === "twoOrThreeToSkull") { const i = rolled.findIndex(v => v === 2 || v === 3); if (i >= 0) rolled[i] = "skull"; }  // Machete
     else if (mod === "oneOrTwoTo4") { const i = rolled.findIndex(v => v === 1 || v === 2); if (i >= 0) rolled[i] = 4; }              // Tactical Tomahawk
     else if (mod === "twoOrThreeTo5") { const i = rolled.findIndex(v => v === 2 || v === 3); if (i >= 0) rolled[i] = 5; }            // Force Rod
-    else if (mod === "addTwoToOne") { let i = -1, lo = 99; for (let k = 0; k < rolled.length; k++) { const v = rolled[k]; if (typeof v === "number" && v < lo) { lo = v; i = k; } } if (i >= 0) rolled[i] = Math.min(5, rolled[i] + 2); }       // Power Glove
-    else if (mod === "addOneToOne") { let i = -1, lo = 99; for (let k = 0; k < rolled.length; k++) { const v = rolled[k]; if (typeof v === "number" && v < lo) { lo = v; i = k; } } if (i >= 0) rolled[i] = Math.min(5, rolled[i] + 1); }       // Shock Gauntlet
+    // "add to any one die" — boost the HIGHEST die still below 5 (the strongest single-die play), capped at 5
+    else if (mod === "addTwoToOne" || mod === "addOneToOne") { const add = mod === "addTwoToOne" ? 2 : 1; let i = -1, best = -1; for (let k = 0; k < rolled.length; k++) { const v = rolled[k]; if (typeof v === "number" && v < 5 && v > best) { best = v; i = k; } } if (i >= 0) rolled[i] = Math.min(5, rolled[i] + add); }   // Power Glove / Shock Gauntlet
     else if (mod === "twoAndThreeToSkull") { for (let k = 0; k < rolled.length; k++) if (rolled[k] === 2 || rolled[k] === 3) rolled[k] = "skull"; }                                                                                            // Sonic Cleaver
     else if (mod === "highLowTo4") { let hi = -1, hiI = -1, lo = 99, loI = -1; for (let k = 0; k < rolled.length; k++) { const v = rolled[k]; if (typeof v !== "number") continue; if (v > hi) { hi = v; hiI = k; } if (v < lo) { lo = v; loI = k; } } if (hiI >= 0) rolled[hiI] = 4; if (loI >= 0) rolled[loI] = 4; }   // Warrior Chainsaw
   }

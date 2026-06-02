@@ -105,14 +105,16 @@ A(closeSkullVsVest(5, "machete") === 0, "Machete's skull (no ignoreArmor) is abs
   A(p.equipped.hand.length === 2, "extra hand weapon dropped when the Arachnid Pack is replaced");
 }
 
-// 9) new close-modifies resolve (Power Glove adds 2 to the lowest die)
+// 9) "add to any one die" picks the BEST die (highest below 5), not the lowest (Power Glove +2)
 {
   const { g, p, foe } = rig(7); foe.pos = { q: p.pos.q, r: p.pos.r };
-  p.actionDice = 1; p.defensePool = 1; foe.actionDice = 1; foe.defensePool = 1;
+  p.injuries = 3; p.actionDice = 2; p.defensePool = 2;   // ownedDice = 2
+  foe.injuries = 4; foe.actionDice = 1; foe.defensePool = 1;
   p.backpack = ["power_glove"]; E.autoEquip(p); foe.backpack = []; E.autoEquip(foe);
-  g.rnd = () => 0.1;   // rolls of 1
+  const seq = [0.0, 0.6]; let qi = 0; g.rnd = () => (qi < seq.length ? seq[qi++] : 0.0);  // attacker rolls [1,4]
   E.doClose(g, 1);
-  A(g.lastCombat && g.lastCombat.shooter.includes(3), `Power Glove added 2 to a rolled 1 -> 3 (shooter ${g.lastCombat.shooter})`);
+  A(g.lastCombat && g.lastCombat.shooter.includes(5) && g.lastCombat.shooter.includes(1),
+    `Power Glove boosted the high die 4->5 (not the 1) — shooter ${g.lastCombat.shooter}`);
 }
 
 // 10) regression — all-AI games with the full equipment pool complete
