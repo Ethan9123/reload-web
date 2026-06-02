@@ -32,7 +32,7 @@
       "meta.players": "人", "meta.round": "回合", "meta.events": "事件", "mode.br": "大逃杀", "mode.team": "团队赛",
       "diff.easy": "简单", "diff.medium": "普通", "diff.hard": "困难", "diff.expert": "专家",
       "setup.subtitle": "大逃杀战术骰子桌游 · 网页版", "setup.players": "玩家数量：", "setup.mode": "模式：", "setup.map": "地图：", "setup.difficulty": "难度：", "setup.lang": "语言：", "setup.allai": "全部 AI（观战）", "setup.start": "开始游戏", "setup.tutorial": "📖 新手教学（1v1）",
-      "opt.br": "大逃杀（各自为战）", "opt.team2": "团队赛（2v2）", "opt.team3": "团队赛（3v3）", "opt.team2v2v2": "乱斗（2v2v2）", "opt.diffExpert": "专家（前瞻搜索·较慢）",
+      "opt.br": "大逃杀（各自为战）", "opt.team2": "团队赛（2v2）", "opt.team3": "团队赛（3v3）", "opt.team2v2v2": "乱斗（2v2v2）", "opt.ctf": "夺旗赛（奪旗賽）", "opt.diffExpert": "专家（前瞻搜索·较慢）",
       "opt.p2": "2 人", "opt.p3": "3 人", "opt.p4": "4 人", "opt.p5": "5 人", "opt.p6": "6 人",
       "btn.heal": "治疗", "btn.barrier": "屏障", "btn.hideout": "藏身处", "btn.trap": "陷阱", "btn.end": "结束回合", "btn.restart": "重开",
       "pc.fame": "名望", "pc.dmg": "伤害", "pc.def": "防御区", "pc.pack": "背包", "pc.carry": "携带信标", "pc.used": "已用", "pc.line": "战斗列", "pc.onmap": "在场", "pc.waitdrop": "待跳伞", "pc.you": "(你)", "pc.team": "队{n}",
@@ -66,7 +66,7 @@
       "meta.players": "p", "meta.round": "Round", "meta.events": "Events", "mode.br": "Battle Royale", "mode.team": "Team",
       "diff.easy": "Easy", "diff.medium": "Normal", "diff.hard": "Hard", "diff.expert": "Expert",
       "setup.subtitle": "Battle-royale tactical dice game · web port", "setup.players": "Players:", "setup.mode": "Mode:", "setup.map": "Map:", "setup.difficulty": "Difficulty:", "setup.lang": "Language:", "setup.allai": "All AI (spectate)", "setup.start": "Start game", "setup.tutorial": "📖 Tutorial (1v1)",
-      "opt.br": "Battle Royale (free-for-all)", "opt.team2": "Team (2v2)", "opt.team3": "Team (3v3)", "opt.team2v2v2": "Rumble (2v2v2)", "opt.diffExpert": "Expert (look-ahead · slower)",
+      "opt.br": "Battle Royale (free-for-all)", "opt.team2": "Team (2v2)", "opt.team3": "Team (3v3)", "opt.team2v2v2": "Rumble (2v2v2)", "opt.ctf": "Capture the Flag", "opt.diffExpert": "Expert (look-ahead · slower)",
       "opt.p2": "2 players", "opt.p3": "3 players", "opt.p4": "4 players", "opt.p5": "5 players", "opt.p6": "6 players",
       "btn.heal": "Heal", "btn.barrier": "Barrier", "btn.hideout": "Hideout", "btn.trap": "Trap", "btn.end": "End turn", "btn.restart": "Restart",
       "pc.fame": "Fame", "pc.dmg": "Dmg", "pc.def": "Defense", "pc.pack": "Pack", "pc.carry": "Beacons", "pc.used": "used", "pc.line": "Combat", "pc.onmap": "on map", "pc.waitdrop": "to drop", "pc.you": "(you)", "pc.team": "T{n}",
@@ -100,7 +100,7 @@
       "meta.players": "j", "meta.round": "Tour", "meta.events": "Événements", "mode.br": "Battle Royale", "mode.team": "Équipe",
       "diff.easy": "Facile", "diff.medium": "Normal", "diff.hard": "Difficile", "diff.expert": "Expert",
       "setup.subtitle": "Jeu de dés tactique battle-royale · portage web", "setup.players": "Joueurs :", "setup.mode": "Mode :", "setup.map": "Carte :", "setup.difficulty": "Difficulté :", "setup.lang": "Langue :", "setup.allai": "Tout IA (spectateur)", "setup.start": "Démarrer", "setup.tutorial": "📖 Tutoriel (1c1)",
-      "opt.br": "Battle Royale (chacun pour soi)", "opt.team2": "Équipe (2c2)", "opt.team3": "Équipe (3c3)", "opt.team2v2v2": "Mêlée (2c2c2)", "opt.diffExpert": "Expert (recherche · plus lent)",
+      "opt.br": "Battle Royale (chacun pour soi)", "opt.team2": "Équipe (2c2)", "opt.team3": "Équipe (3c3)", "opt.team2v2v2": "Mêlée (2c2c2)", "opt.ctf": "Capture du drapeau", "opt.diffExpert": "Expert (recherche · plus lent)",
       "opt.p2": "2 joueurs", "opt.p3": "3 joueurs", "opt.p4": "4 joueurs", "opt.p5": "5 joueurs", "opt.p6": "6 joueurs",
       "btn.heal": "Soigner", "btn.barrier": "Barrière", "btn.hideout": "Cachette", "btn.trap": "Piège", "btn.end": "Fin du tour", "btn.restart": "Recommencer",
       "pc.fame": "Renommée", "pc.dmg": "Dégâts", "pc.def": "Défense", "pc.pack": "Sac", "pc.carry": "Balises", "pc.used": "utilisé", "pc.line": "Combat", "pc.onmap": "en jeu", "pc.waitdrop": "à larguer", "pc.you": "(vous)", "pc.team": "É{n}",
@@ -134,7 +134,7 @@
       "meta.players": "j", "meta.round": "Ronda", "meta.events": "Eventos", "mode.br": "Battle Royale", "mode.team": "Equipo",
       "diff.easy": "Fácil", "diff.medium": "Normal", "diff.hard": "Difícil", "diff.expert": "Experto",
       "setup.subtitle": "Juego de dados táctico battle-royale · versión web", "setup.players": "Jugadores:", "setup.mode": "Modo:", "setup.map": "Mapa:", "setup.difficulty": "Dificultad:", "setup.lang": "Idioma:", "setup.allai": "Todo IA (espectar)", "setup.start": "Empezar", "setup.tutorial": "📖 Tutorial (1c1)",
-      "opt.br": "Battle Royale (todos contra todos)", "opt.team2": "Equipo (2c2)", "opt.team3": "Equipo (3c3)", "opt.team2v2v2": "Refriega (2c2c2)", "opt.diffExpert": "Experto (búsqueda · más lento)",
+      "opt.br": "Battle Royale (todos contra todos)", "opt.team2": "Equipo (2c2)", "opt.team3": "Equipo (3c3)", "opt.team2v2v2": "Refriega (2c2c2)", "opt.ctf": "Captura la bandera", "opt.diffExpert": "Experto (búsqueda · más lento)",
       "opt.p2": "2 jugadores", "opt.p3": "3 jugadores", "opt.p4": "4 jugadores", "opt.p5": "5 jugadores", "opt.p6": "6 jugadores",
       "btn.heal": "Curar", "btn.barrier": "Barrera", "btn.hideout": "Refugio", "btn.trap": "Trampa", "btn.end": "Terminar turno", "btn.restart": "Reiniciar",
       "pc.fame": "Fama", "pc.dmg": "Daño", "pc.def": "Defensa", "pc.pack": "Mochila", "pc.carry": "Balizas", "pc.used": "usado", "pc.line": "Combate", "pc.onmap": "en juego", "pc.waitdrop": "por saltar", "pc.you": "(tú)", "pc.team": "E{n}",
@@ -243,6 +243,7 @@
   }
 
   const TERRAIN_GLYPH = { tower: "🗼", jungle: "🌲", plains: "🌾", mountain: "⛰", village: "🏠", maze: "▦", solar: "☀" };
+  const TEAM_COLOR = ["#e3424b", "#4b8fe3", "#5fd06f"];   // CTF / team home-base + flag tints
   function svgText(x, y, s, size, fill, opacity) {
     const t = svgEl("text", { x, y, "text-anchor": "middle", "font-size": size, fill: fill || "#fff", "pointer-events": "none" });
     if (opacity != null) t.setAttribute("opacity", opacity);
@@ -395,6 +396,9 @@
       if (c.dome) svg.appendChild(svgEl("path", { d: `M ${x - 26} ${y + 6} A 26 26 0 0 1 ${x + 26} ${y + 6} Z`, fill: "#7fd0ff", "fill-opacity": 0.16, stroke: "#7fd0ff", "stroke-width": 1.5, "pointer-events": "none" }));
       if (c.tokens.some(k => k.kind === "beacon")) { svg.appendChild(svgEl("polygon", { points: `${x},${y - 21} ${x + 8},${y - 12} ${x},${y - 3} ${x - 8},${y - 12}`, fill: "#f4d03f", stroke: "#7a5c00", "stroke-width": 1.5, "pointer-events": "none" })); svg.appendChild(svgEl("circle", { cx: x, cy: y - 12, r: 2.4, fill: "#fff7cf", "pointer-events": "none" })); }
       if (c.tokens.some(k => k.kind === "supply")) { svg.appendChild(svgEl("rect", { x: x - 12, y: y + 5, width: 24, height: 17, rx: 3, fill: "#b08948", stroke: "#5e4422", "stroke-width": 1.5, "pointer-events": "none" })); svg.appendChild(svgEl("line", { x1: x - 12, y1: y + 13.5, x2: x + 12, y2: y + 13.5, stroke: "#5e4422", "stroke-width": 1.5, "pointer-events": "none" })); svg.appendChild(svgEl("line", { x1: x, y1: y + 5, x2: x, y2: y + 22, stroke: "#5e4422", "stroke-width": 1.5, "pointer-events": "none" })); }
+      // Capture-the-Flag: home-base disc (team-tinted) + planted flag token
+      if (G.flags && c.base != null) { const col = TEAM_COLOR[c.base] || "#888"; svg.appendChild(svgEl("circle", { cx: x, cy: y, r: HEX * 0.62, fill: col, "fill-opacity": 0.14, stroke: col, "stroke-width": 2, "stroke-dasharray": "5 4", "pointer-events": "none" })); }
+      c.tokens.filter(k => k.kind === "flag").forEach(k => { const col = TEAM_COLOR[k.team] || "#888"; svg.appendChild(svgEl("line", { x1: x - 9, y1: y - 22, x2: x - 9, y2: y + 4, stroke: "#3a2a14", "stroke-width": 2, "pointer-events": "none" })); svg.appendChild(svgEl("polygon", { points: `${x - 9},${y - 22} ${x + 11},${y - 17} ${x - 9},${y - 12}`, fill: col, stroke: "#0c0e12", "stroke-width": 1, "pointer-events": "none" })); });
     }
     // walls/barriers (neutral gray, player-owned colored) + trap/hideout markers
     for (const { c, x, y } of pix) {
@@ -436,6 +440,7 @@
         const ang = here.length > 1 ? (Math.PI * 2 * i / here.length) : 0;
         const ox = here.length > 1 ? Math.cos(ang) * 14 : 0, oy = here.length > 1 ? Math.sin(ang) * 10 : 0;
         drawMini(svg, p, CHAR[p.character], x + ox, y + oy, p.idx === G.activePlayer);
+        if (G.flags && p.carryingFlag != null) { const col = TEAM_COLOR[p.carryingFlag] || "#888", fx = x + ox + 10, fy = y + oy - 26; svg.appendChild(svgEl("line", { x1: fx, y1: fy, x2: fx, y2: fy + 16, stroke: "#3a2a14", "stroke-width": 1.6, "pointer-events": "none" })); svg.appendChild(svgEl("polygon", { points: `${fx},${fy} ${fx + 13},${fy + 4} ${fx},${fy + 8}`, fill: col, stroke: "#0c0e12", "stroke-width": 1, "pointer-events": "none" })); }
       });
     }
   }
@@ -457,6 +462,7 @@
         persona +
         `<div class="pstat">${T("pc.fame")} ${E.totalFame(p)} · ${T("pc.dmg")} ${p.injuries} · ${T("pc.def")} ${p.defensePool}/${p.actionDice}${p.boostDice ? ` <span style="color:#5fd06f">+${p.boostDice}⚡</span>` : ""}${assigned}${combat} · ${T("pc.pack")} ${p.backpack.length}` +
         (p.carryingBeacons ? ` · ${T("pc.carry")} ${p.carryingBeacons}` : "") +
+        (p.carryingFlag != null ? ` · 🚩` : "") +
         ` · ${p.pos ? T("pc.onmap") : T("pc.waitdrop")}</div></div></div>`;
       d.style.cursor = "pointer";
       d.addEventListener("click", () => openCharBoard(p.idx));
@@ -479,6 +485,7 @@
     const diffCN = T("diff." + (G.difficulty || "medium"));
     let modeLabel = T("mode.br");
     if (G.isTeam) { const ts = [...new Set(G.players.map(p => p.team))].sort((a, b) => a - b); modeLabel = T("mode.team") + " " + ts.map(t => `${t + 1}:${E.teamFame(G, t)}`).join(" / "); }
+    if (G.flags && G.captures) modeLabel += ` · 🏁 ${G.captures.map((c, t) => `${t + 1}:${c}`).join(" / ")}`;
     modeLabel += ` · ${diffCN}`;
     $("game-info").textContent = `${G.map} · ${G.numPlayers}${T("meta.players")} · ${modeLabel} · ${T("meta.round")} ${G.round} · ${T("meta.events")} ${G.eventsResolved}/${G.eventTotal}${le} — ${hint}`;
     const human = !G.gameOver && p.human, showAct = human && !G.needsParachute;
@@ -662,6 +669,8 @@
     const closeTgt = occ.find(i => ct.includes(i)), rangedTgt = occ.find(i => rt.includes(i));
     if (closeTgt != null) opts.push({ kind: "close", icon: "🗡", label: L("近战", "Close combat") + ` · ${G.players[closeTgt].name}`, tgt: closeTgt, key });
     if (rangedTgt != null) opts.push({ kind: "ranged", icon: "🔫", label: L("远程射击", "Ranged shot") + ` · ${G.players[rangedTgt].name}`, tgt: rangedTgt, key });
+    if (key === curKey && G.flags && E.canScoreFlag(G, p)) opts.push({ kind: "scoreFlag", icon: "🏁", label: L("夺旗得分（在本队基地）", "Score the flag"), key });
+    if (key === curKey && G.flags && E.canGrabFlag(G, p)) opts.push({ kind: "grabFlag", icon: "🚩", label: L("夺取敌方旗帜", "Grab the enemy flag"), key });
     if (key === curKey && E.canUpload(G, p)) opts.push({ kind: "activate", icon: "📡", label: L("上缴信标（地点效果）", "Upload beacons"), key });
     if (key === curKey && E.lootOptions(G, p).length) opts.push({ kind: "loot", icon: "🎒", label: L("捡起地上的东西", "Loot here"), key });
     if (E.legalRuns(G, p).includes(key)) opts.push({ kind: "move", icon: "🏃", label: L("移动到这里", "Move here"), key });
@@ -672,6 +681,8 @@
     const p = E.curP(G);
     if (o.kind === "close") { E.doClose(G, o.tgt); render(); await animateCombat(G.lastCombat); await endTurn(); return; }   // close ends turn
     if (o.kind === "ranged") { const aKey = E.hexKey(p.pos.q, p.pos.r); E.doRanged(G, o.tgt, 3); render(); await vfxGunshot(aKey, o.key); await animateCombat(G.lastCombat); return; }
+    if (o.kind === "grabFlag") { E.grabFlag(G); SFX("loot"); render(); consumeActionFeed(); return; }
+    if (o.kind === "scoreFlag") { E.scoreFlag(G); SFX("upload"); render(); consumeActionFeed(); return; }
     if (o.kind === "activate") { E.doActivate(G); SFX("upload"); render(); consumeActionFeed(); return; }
     if (o.kind === "loot") { E.doLoot(G, 0); SFX("loot"); render(); consumeActionFeed(); return; }
     if (o.kind === "move") {
@@ -850,7 +861,7 @@
   async function startGame() {
     const modeSel = $("mode-select"), mode = modeSel ? modeSel.value : "battleRoyale";
     let n = parseInt($("player-count").value, 10);
-    if (mode === "team") n = 4;                                  // 2v2
+    if (mode === "team" || mode === "captureFlag") n = 4;        // 2v2 (CTF is 2v2)
     else if (mode === "team3v3" || mode === "team2v2v2") n = 6;  // 3v3 / 2v2v2 are 6-player team modes
     const difficulty = ($("difficulty-select") || {}).value || "medium";
     const map = ($("map-select") || {}).value || "arcadia";
@@ -1335,7 +1346,7 @@
     const modeSel = $("mode-select"), pcSel = $("player-count");
     if (modeSel && pcSel) modeSel.addEventListener("change", () => {   // team modes fix the player count
       const v = modeSel.value;
-      if (v === "team") { pcSel.value = "4"; pcSel.disabled = true; }
+      if (v === "team" || v === "captureFlag") { pcSel.value = "4"; pcSel.disabled = true; }
       else if (v === "team3v3" || v === "team2v2v2") { pcSel.value = "6"; pcSel.disabled = true; }
       else pcSel.disabled = false;
     });

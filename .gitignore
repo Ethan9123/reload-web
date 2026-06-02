@@ -40,3 +40,6 @@ Thumbs.db
 node_modules/
 # debug contact-sheets generated during dev
 _*.png
+
+# Local Claude preview / launch config
+.claude/

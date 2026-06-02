@@ -146,6 +146,13 @@
   function chooseAction(E, state, p) {
     if (tryFreeItems(E, state, p)) return "acted";
 
+    // Capture the Flag — the win actions take top priority
+    if (state.flags) {
+      if (E.canScoreFlag(state, p)) { E.scoreFlag(state); return "acted"; }     // submit the enemy flag at home
+      if (E.canGrabFlag(state, p)) { E.grabFlag(state); return "acted"; }       // grab it off the enemy base
+      if (p.carryingFlag != null && stepToward(E, state, p, E.baseKeyOf(state, p.team))) return "acted";   // carrier beelines home (no combat — close combat would end the turn)
+    }
+
     // difficulty: weaker bots sometimes blunder — waste the die wandering instead of playing the best line
     const blunder = POL(p, "blunder");
     if (blunder > 0 && state.rnd() < blunder) {
@@ -192,6 +199,12 @@
     }
 
     // 5) move toward the best objective
+    // CTF: a flag carrier heads home; everyone else heads to the enemy flag (when it's home to be grabbed)
+    if (state.flags) {
+      const et = p.team === 0 ? 1 : 0;
+      const tgt = p.carryingFlag != null ? E.baseKeyOf(state, p.team) : (state.flags[et].at ? E.baseKeyOf(state, et) : null);
+      if (tgt && stepToward(E, state, p, tgt)) return "acted";
+    }
     const tower = E.towerKey(state);
     if (p.carryingBeacons > 0) { if (stepToward(E, state, p, tower)) return "acted"; }
     const beacons = tokenHexes(E, state, "beacon");
