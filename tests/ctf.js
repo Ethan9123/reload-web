@@ -68,6 +68,23 @@ const A = (c, m) => { if (!c) { console.error("  FAIL:", m); fails++; } else con
   A(p.carryingFlag == null && g.flags[et].at === g.flags[et].home, "RELOAD returns the carried flag to its base");
 }
 
+// 5b) a generic Loot action can NEVER pick up a flag token (Codex P1 regression)
+{
+  const g = E.newGame({ numPlayers: 4, mode: "captureFlag", seed: 7, allAI: true });
+  const p = g.players[0]; const own = E.baseKeyOf(g, p.team);
+  g.activePlayer = p.idx; g.phase = "action"; g.needsParachute = false;
+  p.pos = { q: g.board[own].q, r: g.board[own].r }; p.actionDice = 5; p.defensePool = 5; p.carryingFlag = null;
+  g.board[own].tokens = g.board[own].tokens.filter(t => t.kind === "flag");   // isolate: base holds only its flag
+  A(E.lootOptions(g, p).every(t => t.kind !== "flag"), "lootOptions never offers a flag token");
+  A(E.doLoot(g, 0) === false, "Loot on a base holding only a flag does nothing (flag stays)");
+  A(g.board[own].tokens.some(t => t.kind === "flag" && t.team === p.team) && g.flags[p.team].at === own, "the flag is still home and grabbable after a failed loot");
+  // with a beacon ALSO present, loot takes the beacon and leaves the flag
+  g.board[own].tokens.push({ kind: "beacon" }); const before = p.carryingBeacons || 0;
+  A(E.doLoot(g, 0), "Loot succeeds when a beacon is present");
+  A((p.carryingBeacons || 0) === before + 1, "loot grabbed the beacon, not the flag");
+  A(g.board[own].tokens.some(t => t.kind === "flag"), "the flag token is untouched by looting the beacon");
+}
+
 // 6) flag fame counts toward total fame
 {
   const g = E.newGame({ numPlayers: 4, mode: "captureFlag", seed: 6, allAI: true });

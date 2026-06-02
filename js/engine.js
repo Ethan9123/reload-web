@@ -606,16 +606,18 @@
     return true;
   }
 
+  const isLootable = t => t.kind !== "flag";   // CTF flags are grabbed (grabFlag), never picked up by a generic Loot
   function lootOptions(state, p) {
     if (!p.pos || state.phase !== "action" || p.defensePool < 1) return [];
-    return state.board[hexKey(p.pos.q, p.pos.r)].tokens.slice();
+    return state.board[hexKey(p.pos.q, p.pos.r)].tokens.filter(isLootable);
   }
   function doLoot(state, tokenIdx) {
     const p = curP(state);
     if (p.defensePool < 1) return false;
-    const cell = state.board[hexKey(p.pos.q, p.pos.r)], tok = cell.tokens[tokenIdx];
+    const cell = state.board[hexKey(p.pos.q, p.pos.r)];
+    const tok = cell.tokens.filter(isLootable)[tokenIdx];   // tokenIdx indexes the lootable list (matches lootOptions)
     if (!tok) return false;
-    spendDice(state, p, 1, 1); recordAction(state, p, "loot", 1); cell.tokens.splice(tokenIdx, 1);
+    spendDice(state, p, 1, 1); recordAction(state, p, "loot", 1); cell.tokens.splice(cell.tokens.indexOf(tok), 1);
     if (tok.kind === "beacon") { p.carryingBeacons += 1; log(state, `${p.name} 拾取信标（需带到中央塔上缴）`, "lootBeacon", { name: p.name }); }
     else if (tok.kind === "supply") {
       const dk = "equip" + (tok.star || 2), xk = "discard" + (tok.star || 2);
