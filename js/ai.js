@@ -224,6 +224,10 @@
       if (!p.hideout) { if (E.doBuildHideout(state)) return "acted"; }
     }
 
+    // 8b) idle on a Village → spend a spare die drawing equipment (draw 3, keep 2) rather than waste it,
+    //     but don't hoard forever (terminates the turn loop once the backpack is stocked).
+    if (E.canVillageDraw(state, p) && p.backpack.length < 4) { E.doActivate(state); return "acted"; }
+
     // 9) no objective to pursue — stop and keep the remaining dice (they become combat-line defense
     //    dice at End Phase, which is better than wandering them away).
     return "idle";
@@ -261,6 +265,7 @@
     for (const t of E.closeTargets(state, p)) out.push({ label: "close:" + t, apply: g => E.doClose(g, t), ends: true });
     for (const t of E.rangedTargets(state, p)) out.push({ label: "ranged:" + t, apply: g => E.doRanged(g, t, 3), ends: false });
     if (p.carryingBeacons > 0 && E.canUpload(state, p)) out.push({ label: "upload", apply: g => E.doActivate(g), ends: false });
+    if (E.canVillageDraw(state, p) && p.backpack.length < 4) out.push({ label: "village", apply: g => E.doActivate(g), ends: false });
     E.lootOptions(state, p).forEach((tok, i) => out.push({ label: "loot:" + i, apply: g => E.doLoot(g, i), ends: false }));
     if (E.droneLootOptions) { const here = p.pos && E.hexKey(p.pos.q, p.pos.r); for (const o of E.droneLootOptions(state, p)) if (o.key !== here) out.push({ label: "drone:" + o.key + ":" + o.tokenIdx, apply: g => E.doDroneLoot(g, o.key, o.tokenIdx), ends: false }); }
     for (const t of E.healTargets(state, p)) out.push({ label: "heal:" + t, apply: g => E.doHeal(g, t), ends: false });
