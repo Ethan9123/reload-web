@@ -244,6 +244,21 @@
 
   const TERRAIN_GLYPH = { tower: "🗼", jungle: "🌲", plains: "🌾", mountain: "⛰", village: "🏠", maze: "▦", solar: "☀" };
   const TEAM_COLOR = ["#e3424b", "#4b8fe3", "#5fd06f"];   // CTF / team home-base + flag tints
+  // Fame-track segment colors (one per fame-token type). The physical game's whole identity is the
+  // visual length of your fame track, so we render each player's score as proportional colored segments.
+  const FAME_COLOR = { reload: "#e74c3c", beacon: "#f1c40f", crown: "#9b59b6", flag: "#1abc9c", injury: "#e67e22", achievement: "#2ecc71", teamSpirit: "#3498db", trap: "#95a5a6" };
+  const FAME_ORDER = ["reload", "beacon", "crown", "flag", "injury", "achievement", "teamSpirit", "trap"];
+  // a horizontal fame track: width = Superstar threshold; colored segments sized by (count × token value)
+  function fameTrackHTML(p) {
+    const thr = G.superstarFame || 60, total = E.totalFame(p);
+    let segs = "";
+    for (const k of FAME_ORDER) {
+      const cnt = p.fame[k] || 0; if (!cnt) continue;
+      const val = (D.FAME[k] && D.FAME[k].value) || 1, w = (cnt * val) / thr * 100;
+      segs += `<span class="ft-seg" style="width:${w}%;background:${FAME_COLOR[k] || "#888"}" title="${(D.FAME[k] && D.FAME[k].name) || k} ×${cnt} = ${cnt * val}"></span>`;
+    }
+    return `<div class="fametrack-wrap"><div class="fametrack" title="${total} / ${thr}">${segs}</div><span class="ft-num">${total}/${thr}</span></div>`;
+  }
   function svgText(x, y, s, size, fill, opacity) {
     const t = svgEl("text", { x, y, "text-anchor": "middle", "font-size": size, fill: fill || "#fff", "pointer-events": "none" });
     if (opacity != null) t.setAttribute("opacity", opacity);
@@ -466,7 +481,7 @@
         (p.carryingBeacons ? ` · ${T("pc.carry")} ${p.carryingBeacons}` : "") +
         (p.carryingFlag != null ? ` · 🚩` : "") +
         (p.carryingCrown ? ` · 👑` : "") +
-        ` · ${p.pos ? T("pc.onmap") : T("pc.waitdrop")}</div></div></div>`;
+        ` · ${p.pos ? T("pc.onmap") : T("pc.waitdrop")}</div>${fameTrackHTML(p)}</div></div>`;
       d.style.cursor = "pointer";
       d.addEventListener("click", () => openCharBoard(p.idx));
       bindTip(d, () => playerTip(p));

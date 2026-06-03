@@ -131,6 +131,12 @@ button.small { padding: 4px 10px; font-size: 13px; cursor: pointer; }
 .cb-slot-l { font-size: 11px; color: #9aa0ac; margin-bottom: 4px; font-weight: 700; }
 .cb-slot-x { font-size: 12px; text-align: center; padding: 14px 0; border: 1px dashed #333d4a; border-radius: 6px; }
 .pcard .pstat { font-size: 12px; color: #9aa0ac; }
+/* Fame track: proportional colored segments toward the Superstar zone (gold finish line). */
+.fametrack-wrap { display: flex; align-items: center; gap: 6px; margin-top: 5px; }
+.fametrack { position: relative; flex: 1; height: 9px; border-radius: 5px; background: #11151c;
+  border: 1px solid #2a2f3a; border-right: 2px solid #f1c40f; display: flex; overflow: hidden; }
+.fametrack .ft-seg { height: 100%; }
+.ft-num { font-size: 10px; color: #9aa0ac; flex: none; font-variant-numeric: tabular-nums; }
 #log-panel h4 { margin: 12px 0 6px; }
 #log { font-size: 12px; color: #aab0bc; max-height: 220px; overflow: auto; }
 #log div { padding: 2px 0; border-bottom: 1px solid #20242e; }
