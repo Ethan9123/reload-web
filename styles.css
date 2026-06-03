@@ -266,6 +266,18 @@ button.small { padding: 4px 10px; font-size: 13px; cursor: pointer; }
 .ch-btn:hover { filter: brightness(1.12); }
 .ch-btn.cancel { background: #232936; border-color: #3a4150; color: #aab0bc; }
 
+/* ---- loot choice: pick which drawn card(s) to keep ---- */
+.modal-overlay { position: fixed; inset: 0; z-index: 95; display: flex; align-items: center; justify-content: center; background: rgba(8,10,14,.72); }
+#loot-choice .lc-box { background: #161a22; border: 2px solid #2a2f3a; border-radius: 14px; padding: 16px 18px; max-width: 92vw; }
+#loot-choice h3 { margin: 0 0 12px; color: #cdd2db; text-align: center; }
+#loot-choice .lc-need { color: #f1c40f; }
+#loot-choice .lc-cards { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 640px; }
+#loot-choice .lc-card { cursor: pointer; border: 2px solid transparent; border-radius: 10px; padding: 2px; transition: border-color .1s, transform .1s; }
+#loot-choice .lc-card:hover { transform: translateY(-2px); }
+#loot-choice .lc-card.sel { border-color: #5fd06f; box-shadow: 0 0 10px rgba(95,208,111,.5); }
+#loot-choice .lc-ok { margin: 14px auto 0; display: block; font: inherit; font-weight: 700; padding: 9px 26px; border-radius: 8px; border: 1px solid #3a6b4f; background: #234032; color: #d6ffe6; cursor: pointer; }
+#loot-choice .lc-ok:disabled { opacity: .45; cursor: not-allowed; }
+
 /* ---- mine / trap reveal close-up ---- */
 #trap-overlay { display: none; position: fixed; inset: 0; z-index: 65; align-items: center; justify-content: center;
   background: radial-gradient(ellipse at center, rgba(40,16,8,0.6), rgba(8,10,14,0.86)); }

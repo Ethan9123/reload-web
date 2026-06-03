@@ -727,13 +727,38 @@
     if (o.kind === "ranged") { const aKey = E.hexKey(p.pos.q, p.pos.r); E.doRanged(G, o.tgt, 3); render(); await vfxGunshot(aKey, o.key); await animateCombat(G.lastCombat); return; }
     if (o.kind === "grabFlag") { E.grabFlag(G); SFX("loot"); render(); consumeActionFeed(); return; }
     if (o.kind === "scoreFlag") { E.scoreFlag(G); SFX("upload"); render(); consumeActionFeed(); return; }
-    if (o.kind === "activate") { E.doActivate(G); SFX("upload"); render(); consumeActionFeed(); return; }
-    if (o.kind === "loot") { E.doLoot(G, 0); SFX("loot"); render(); consumeActionFeed(); return; }
+    if (o.kind === "activate") { E.doActivate(G, true); SFX("upload"); render(); consumeActionFeed(); maybeLootChoice(); return; }
+    if (o.kind === "loot") { E.doLoot(G, 0, true); SFX("loot"); render(); consumeActionFeed(); maybeLootChoice(); return; }
     if (o.kind === "move") {
       const seq = G._trapSeq || 0;
       E.doRun(G, o.key); SFX("move"); render(); consumeActionFeed();
       if ((G._trapSeq || 0) > seq && G.lastTrap && (G.players[G.lastTrap.walker].human || G.players[G.lastTrap.owner].human)) await animateTrap(G.lastTrap);
     }
+  }
+  // After a human loot/village-draw, prompt them to choose which card(s) to keep (rulebook: draw N, keep M).
+  function maybeLootChoice() {
+    const pl = G.pendingLoot; if (!pl) return;
+    closeActionMenu();
+    const m = document.createElement("div"); m.id = "loot-choice"; m.className = "modal-overlay";
+    const sel = new Set();
+    const cards = pl.drawn.map((id, i) => {
+      const e = EQ[id];
+      return `<div class="lc-card" data-i="${i}">${equipCardHTML(e, null)}</div>`;
+    }).join("");
+    m.innerHTML = `<div class="lc-box"><h3>${L("选择保留", "Choose to keep")} <b class="lc-need">0/${pl.keep}</b></h3>` +
+      `<div class="lc-cards">${cards}</div>` +
+      `<button class="lc-ok" disabled>${L("确定", "Confirm")}</button></div>`;
+    document.body.appendChild(m);
+    const need = m.querySelector(".lc-need"), ok = m.querySelector(".lc-ok");
+    const refresh = () => { need.textContent = `${sel.size}/${pl.keep}`; ok.disabled = sel.size !== pl.keep; };
+    m.querySelectorAll(".lc-card").forEach(card => card.addEventListener("click", () => {
+      const i = +card.dataset.i;
+      if (sel.has(i)) { sel.delete(i); card.classList.remove("sel"); }
+      else if (sel.size < pl.keep) { sel.add(i); card.classList.add("sel"); }
+      refresh();
+    }));
+    ok.addEventListener("click", () => { E.resolveLoot(G, [...sel]); m.remove(); render(); });
+    refresh();
   }
   async function onHex(key, ev) {
     if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
