@@ -696,6 +696,7 @@
     if (key === curKey && G.flags && E.canScoreFlag(G, p)) opts.push({ kind: "scoreFlag", icon: "🏁", label: L("夺旗得分（在本队基地）", "Score the flag"), key });
     if (key === curKey && G.flags && E.canGrabFlag(G, p)) opts.push({ kind: "grabFlag", icon: "🚩", label: L("夺取敌方旗帜", "Grab the enemy flag"), key });
     if (key === curKey && E.canUpload(G, p)) opts.push({ kind: "activate", icon: "📡", label: L("上缴信标（地点效果）", "Upload beacons"), key });
+    else if (key === curKey && E.canVillageDraw(G, p)) opts.push({ kind: "activate", icon: "🏠", label: L("搜刮村庄（抽3留2）", "Loot village (draw 3, keep 2)"), key });
     if (key === curKey && E.lootOptions(G, p).length) opts.push({ kind: "loot", icon: "🎒", label: L("捡起地上的东西", "Loot here"), key });
     if (E.legalRuns(G, p).includes(key)) opts.push({ kind: "move", icon: "🏃", label: L("移动到这里", "Move here"), key });
     return opts;
@@ -1282,7 +1283,8 @@
     const t = D.TERRAIN[c.terrain];
     let h = `<h5>${t.name}</h5>`; const lines = [];
     if (c.terrain === "tower") lines.push("在此 <b>Activate</b> 上缴携带的信标 → 换名望");
-    if (c.terrain === "mountain") lines.push("进入需要 <b>2</b> 个移动骰");
+    if (c.terrain === "village") lines.push("🏠 村庄：在此 <b>Activate</b> 从 1★ 牌库<b>抽 3 留 2</b>（可重复）");
+    if (c.terrain === "mountain") lines.push("进入需要 <b>2</b> 个移动骰，并 <b>+1</b> 枪械射程");
     if (c.terrain === "maze") lines.push("🌀 迷宫：进入需 <b>2</b> 移动骰，并<b>阻挡</b>穿过它的视线（无法隔着它射击）");
     if (c.terrain === "solar") lines.push("☀ 太阳能阵列：回合开始在此 <b>+1 行动骰</b>（能量，不可用于战斗/承伤）");
     if (c.tokens.some(k => k.kind === "beacon")) lines.push("🔆 信标：<b>Loot</b> 拾取，带到中央塔上缴 +1 名望");

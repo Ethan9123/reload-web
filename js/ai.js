@@ -224,6 +224,10 @@
       if (!p.hideout) { if (E.doBuildHideout(state)) return "acted"; }
     }
 
+    // 8b) idle on a Village → spend a spare die drawing equipment (draw 3, keep 2) rather than waste it,
+    //     but don't hoard forever (terminates the turn loop once the backpack is stocked).
+    if (E.canVillageDraw(state, p) && p.backpack.length < 4) { E.doActivate(state); return "acted"; }
+
     // 9) no objective to pursue — stop and keep the remaining dice (they become combat-line defense
     //    dice at End Phase, which is better than wandering them away).
     return "idle";

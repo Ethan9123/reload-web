@@ -669,18 +669,33 @@
     return true;
   }
 
-  // Activate: at the Central Tower, upload all carried beacons -> beacon fame.
-  // (Other hex Activate abilities are appendix content — TODO.)
+  // Activate: resolve the current hex's Activate ability (rulebook hex reference, p.12).
+  //  • Central Tower: upload all carried beacons → beacon fame.
+  //  • Village: draw 3 from the 1★ deck, keep 2 (repeatable equipment source).
   function onTower(state, p) { return p.pos && state.board[hexKey(p.pos.q, p.pos.r)].hasTower; }
+  function terrainOf(state, p) { return p.pos ? state.board[hexKey(p.pos.q, p.pos.r)].terrain : null; }
   function canUpload(state, p) { return state.phase === "action" && p.defensePool >= 1 && onTower(state, p) && p.carryingBeacons > 0; }
+  function canVillageDraw(state, p) { return state.phase === "action" && p.defensePool >= 1 && terrainOf(state, p) === "village"; }
+  // is ANY Activate ability available on the player's current hex?
+  function canActivateHex(state, p) { return canUpload(state, p) || canVillageDraw(state, p); }
   function doActivate(state) {
     const p = curP(state);
-    if (!canUpload(state, p)) return false;
-    spendDice(state, p, 1, 1); recordAction(state, p, "activate", 1);
-    const n = p.carryingBeacons, fame = n * FAME.beacon.value;
-    log(state, `${p.name} 在中央塔上传 ${n} 个信标 → +${fame} 名望`, "upload", { name: p.name, n, fame });
-    gainFame(state, p, "beacon", n); p.carryingBeacons = 0;
-    return true;
+    if (canUpload(state, p)) {
+      spendDice(state, p, 1, 1); recordAction(state, p, "activate", 1);
+      const n = p.carryingBeacons, fame = n * FAME.beacon.value;
+      log(state, `${p.name} 在中央塔上传 ${n} 个信标 → +${fame} 名望`, "upload", { name: p.name, n, fame });
+      gainFame(state, p, "beacon", n); p.carryingBeacons = 0;
+      return true;
+    }
+    if (canVillageDraw(state, p)) {     // Village: draw 3 from the 1★ deck, keep 2, discard the rest
+      spendDice(state, p, 1, 1); recordAction(state, p, "activate", 1);
+      const got = []; for (let i = 0; i < 3; i++) { const c = state.decks.equip1.pop(); if (c) got.push(c); }
+      got.slice(0, 2).forEach(c => p.backpack.push(c));
+      got.slice(2).forEach(c => state.decks.discard1.push(c));
+      log(state, `${p.name} 在村庄搜刮装备：抽 ${got.length} 留 ${Math.min(2, got.length)}`, "villageDraw", { name: p.name, drew: got.length, kept: Math.min(2, got.length) });
+      return true;
+    }
+    return false;
   }
 
   // ---- Capture the Flag actions (奪旗賽) ----
@@ -1385,7 +1400,7 @@
     // turn/action API
     SUPERSTAR_FAME, superstarThreshold, curP, isHumanTurn, legalParachute, parachute,
     legalRuns, doRun, lootOptions, doLoot, droneLootOptions, doDroneLoot, endTurn, beginTurn, towerKey,
-    canUpload, doActivate, bfsStep, resolveEvent,
+    canUpload, canActivateHex, canVillageDraw, doActivate, bfsStep, resolveEvent,
     // Capture the Flag
     baseKeyOf, canGrabFlag, grabFlag, canScoreFlag, scoreFlag,
     // Hunter's Crown + Earthquake events
