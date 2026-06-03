@@ -82,8 +82,8 @@ A(g6.achievements.board[0].fameBelow >= 2, "Announcement tops up the leftmost ca
 // 7) achievement fame counts toward total fame + tie-break, and games still complete
 const g7 = E.newGame({ numPlayers: 2, seed: 11, allAI: true });
 const tot0 = E.totalFame(g7.players[0]);
-g7.players[0].fame.achievement += 2;
-A(E.totalFame(g7.players[0]) === tot0 + 2, "achievement fame counts toward total fame");
+g7.players[0].fame.achievement += 2;   // 2 achievement tokens × value 3 = +6 weighted fame
+A(E.totalFame(g7.players[0]) === tot0 + 6, "achievement fame counts toward total fame (weighted ×3)");
 
 let crashed = 0;
 for (let s = 0; s < 20; s++) {

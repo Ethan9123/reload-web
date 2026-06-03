@@ -53,7 +53,7 @@ const A = (c, m) => { if (!c) { console.error("  FAIL:", m); fails++; } else con
   const fame0 = p.fame.flag, cap0 = g.captures[p.team];
   A(E.canScoreFlag(g, p), "can score while carrying the enemy flag on your own base");
   A(E.scoreFlag(g), "scoreFlag succeeds");
-  A(p.fame.flag === fame0 + 5 && p.carryingFlag == null, "scoring grants flag fame and drops the carry");
+  A(p.fame.flag === fame0 + 1 && p.carryingFlag == null, "scoring grants a flag token and drops the carry");
   A(g.captures[p.team] === cap0 + 1, "capture counter increments");
   A(g.flags[et].at === enemyBase && g.board[enemyBase].tokens.some(t => t.kind === "flag" && t.team === et), "captured flag resets to its home base");
 }
@@ -121,8 +121,8 @@ const A = (c, m) => { if (!c) { console.error("  FAIL:", m); fails++; } else con
 // 6) flag fame counts toward total fame
 {
   const g = E.newGame({ numPlayers: 4, mode: "captureFlag", seed: 6, allAI: true });
-  const p = g.players[0]; const tot0 = E.totalFame(p); p.fame.flag += 5;
-  A(E.totalFame(p) === tot0 + 5, "flag fame counts toward total fame");
+  const p = g.players[0]; const tot0 = E.totalFame(p); p.fame.flag += 1;   // 1 flag token × value 5
+  A(E.totalFame(p) === tot0 + 5, "flag fame counts toward total fame (weighted ×5)");
 }
 
 // 7) regression — all-AI CTF games complete (and someone tends to capture)

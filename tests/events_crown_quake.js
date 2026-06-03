@@ -48,11 +48,11 @@ function anyHex(g) { return Object.keys(g.board).find(k => !g.board[k].hasTower)
   A(E.doLoot(g, ci), "looting the crown succeeds");
   A(p.carryingCrown && g.crown.carrier === p.idx, "player now carries the crown");
   A(!Object.keys(g.board).some(k => g.board[k].tokens.some(t => t.kind === "crown")), "crown token removed from the board while carried");
-  const fame0 = p.fame.crown;
+  const fame0 = p.fame.crown, tot0 = E.totalFame(p);
   E.beginTurn(g);                       // start of the holder's next turn -> bank it
-  A(p.fame.crown === fame0 + E.CROWN_FAME && !p.carryingCrown, "holding the crown into your turn banks it as +CROWN_FAME fame");
+  A(p.fame.crown === fame0 + 1 && !p.carryingCrown, "holding the crown into your turn banks one Crown token");
   A(g.crown.carrier == null, "after banking, the crown is out of circulation");
-  A(E.totalFame(p) >= E.CROWN_FAME, "crown fame counts toward total fame");
+  A(E.totalFame(p) === tot0 + E.CROWN_FAME, "crown fame counts toward total fame (worth CROWN_FAME on the track)");
 }
 
 // 2b) a SECOND crown event must not strip a player who is holding the crown (Codex P2)

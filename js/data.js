@@ -237,17 +237,21 @@
   ];
 
   // ---- Fame token types ----
+  // `value` = the fame-track length of one token of this type, from the official rulebook's
+  // end-of-game scoring legend (p.11): RELOAD 7, Beacon 4, Event/Crown 4, Injury 3,
+  // Achievement 3, Team Spirit 2, Trap 2. p.fame[kind] stores the COUNT of tokens; the
+  // track position / winner is Σ count × value (a RELOAD is worth far more than a trap).
   const FAME = {
-    injury:     { name: "Injury",      supply: 30 },
-    beacon:     { name: "Beacon",      supply: 20 },
-    teamSpirit: { name: "Team Spirit", supply: 20 },
-    reload:     { name: "Reload",      supply: 15 },
+    injury:     { name: "Injury",      supply: 30, value: 3 },
+    beacon:     { name: "Beacon",      supply: 20, value: 4 },
+    teamSpirit: { name: "Team Spirit", supply: 20, value: 2 },
+    reload:     { name: "Reload",      supply: 15, value: 7 },
     // NOTE: physical game has no dedicated "trap" token; we track trap fame as a
     // separate counter (placeholder supply) since the rules call it a fame source.
-    trap:       { name: "Trap",        supply: 99 },
-    achievement: { name: "Achievement", supply: 30 },   // Achievements module fame (its own token color)
-    flag:       { name: "Flag",        supply: 30 },     // Capture the Flag captures (奪旗賽)
-    crown:      { name: "Crown",       supply: 10 },     // Hunter's Crown event fame (king-of-the-hill token)
+    trap:       { name: "Trap",        supply: 99, value: 2 },
+    achievement: { name: "Achievement", supply: 30, value: 3 },   // Achievements module fame (its own token color)
+    flag:       { name: "Flag",        supply: 30, value: 5 },     // Capture the Flag captures (奪旗賽) — expansion, value estimated
+    crown:      { name: "Crown",       supply: 10, value: 4 },     // Hunter's Crown = the "Event" fame token (worth 4)
   };
 
   // ---- Achievements module (Reload modules rulebook). 8 cards: 4 "next" + 4 "most". ----
