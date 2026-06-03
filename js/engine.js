@@ -639,6 +639,7 @@
       const got = []; for (let i = 0; i < draws; i++) { const c = state.decks[dk].pop(); if (c) got.push(c); }
       if (got.length) { p.backpack.push(got[0]); for (let i = 1; i < got.length; i++) state.decks[xk].push(got[i]); }
       log(state, `${p.name} 开 ${tok.star || 2} 星补给箱，抽${got.length}留1${draws === 3 ? "（Gift From Father）" : ""}`, draws === 3 ? "openSupplyGift" : "openSupply", { name: p.name, star: tok.star || 2, drew: got.length });
+      equipFreeSlots(p);   // a freshly-looted weapon/armor goes straight into any empty slot
     }
     return true;
   }
@@ -704,6 +705,7 @@
       got.sort((a, b) => equipScore(b) - equipScore(a));
       got.slice(0, 2).forEach(c => p.backpack.push(c));
       got.slice(2).forEach(c => state.decks.discard1.push(c));
+      equipFreeSlots(p);   // kept gear fills any empty slot so it's usable immediately
       log(state, `${p.name} 在村庄搜刮装备：抽 ${got.length} 留 ${Math.min(2, got.length)}`, "villageDraw", { name: p.name, drew: got.length, kept: Math.min(2, got.length) });
       return true;
     }
@@ -1146,6 +1148,17 @@
     const cap = handCap(p); let used = 0;
     const tryHand = (e) => { if (!e) return; const need = e.hands || 1; if (used + need <= cap) { p.equipped.hand.push(e.id); used += need; } };
     tryHand(ranged[0]); tryHand(close[0]); tryHand(ranged[1]); tryHand(close[1]);
+  }
+  // Fill ONLY empty equipment slots from the backpack (never swaps/unequips), so newly-looted gear is
+  // usable the moment you pick it up (rulebook: you may equip newly-acquired equipment during your turn).
+  // Used after a mid-turn loot/draw — fixes "I looted a gun but couldn't shoot".
+  function equipFreeSlots(p) {
+    for (const id of p.backpack) {
+      const e = byId(id); if (!e || e.slot === "special") continue;
+      if (e.slot === "head" && !p.equipped.head) p.equipped.head = id;
+      else if (e.slot === "torso" && !p.equipped.torso) p.equipped.torso = id;
+      else if (e.slot === "hand" && !p.equipped.hand.includes(id) && handSlotsUsed(p) + (e.hands || 1) <= handCap(p)) p.equipped.hand.push(id);
+    }
   }
   // ---- manual equip (rules 04:00): chosen at turn start, locked once an action die is assigned ----
   function handSlotsUsed(p) { return p.equipped.hand.reduce((s, id) => s + (((byId(id) || {}).hands) || 1), 0); }
