@@ -682,6 +682,8 @@
     return state.decks[dk].pop();
   }
   function equipAvailable(state, star) { return state.decks["equip" + star].length + state.decks["discard" + star].length > 0; }
+  // coarse keep-priority for an auto draw (weapons > armor > specials), consistent with autoEquip's preferences
+  function equipScore(id) { const e = byId(id); if (!e) return 0; return e.combat === "ranged" ? 6 + (e.dice || 0) : e.combat === "close" ? 5 : (e.slot === "head" || e.slot === "torso") ? 4 : 2; }
   // Village draw needs cards to actually be obtainable (deck or its reshuffleable discard), else don't offer it.
   function canVillageDraw(state, p) { return state.phase === "action" && p.defensePool >= 1 && terrainOf(state, p) === "village" && equipAvailable(state, 1); }
   // is ANY Activate ability available on the player's current hex?
@@ -698,6 +700,8 @@
     if (canVillageDraw(state, p)) {     // Village: draw 3 from the 1★ deck, keep 2, discard the rest
       spendDice(state, p, 1, 1); recordAction(state, p, "activate", 1);
       const got = []; for (let i = 0; i < 3; i++) { const c = drawEquipCard(state, 1); if (c) got.push(c); }
+      // keep the 2 highest-utility cards so draw order never discards a clearly-better one (weapons > armor > specials)
+      got.sort((a, b) => equipScore(b) - equipScore(a));
       got.slice(0, 2).forEach(c => p.backpack.push(c));
       got.slice(2).forEach(c => state.decks.discard1.push(c));
       log(state, `${p.name} 在村庄搜刮装备：抽 ${got.length} 留 ${Math.min(2, got.length)}`, "villageDraw", { name: p.name, drew: got.length, kept: Math.min(2, got.length) });
