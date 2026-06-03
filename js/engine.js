@@ -677,8 +677,8 @@
     const p = curP(state);
     if (!canUpload(state, p)) return false;
     spendDice(state, p, 1, 1); recordAction(state, p, "activate", 1);
-    const n = p.carryingBeacons;
-    log(state, `${p.name} 在中央塔上传 ${n} 个信标 → +${n} 名望`, "upload", { name: p.name, n });
+    const n = p.carryingBeacons, fame = n * FAME.beacon.value;
+    log(state, `${p.name} 在中央塔上传 ${n} 个信标 → +${fame} 名望`, "upload", { name: p.name, n, fame });
     gainFame(state, p, "beacon", n); p.carryingBeacons = 0;
     return true;
   }
