@@ -666,6 +666,7 @@
       const a = state.decks[dk].pop(), b = state.decks[dk].pop();
       if (a) p.backpack.push(a); if (b) state.decks[xk].push(b);
       log(state, `🤖 ${p.name} 的无人机巴兹开 ${tok.star || 2}★ 补给箱`, "droneSupply", { name: p.name, star: tok.star || 2 });
+      equipFreeSlots(p);   // drone-looted gear also fills any empty slot
     }
     return true;
   }

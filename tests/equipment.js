@@ -127,5 +127,29 @@ A(closeSkullVsVest(5, "machete") === 0, "Machete's skull (no ignoreArmor) is abs
   A(crashed === 0, "25 all-AI games with the full equipment roster complete");
 }
 
+// auto-equip on loot: a freshly-looted weapon fills an empty hand slot (supply box + drone)
+{
+  const g = E.newGame({ numPlayers: 4, seed: 71, allAI: true });
+  const p = g.players[0]; g.activePlayer = p.idx; E.beginTurn(g);
+  const k = Object.keys(g.board).find(x => !g.board[x].hasTower);
+  p.pos = { q: g.board[k].q, r: g.board[k].r }; p.reloadZone = false; g.needsParachute = false; g.phase = "action";
+  p.equipped = { head: null, torso: null, hand: [] }; p.backpack = []; p.defensePool = 5;
+  g.board[k].tokens.push({ kind: "supply", star: 2 });
+  g.decks.equip2.push("riot_vest", "semi_auto_pistol");   // top of deck (popped first)
+  A(!E.equippedRanged(p), "starts with no ranged weapon equipped");
+  E.doLoot(g, E.lootOptions(g, p).findIndex(t => t.kind === "supply"));
+  A(E.equippedRanged(p) && E.equippedRanged(p).id === "semi_auto_pistol", "looting a supply box auto-equips the drawn weapon into the empty hand");
+  // drone path: Cody & Buzz auto-equips drone-looted gear too
+  const g2 = E.newGame({ numPlayers: 4, seed: 72, allAI: true });
+  const cb = g2.players[0]; cb.character = "codybuzz"; g2.activePlayer = cb.idx; E.beginTurn(g2);
+  const hk = Object.keys(g2.board).find(x => !g2.board[x].hasTower);
+  cb.pos = { q: g2.board[hk].q, r: g2.board[hk].r }; cb.reloadZone = false; g2.needsParachute = false; g2.phase = "action";
+  cb.equipped = { head: null, torso: null, hand: [] }; cb.backpack = []; cb.defensePool = 5; cb._droneUsed = false;
+  g2.board[hk].tokens.push({ kind: "supply", star: 2 });
+  g2.decks.equip2.push("riot_vest", "semi_auto_pistol");
+  E.doDroneLoot(g2, hk, g2.board[hk].tokens.findIndex(t => t.kind === "supply"));
+  A(E.equippedRanged(cb) && E.equippedRanged(cb).id === "semi_auto_pistol", "drone-looting a supply box auto-equips the weapon too");
+}
+
 console.log(fails ? `EQUIPMENT TEST FAILED (${fails})` : "EQUIPMENT TEST PASSED");
 process.exitCode = fails ? 1 : 0;
