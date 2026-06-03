@@ -675,7 +675,15 @@
   function onTower(state, p) { return p.pos && state.board[hexKey(p.pos.q, p.pos.r)].hasTower; }
   function terrainOf(state, p) { return p.pos ? state.board[hexKey(p.pos.q, p.pos.r)].terrain : null; }
   function canUpload(state, p) { return state.phase === "action" && p.defensePool >= 1 && onTower(state, p) && p.carryingBeacons > 0; }
-  function canVillageDraw(state, p) { return state.phase === "action" && p.defensePool >= 1 && terrainOf(state, p) === "village"; }
+  // draw one equipment card of a star tier, reshuffling its discard pile in when the deck runs dry (rulebook).
+  function drawEquipCard(state, star) {
+    const dk = "equip" + star, xk = "discard" + star;
+    if (!state.decks[dk].length && state.decks[xk].length) { state.decks[dk] = state.decks[xk]; state.decks[xk] = []; shuffle(state.decks[dk], state.rnd); }
+    return state.decks[dk].pop();
+  }
+  function equipAvailable(state, star) { return state.decks["equip" + star].length + state.decks["discard" + star].length > 0; }
+  // Village draw needs cards to actually be obtainable (deck or its reshuffleable discard), else don't offer it.
+  function canVillageDraw(state, p) { return state.phase === "action" && p.defensePool >= 1 && terrainOf(state, p) === "village" && equipAvailable(state, 1); }
   // is ANY Activate ability available on the player's current hex?
   function canActivateHex(state, p) { return canUpload(state, p) || canVillageDraw(state, p); }
   function doActivate(state) {
@@ -689,7 +697,7 @@
     }
     if (canVillageDraw(state, p)) {     // Village: draw 3 from the 1★ deck, keep 2, discard the rest
       spendDice(state, p, 1, 1); recordAction(state, p, "activate", 1);
-      const got = []; for (let i = 0; i < 3; i++) { const c = state.decks.equip1.pop(); if (c) got.push(c); }
+      const got = []; for (let i = 0; i < 3; i++) { const c = drawEquipCard(state, 1); if (c) got.push(c); }
       got.slice(0, 2).forEach(c => p.backpack.push(c));
       got.slice(2).forEach(c => state.decks.discard1.push(c));
       log(state, `${p.name} 在村庄搜刮装备：抽 ${got.length} 留 ${Math.min(2, got.length)}`, "villageDraw", { name: p.name, drew: got.length, kept: Math.min(2, got.length) });

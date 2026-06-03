@@ -37,6 +37,20 @@ function placeAt(g, p, key) { p.pos = { q: g.board[key].q, r: g.board[key].r }; 
   A(E.doActivate(g) && p.backpack.length === 4, "village Activate is repeatable (drew again)");
 }
 
+// 2b) gating on cards: empty 1★ deck+discard → no village draw (don't waste a die on an empty deck)
+{
+  const g = E.newGame({ numPlayers: 4, seed: 22, allAI: true });
+  const p = g.players[0]; g.activePlayer = p.idx; g.phase = "action"; g.needsParachute = false; p.actionDice = 5; p.defensePool = 5;
+  placeAt(g, p, villageKey(g));
+  g.decks.equip1 = []; g.decks.discard1 = [];
+  A(!E.canVillageDraw(g, p), "no village draw when the 1★ deck AND its discard are both empty");
+  A(E.doActivate(g) === false && p.defensePool === 5, "doActivate is a no-op (no die spent) with no 1★ cards");
+  // with only a discard pile, the deck reshuffles in and the draw works
+  g.decks.discard1 = ["riot_vest", "sickle", "light_helmet", "bow_arrow"]; p.backpack = [];
+  A(E.canVillageDraw(g, p), "village draw available once the discard can be reshuffled");
+  A(E.doActivate(g) && p.backpack.length === 2, "village draw reshuffles the discard into the deck and draws");
+}
+
 // 3) tower upload still works through the generalized doActivate
 {
   const g = E.newGame({ numPlayers: 4, seed: 3, allAI: true });
