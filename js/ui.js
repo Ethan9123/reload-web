@@ -248,14 +248,20 @@
   // visual length of your fame track, so we render each player's score as proportional colored segments.
   const FAME_COLOR = { reload: "#e74c3c", beacon: "#f1c40f", crown: "#9b59b6", flag: "#1abc9c", injury: "#e67e22", achievement: "#2ecc71", teamSpirit: "#3498db", trap: "#95a5a6" };
   const FAME_ORDER = ["reload", "beacon", "crown", "flag", "injury", "achievement", "teamSpirit", "trap"];
-  // a horizontal fame track: width = Superstar threshold; colored segments sized by (count × token value)
+  // a horizontal fame track: width = Superstar threshold; colored segments sized by (count × token value).
+  // In Team/CTF modes the Superstar check uses the TEAM's combined fame, so the track aggregates teammates
+  // (each teammate's card shows the same shared team track); Battle Royale shows the player's own fame.
   function fameTrackHTML(p) {
-    const thr = G.superstarFame || 60, total = E.totalFame(p);
-    let segs = "";
+    const thr = G.superstarFame || 60;
+    const members = p.team != null ? G.players.filter(x => x.team === p.team) : [p];
+    const cnt = {};
+    for (const m of members) for (const k in m.fame) cnt[k] = (cnt[k] || 0) + (m.fame[k] || 0);
+    let total = 0, segs = "";
     for (const k of FAME_ORDER) {
-      const cnt = p.fame[k] || 0; if (!cnt) continue;
-      const val = (D.FAME[k] && D.FAME[k].value) || 1, w = (cnt * val) / thr * 100;
-      segs += `<span class="ft-seg" style="width:${w}%;background:${FAME_COLOR[k] || "#888"}" title="${(D.FAME[k] && D.FAME[k].name) || k} ×${cnt} = ${cnt * val}"></span>`;
+      const c = cnt[k] || 0; if (!c) continue;
+      const val = (D.FAME[k] && D.FAME[k].value) || 1; total += c * val;
+      const w = (c * val) / thr * 100;
+      segs += `<span class="ft-seg" style="width:${w}%;background:${FAME_COLOR[k] || "#888"}" title="${(D.FAME[k] && D.FAME[k].name) || k} ×${c} = ${c * val}"></span>`;
     }
     return `<div class="fametrack-wrap"><div class="fametrack" title="${total} / ${thr}">${segs}</div><span class="ft-num">${total}/${thr}</span></div>`;
   }
