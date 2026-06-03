@@ -20,6 +20,7 @@
     zh: {
       "legend.move": "移动/可达", "legend.atk": "可攻击", "legend.you": "你的位置", "legend.loot": "✋ 当前格可拾取",
       "legend.dice": "🎲 行动骰", "legend.cost": "移动/建造/治疗各 1 骰 · 上山 2 骰", "legend.para": "跳伞：点黄色虚线格降落", "legend.nodice": "（无骰）",
+      "legend.placed": "已放", "legend.equiptip": "背包有武器 → 点你的角色卡装备", "legend.noweapon": "未装备武器", "legend.gun": "🔫", "legend.melee": "🗡",
       "banner.acting": "{name}（AI）行动中…", "banner.endTurn": "{name} 结束回合",
       "speed.slow": "🐢 慢速", "speed.med": "🐇 中速", "speed.fast": "⚡ 快速",
       "cb.atk": "攻", "cb.def": "守", "cb.roll": "掷骰…", "cb.compare": "逐列比对 ▶",
@@ -54,6 +55,7 @@
     en: {
       "legend.move": "Move/Reach", "legend.atk": "Attackable", "legend.you": "You", "legend.loot": "✋ Loot here",
       "legend.dice": "🎲 Action dice", "legend.cost": "Move/Build/Heal: 1 die · Mountain: 2", "legend.para": "Drop: click a yellow dashed hex", "legend.nodice": "(no dice)",
+      "legend.placed": "Placed", "legend.equiptip": "Weapon in bag → click your card to equip", "legend.noweapon": "No weapon", "legend.gun": "🔫", "legend.melee": "🗡",
       "banner.acting": "{name} (AI) is thinking…", "banner.endTurn": "{name} ends turn",
       "speed.slow": "🐢 Slow", "speed.med": "🐇 Normal", "speed.fast": "⚡ Fast",
       "cb.atk": "ATK", "cb.def": "DEF", "cb.roll": "rolling…", "cb.compare": "compare ▶",
@@ -88,6 +90,7 @@
     fr: {
       "legend.move": "Déplacer/Portée", "legend.atk": "Attaquable", "legend.you": "Vous", "legend.loot": "✋ Ramasser ici",
       "legend.dice": "🎲 Dés d'action", "legend.cost": "Déplacer/Construire/Soigner : 1 dé · Montagne : 2", "legend.para": "Saut : cliquez une case en pointillés jaunes", "legend.nodice": "(aucun dé)",
+      "legend.placed": "Placés", "legend.equiptip": "Arme dans le sac → cliquez votre carte pour l'équiper", "legend.noweapon": "Sans arme", "legend.gun": "🔫", "legend.melee": "🗡",
       "banner.acting": "{name} (IA) réfléchit…", "banner.endTurn": "{name} termine son tour",
       "speed.slow": "🐢 Lent", "speed.med": "🐇 Normal", "speed.fast": "⚡ Rapide",
       "cb.atk": "ATT", "cb.def": "DÉF", "cb.roll": "lancer…", "cb.compare": "comparer ▶",
@@ -122,6 +125,7 @@
     es: {
       "legend.move": "Mover/Alcance", "legend.atk": "Atacable", "legend.you": "Tú", "legend.loot": "✋ Saquear aquí",
       "legend.dice": "🎲 Dados de acción", "legend.cost": "Mover/Construir/Curar: 1 dado · Montaña: 2", "legend.para": "Salto: clic en casilla amarilla punteada", "legend.nodice": "(sin dados)",
+      "legend.placed": "Puestos", "legend.equiptip": "Arma en la mochila → clic en tu carta para equipar", "legend.noweapon": "Sin arma", "legend.gun": "🔫", "legend.melee": "🗡",
       "banner.acting": "{name} (IA) está pensando…", "banner.endTurn": "{name} termina el turno",
       "speed.slow": "🐢 Lento", "speed.med": "🐇 Normal", "speed.fast": "⚡ Rápido",
       "cb.atk": "ATQ", "cb.def": "DEF", "cb.roll": "tirando…", "cb.compare": "comparar ▶",
@@ -534,16 +538,31 @@
       leg.innerHTML = `<span class="lg-item"><i class="lg-sw para"></i>${T("legend.para")}</span>`;
     } else {
       const h = highlightSet();
-      const dice = Math.max(0, p.defensePool), boost = p.boostDice || 0, real = Math.max(0, dice - boost);
-      const pips = ("●".repeat(real) + (boost ? "⚡".repeat(boost) : "")) || T("legend.nodice");
+      const boost = p.boostDice || 0, real = Math.max(0, p.defensePool - boost);
+      // available dice as real die glyphs (blank = value chosen on use) + green boost dice
+      const avail = (Array.from({ length: real }, () => `<span class="die def"></span>`).join("") +
+                     Array.from({ length: boost }, () => `<span class="die boost">⚡</span>`).join("")) ||
+                    `<i class="lg-dim">${T("legend.nodice")}</i>`;
+      // dice already placed this turn, showing the exact value of each
+      const placed = (p.assignedDice || []).map(v => `<span class="die used">${v}</span>`).join("");
+      // what's equipped to attack with — or a nudge if a weapon is sitting unequipped in the backpack
+      const rw = E.equippedRanged(p), cw = E.equippedClose(p);
+      let weapon = "";
+      if (rw) weapon = `<span class="lg-item lg-wpn">${T("legend.gun")} ${TC("equip." + rw.id + ".name", rw.name)}</span>`;
+      else if (cw) weapon = `<span class="lg-item lg-wpn">${T("legend.melee")} ${TC("equip." + cw.id + ".name", cw.name)}</span>`;
+      else {
+        const bagWeapon = p.backpack.map(id => EQ[id]).some(e => e && e.combat);
+        weapon = bagWeapon ? `<span class="lg-item lg-nudge">${T("legend.equiptip")}</span>`
+                           : `<span class="lg-item lg-dim">${T("legend.noweapon")}</span>`;
+      }
       leg.innerHTML =
         `<span class="lg-item"><i class="lg-sw move"></i>${T("legend.move")}</span>` +
         (h.atk.size ? `<span class="lg-item"><i class="lg-sw atk"></i>${T("legend.atk")}</span>` : "") +
-        `<span class="lg-item"><i class="lg-sw cur"></i>${T("legend.you")}</span>` +
         (h.loot ? `<span class="lg-item">${T("legend.loot")}</span>` : "") +
         `<span class="lg-sep"></span>` +
-        `<span class="lg-item lg-dice">${T("legend.dice")} <b>${pips}</b></span>` +
-        `<span class="lg-item lg-dim">${T("legend.cost")}</span>`;
+        `<span class="lg-item lg-dice">${T("legend.dice")} ${avail}</span>` +
+        (placed ? `<span class="lg-item lg-dice">${T("legend.placed")} ${placed}</span>` : "") +
+        weapon;
     }
     leg.classList.add("show");
   }
