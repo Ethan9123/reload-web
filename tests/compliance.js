@@ -116,11 +116,12 @@ A(E.useSpecialItem(g9, "tactical_explosive", trapT), "useSpecialItem(tactical_ex
 A(nb9.trap == null && !p9.backpack.includes("tactical_explosive"), "Tactical Explosive removed the trap and was discarded");
 
 // 10) Mode-aware Superstar threshold (fame-track length)
-A(E.superstarThreshold("battleRoyale", 4) === 16, "4p Battle Royale threshold = 16 (Start+2 mid+End)");
-A(E.superstarThreshold("team") === 28, "Team threshold = 28 (Start+4 mid+End, longer track)");
-A(E.superstarThreshold("battleRoyale", 2) === 28, "2-player uses the longer track (28) per rulebook recommendation");
-A(E.newGame({ numPlayers: 2, seed: 8, allAI: true }).superstarFame === 28, "2-player game state.superstarFame = 28");
-A(E.newGame({ numPlayers: 4, seed: 8, allAI: true }).superstarFame === 16, "4-player game state.superstarFame = 16");
+// weighted fame: each track piece ≈15 fame units → BR 1+2+1=60, Team 1+4+1=90
+A(E.superstarThreshold("battleRoyale", 4) === 60, "4p Battle Royale threshold = 60 (Start+2 mid+End)");
+A(E.superstarThreshold("team") === 90, "Team threshold = 90 (Start+4 mid+End, longer track)");
+A(E.superstarThreshold("battleRoyale", 2) === 90, "2-player uses the longer track (90) per rulebook recommendation");
+A(E.newGame({ numPlayers: 2, seed: 8, allAI: true }).superstarFame === 90, "2-player game state.superstarFame = 90");
+A(E.newGame({ numPlayers: 4, seed: 8, allAI: true }).superstarFame === 60, "4-player game state.superstarFame = 60");
 
 // 10b) Boost die must NOT persist into the combat line — even when Heal recovers a die mid-turn.
 // Scenario (from Codex): injuries 4, drink, spend the real die on an action, then Heal with the boost die.

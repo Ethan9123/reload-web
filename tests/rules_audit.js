@@ -57,5 +57,24 @@ A(autoHealHeals("team", 4) === 2, "2v2 Team: non-Auto-Heal side — no auto-heal
   A(crashed === 0, "18 all-AI games across modes complete");
 }
 
+// ---- weighted fame token values (official rulebook p.11 scoring legend) ----
+{
+  const D = require("../js/data.js");
+  const V = D.FAME;
+  A(V.reload.value === 7, "RELOAD token = 7 fame");
+  A(V.beacon.value === 4, "Beacon token = 4 fame");
+  A(V.crown.value === 4, "Crown (Event) token = 4 fame");
+  A(V.injury.value === 3, "Injury token = 3 fame");
+  A(V.achievement.value === 3, "Achievement token = 3 fame");
+  A(V.teamSpirit.value === 2, "Team Spirit token = 2 fame");
+  A(V.trap.value === 2, "Trap token = 2 fame");
+  // behavioral consequence: 1 RELOAD (7) outscores 3 traps (6) — equal-weight counting got this wrong
+  const g = E.newGame({ numPlayers: 2, seed: 5, allAI: true });
+  const a = g.players[0], b = g.players[1];
+  for (const k in a.fame) { a.fame[k] = 0; b.fame[k] = 0; }
+  a.fame.reload = 1; b.fame.trap = 3;
+  A(E.totalFame(a) === 7 && E.totalFame(b) === 6, "totalFame is weighted: 1 RELOAD (7) beats 3 traps (6)");
+}
+
 console.log(fails ? `RULES AUDIT TEST FAILED (${fails})` : "RULES AUDIT TEST PASSED");
 process.exitCode = fails ? 1 : 0;

@@ -11,7 +11,7 @@ const onHex = (g, p, key) => { const c = g.board[key]; p.pos = { q: c.q, r: c.r 
 const g1 = E.newGame({ numPlayers: 4, seed: 1, mode: "team", allAI: true });
 A(g1.players.map(p => p.team).join("") === "0101", "4p team assignment is idx%2 (teams {0,2} and {1,3})");
 A(E.sameTeam(g1.players[0], g1.players[2]) && !E.sameTeam(g1.players[0], g1.players[1]), "sameTeam: 0&2 teammates, 0&1 opponents");
-A(g1.superstarFame === 28, "team mode uses the longer fame track (28)");
+A(g1.superstarFame === 90, "team mode uses the longer fame track (90, weighted)");
 
 // 2) no friendly fire — a teammate on the same hex is not a close/ranged target
 const g2 = E.newGame({ numPlayers: 4, seed: 2, mode: "team", allAI: true });

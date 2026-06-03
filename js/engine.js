@@ -249,7 +249,9 @@
   function playersOnHex(state, q, r) {
     return state.players.filter(p => p.pos && p.pos.q === q && p.pos.r === r);
   }
-  function totalFame(p) { return p.fame.injury + p.fame.beacon + p.fame.teamSpirit + p.fame.reload + (p.fame.trap || 0) + (p.fame.achievement || 0) + (p.fame.flag || 0) + (p.fame.crown || 0); }
+  // Weighted fame: each token type advances the Fame Track by its own length (rulebook p.11),
+  // so the score is Σ (token count) × (token value), NOT a flat token count.
+  function totalFame(p) { let s = 0; for (const k in p.fame) s += (p.fame[k] || 0) * ((FAME[k] && FAME[k].value) || 1); return s; }
   // ---- teams (Team Royale) ----
   function sameTeam(a, b) { return a && b && a.team != null && a.team === b.team; }
   function teammates(state, p) { return state.players.filter(x => x !== p && sameTeam(x, p)); }
@@ -357,9 +359,12 @@
   // Track length is fixed by its physical pieces, which differ by game mode:
   //   Battle Royale (Standard) = 1 Start + 2 middle + 1 End piece.
   //   Team Royale / 2-player    = 1 Start + 4 middle + 1 End piece (longer).
-  // Modelling each piece's fame-token spaces as Start≈2, middle≈6, End≈2 gives:
-  //   Battle Royale = 2 + 2*6 + 2 = 16 ;  Team = 2 + 4*6 + 2 = 28.
-  const TRACK_PIECE_SPACES = { start: 2, middle: 6, end: 2 };
+  // Fame track = Standard (Battle Royale) 1 start + 2 middle + 1 end pieces; Team 1 start + 4 middle + 1 end.
+  // With weighted fame tokens, each piece is calibrated at ≈15 fame units so:
+  //   Battle Royale = 15 + 2*15 + 15 = 60 ;  Team = 15 + 4*15 + 15 = 90.
+  // (Calibrated from the rulebook's token values + observed play — leaders reach ~50 over a full ~8-round
+  //  game without hitting Superstar, so 60/90 keep Superstar a rare early win, matching the videos.)
+  const TRACK_PIECE_SPACES = { start: 15, middle: 15, end: 15 };
   function superstarThreshold(mode, numPlayers) {
     // Team Royale uses the longer track; the rulebook also recommends the longer 2-player Team track
     // for any 2-player game ("If playing with 2 players it is recommended ... use the 2 player Team Royale variant").
@@ -367,7 +372,7 @@
     const mids = longTrack ? 4 : 2;
     return TRACK_PIECE_SPACES.start + mids * TRACK_PIECE_SPACES.middle + TRACK_PIECE_SPACES.end;
   }
-  const SUPERSTAR_FAME = superstarThreshold("battleRoyale");  // 16 — Battle Royale standard track (3-4 players)
+  const SUPERSTAR_FAME = superstarThreshold("battleRoyale");  // 60 — Battle Royale standard track (3-4 players), weighted fame
   const MOUNTAIN_RUN_COST = 2;
 
   // log entry = { s: source(zh) string, k: i18n key, p: params }; the UI formats k/p per language, falling back to s.
@@ -485,8 +490,8 @@
     // Hunter's Crown: holding it into the start of your turn banks it as permanent fame (out of circulation).
     if (p.carryingCrown && state.crown) {
       p.carryingCrown = false; state.crown = { at: null, carrier: null };
-      log(state, `👑 ${p.name} 将狩猎之冠纳入名望榜 (+${CROWN_FAME})`, "crownScore", { name: p.name, n: CROWN_FAME });
-      gainFame(state, p, "crown", CROWN_FAME);
+      log(state, `👑 ${p.name} 将狩猎之冠纳入名望榜 (+${FAME.crown.value})`, "crownScore", { name: p.name, n: FAME.crown.value });
+      gainFame(state, p, "crown", 1);   // one Crown (Event) fame token, worth FAME.crown.value
     }
     // NOTE: carried beacons are NOT auto-scored. Per rules they stay in temp storage
     // until the player Activates the Central Tower to upload them (see doActivate).
@@ -672,14 +677,14 @@
     const p = curP(state);
     if (!canUpload(state, p)) return false;
     spendDice(state, p, 1, 1); recordAction(state, p, "activate", 1);
-    const n = p.carryingBeacons;
-    log(state, `${p.name} 在中央塔上传 ${n} 个信标 → +${n} 名望`, "upload", { name: p.name, n });
+    const n = p.carryingBeacons, fame = n * FAME.beacon.value;
+    log(state, `${p.name} 在中央塔上传 ${n} 个信标 → +${fame} 名望`, "upload", { name: p.name, n, fame });
     gainFame(state, p, "beacon", n); p.carryingBeacons = 0;
     return true;
   }
 
   // ---- Capture the Flag actions (奪旗賽) ----
-  const FLAG_CAPTURE_FAME = 5;          // fame awarded for returning an enemy flag to your base
+  const FLAG_CAPTURE_FAME = FAME.flag.value;   // fame-track value of one captured flag (one Flag token)
   function enemyTeamOf(p) { return p.team === 0 ? 1 : 0; }
   function onOwnBase(state, p) { return p.pos && state.board[hexKey(p.pos.q, p.pos.r)].base === p.team; }
   // grab the enemy flag while standing on the enemy base (it must be home there, and you're empty-handed)
@@ -710,13 +715,13 @@
     const t = p.carryingFlag;
     spendDice(state, p, 1, 1); recordAction(state, p, "activate", 1);
     p.carryingFlag = null; returnFlagHome(state, t); state.captures[p.team] = (state.captures[p.team] || 0) + 1;
-    log(state, `🏁 ${p.name} 将旗帜带回基地，夺旗成功！ +${FLAG_CAPTURE_FAME} 名望`, "scoreFlag", { name: p.name, n: FLAG_CAPTURE_FAME });
-    gainFame(state, p, "flag", FLAG_CAPTURE_FAME);
+    log(state, `🏁 ${p.name} 将旗帜带回基地，夺旗成功！ +${FAME.flag.value} 名望`, "scoreFlag", { name: p.name, n: FAME.flag.value });
+    gainFame(state, p, "flag", 1);   // one Flag fame token (worth FAME.flag.value on the track)
     return true;
   }
 
   // ---- Hunter's Crown event: a king-of-the-hill fame token ----
-  const CROWN_FAME = 3;                 // fame banked when you hold the crown into the start of your turn (or at game end)
+  const CROWN_FAME = FAME.crown.value;  // fame-track value of one banked Hunter's Crown (one Crown/Event token)
   function placeCrown(state) {          // drop the crown on a random outer-ring, non-tower, toxin-free hex
     // there's only one crown in play. If a player already holds it (waiting to bank it), a second crown
     // event is a no-op — don't strip it from them or they'd lose the promised start-of-turn fame.
@@ -1018,7 +1023,7 @@
 
   function endGame(state) {
     state.gameOver = true;
-    for (const p of state.players) if (p.carryingCrown) { p.carryingCrown = false; gainFame(state, p, "crown", CROWN_FAME); log(state, `👑 ${p.name} 终局时持有狩猎之冠 (+${CROWN_FAME})`, "crownEndgame", { name: p.name, n: CROWN_FAME }); }
+    for (const p of state.players) if (p.carryingCrown) { p.carryingCrown = false; gainFame(state, p, "crown", 1); log(state, `👑 ${p.name} 终局时持有狩猎之冠 (+${FAME.crown.value})`, "crownEndgame", { name: p.name, n: FAME.crown.value }); }
     scoreMostAchievements(state);   // award End-of-Game (MOST) achievements before final scoring
     if (state.isTeam) {    // team with the most fame; tie-break by team Achievement then RELOAD fame
       const teams = [...new Set(state.players.map(p => p.team))];

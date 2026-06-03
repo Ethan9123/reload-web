@@ -17,7 +17,7 @@ const noBackToBack = (g) => g.players.every((p, i) => p.team !== g.players[(i + 
   A(g.isTeam && g.players.length === 6, "3v3: 6-player team game");
   A(Object.keys(t).length === 2 && t[0].length === 3 && t[1].length === 3, "3v3: two teams of 3");
   A(noBackToBack(g), "3v3: no back-to-back same-team turns");
-  A(g.superstarFame === 28, `3v3: uses the long fame track (28), got ${g.superstarFame}`);
+  A(g.superstarFame === 90, `3v3: uses the long fame track (90, weighted), got ${g.superstarFame}`);
 }
 
 // 2) 2v2v2 — three teams of two
