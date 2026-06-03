@@ -62,7 +62,7 @@ function placeAt(g, p, key) { p.pos = { q: g.board[key].q, r: g.board[key].r }; 
 
 // 4) AI sitting idle on a village draws equipment (and all-AI games still complete)
 {
-  let drewSomewhere = false, crashed = 0;
+  let crashed = 0;
   for (let s = 0; s < 20; s++) {
     try {
       const g = E.newGame({ numPlayers: 4, mode: "battleRoyale", seed: s + 400, allAI: true });
@@ -70,14 +70,17 @@ function placeAt(g, p, key) { p.pos = { q: g.board[key].q, r: g.board[key].r }; 
       if (!g.gameOver) crashed++;
     } catch (e) { crashed++; console.error("  seed", s, e.message); }
   }
-  // direct AI check: an idle player on a village with spare dice should Activate-draw
+  // direct AI check: with NO other objective, an idle bot on a village must Activate-draw → backpack grows.
   const g = E.newGame({ numPlayers: 4, seed: 99, allAI: true });
-  const p = g.players[0]; g.activePlayer = p.idx; g.phase = "action"; g.needsParachute = false; p.actionDice = 5; p.defensePool = 5;
-  placeAt(g, p, villageKey(g)); p.backpack = [];
+  const p = g.players[0]; p.persona = null;                       // baseline traits (no aggressive rush / heavy build)
+  g.activePlayer = p.idx; g.phase = "action"; g.needsParachute = false; p.actionDice = 5; p.defensePool = 5;
+  placeAt(g, p, villageKey(g)); p.backpack = []; p.hideout = villageKey(g);   // hideout set → skip the build-hideout step
+  for (const k in g.board) g.board[k].tokens = g.board[k].tokens.filter(t => t.kind === "flag");  // strip beacons/supplies/crown
+  g.crown = null;
+  for (const o of g.players) if (o !== p) { o.pos = null; o.reloadZone = true; }  // no enemies on the map → no combat
   const bp0 = p.backpack.length; AI.takeTurn(g);
-  drewSomewhere = g.players[0].backpack.length > bp0 || g.players[0].fame.beacon >= 0;  // turn ran without error
   A(crashed === 0, "20 all-AI games complete with the village Activate available");
-  A(drewSomewhere, "AI turn on a village runs (idle draw path exercised)");
+  A(g.players[0].backpack.length > bp0, "an idle AI on a village draws equipment (backpack grew)");
 }
 
 console.log(fails ? `HEX ABILITIES TEST FAILED (${fails})` : "HEX ABILITIES TEST PASSED");
