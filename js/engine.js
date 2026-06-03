@@ -228,6 +228,7 @@
       mode, numPlayers, difficulty, map: MAP.name, maxRing, isTeam: TEAMS > 0, rnd, board, players,
       flags, captures: flags ? [0, 0] : null,    // Capture the Flag state
       crown: null,                                // Hunter's Crown event: { at: hexKey|null, carrier: idx|null } once dropped
+      pendingLoot: null,                          // human loot-choice in progress: { idx, drawn:[ids], keep, star, kind }
       firstPlayer: 0, activePlayer: 0, round: 1,
       decks, fameSupply,
       eventsResolved: 0, eventTotal: eventCount,
@@ -624,7 +625,7 @@
     if (!p.pos || state.phase !== "action" || p.defensePool < 1) return [];
     return state.board[hexKey(p.pos.q, p.pos.r)].tokens.filter(isLootable);
   }
-  function doLoot(state, tokenIdx) {
+  function doLoot(state, tokenIdx, interactive) {
     const p = curP(state);
     if (p.defensePool < 1) return false;
     const cell = state.board[hexKey(p.pos.q, p.pos.r)];
@@ -634,12 +635,13 @@
     if (tok.kind === "beacon") { p.carryingBeacons += 1; log(state, `${p.name} 拾取信标（需带到中央塔上缴）`, "lootBeacon", { name: p.name }); }
     else if (tok.kind === "crown") { grabCrown(state, p); }
     else if (tok.kind === "supply") {
-      const dk = "equip" + (tok.star || 2), xk = "discard" + (tok.star || 2);
+      const star = tok.star || 2;
       const draws = p.character === "korat" ? 3 : 2;        // Korat — Gift From Father: +1 card
-      const got = []; for (let i = 0; i < draws; i++) { const c = state.decks[dk].pop(); if (c) got.push(c); }
-      if (got.length) { p.backpack.push(got[0]); for (let i = 1; i < got.length; i++) state.decks[xk].push(got[i]); }
-      log(state, `${p.name} 开 ${tok.star || 2} 星补给箱，抽${got.length}留1${draws === 3 ? "（Gift From Father）" : ""}`, draws === 3 ? "openSupplyGift" : "openSupply", { name: p.name, star: tok.star || 2, drew: got.length });
-      if (got.length) equipFreeSlots(p, [got[0]]);   // the freshly-kept card goes straight into any empty slot
+      const got = []; for (let i = 0; i < draws; i++) { const c = drawEquipCard(state, star); if (c) got.push(c); }
+      log(state, `${p.name} 开 ${star} 星补给箱，抽 ${got.length} 留 1${draws === 3 ? "（Gift From Father）" : ""}`, draws === 3 ? "openSupplyGift" : "openSupply", { name: p.name, star, drew: got.length });
+      // a human picks which card to keep (draw N, keep 1); AI / rollout auto-keeps the best
+      if (interactive && p.human && got.length > 1) beginLootChoice(state, p, got, 1, star, "supply");
+      else if (got.length) keepBest(state, p, got, 1, star);
     }
     return true;
   }
@@ -690,7 +692,7 @@
   function canVillageDraw(state, p) { return state.phase === "action" && p.defensePool >= 1 && terrainOf(state, p) === "village" && equipAvailable(state, 1); }
   // is ANY Activate ability available on the player's current hex?
   function canActivateHex(state, p) { return canUpload(state, p) || canVillageDraw(state, p); }
-  function doActivate(state) {
+  function doActivate(state, interactive) {
     const p = curP(state);
     if (canUpload(state, p)) {
       spendDice(state, p, 1, 1); recordAction(state, p, "activate", 1);
@@ -699,15 +701,13 @@
       gainFame(state, p, "beacon", n); p.carryingBeacons = 0;
       return true;
     }
-    if (canVillageDraw(state, p)) {     // Village: draw 3 from the 1★ deck, keep 2, discard the rest
+    if (canVillageDraw(state, p)) {     // Village: draw 3 from the 1★ deck, keep 2 (player chooses; AI keeps best)
       spendDice(state, p, 1, 1); recordAction(state, p, "activate", 1);
       const got = []; for (let i = 0; i < 3; i++) { const c = drawEquipCard(state, 1); if (c) got.push(c); }
-      // keep the 2 highest-utility cards so draw order never discards a clearly-better one (weapons > armor > specials)
-      got.sort((a, b) => equipScore(b) - equipScore(a));
-      got.slice(0, 2).forEach(c => p.backpack.push(c));
-      got.slice(2).forEach(c => state.decks.discard1.push(c));
-      equipFreeSlots(p, got.slice(0, 2));   // the 2 kept cards fill any empty slot so they're usable immediately
-      log(state, `${p.name} 在村庄搜刮装备：抽 ${got.length} 留 ${Math.min(2, got.length)}`, "villageDraw", { name: p.name, drew: got.length, kept: Math.min(2, got.length) });
+      const keep = Math.min(2, got.length);
+      log(state, `${p.name} 在村庄搜刮装备：抽 ${got.length} 留 ${keep}`, "villageDraw", { name: p.name, drew: got.length, kept: keep });
+      if (interactive && p.human && got.length > keep) beginLootChoice(state, p, got, keep, 1, "village");
+      else if (got.length) keepBest(state, p, got, keep, 1);
       return true;
     }
     return false;
@@ -1161,6 +1161,32 @@
       else if (e.slot === "hand" && !p.equipped.hand.includes(id) && handSlotsUsed(p) + (e.hands || 1) <= handCap(p)) p.equipped.hand.push(id);
     }
   }
+  // auto-keep the best `keep` of `drawn` (by equipScore), discard the rest, auto-equip the kept (AI / non-interactive)
+  function keepBest(state, p, drawn, keep, star) {
+    const ranked = drawn.slice().sort((a, b) => equipScore(b) - equipScore(a));
+    const kept = ranked.slice(0, keep);
+    kept.forEach(c => p.backpack.push(c));
+    ranked.slice(keep).forEach(c => state.decks["discard" + star].push(c));
+    equipFreeSlots(p, kept);
+    return kept;
+  }
+  // the human picks which cards to keep: pause with the drawn cards, the UI resolves via resolveLoot()
+  function beginLootChoice(state, p, drawn, keep, star, kind) { state.pendingLoot = { idx: p.idx, drawn, keep, star, kind }; }
+  function resolveLoot(state, keepIndices) {
+    const pl = state.pendingLoot; if (!pl) return false;
+    const p = state.players[pl.idx];
+    let idxs = Array.isArray(keepIndices) ? [...new Set(keepIndices)].filter(i => i >= 0 && i < pl.drawn.length) : [];
+    if (idxs.length !== pl.keep)   // invalid pick → fall back to the best `keep`
+      idxs = pl.drawn.map((id, i) => i).sort((a, b) => equipScore(pl.drawn[b]) - equipScore(pl.drawn[a])).slice(0, pl.keep);
+    const keepSet = new Set(idxs), kept = [], rest = [];
+    pl.drawn.forEach((id, i) => (keepSet.has(i) ? kept : rest).push(id));
+    kept.forEach(c => p.backpack.push(c));
+    rest.forEach(c => state.decks["discard" + pl.star].push(c));
+    equipFreeSlots(p, kept);
+    log(state, `${p.name} 选择保留 ${kept.length} 张装备`, "lootKeep", { name: p.name, kept: kept.length });
+    state.pendingLoot = null;
+    return true;
+  }
   // ---- manual equip (rules 04:00): chosen at turn start, locked once an action die is assigned ----
   function handSlotsUsed(p) { return p.equipped.hand.reduce((s, id) => s + (((byId(id) || {}).hands) || 1), 0); }
   function canEquip(state, p) {
@@ -1426,7 +1452,7 @@
     // turn/action API
     SUPERSTAR_FAME, superstarThreshold, curP, isHumanTurn, legalParachute, parachute,
     legalRuns, doRun, lootOptions, doLoot, droneLootOptions, doDroneLoot, endTurn, beginTurn, towerKey,
-    canUpload, canActivateHex, canVillageDraw, doActivate, bfsStep, resolveEvent,
+    canUpload, canActivateHex, canVillageDraw, doActivate, resolveLoot, bfsStep, resolveEvent,
     // Capture the Flag
     baseKeyOf, canGrabFlag, grabFlag, canScoreFlag, scoreFlag,
     // Hunter's Crown + Earthquake events

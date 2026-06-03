@@ -83,5 +83,36 @@ function placeAt(g, p, key) { p.pos = { q: g.board[key].q, r: g.board[key].r }; 
   A(g.players[0].backpack.length > bp0, "an idle AI on a village draws equipment (backpack grew)");
 }
 
+// 5) human loot CHOICE: interactive draw pauses for the player to pick which to keep; resolveLoot finalizes
+{
+  const g = E.newGame({ numPlayers: 4, seed: 30, allAI: false });
+  const p = g.players[0]; p.human = true;
+  g.activePlayer = p.idx; g.phase = "action"; g.needsParachute = false; p.actionDice = 5; p.defensePool = 5;
+  placeAt(g, p, villageKey(g)); p.backpack = []; p.equipped = { head: null, torso: null, hand: [] };
+  // interactive village draw -> pending choice, nothing kept yet
+  E.doActivate(g, true);
+  A(g.pendingLoot && g.pendingLoot.keep === 2 && g.pendingLoot.drawn.length === 3, "interactive village draw pauses with 3 drawn, keep 2");
+  A(p.backpack.length === 0, "nothing is kept until the player chooses");
+  // choose to keep indices 0 and 2
+  const want = [g.pendingLoot.drawn[0], g.pendingLoot.drawn[2]];
+  A(E.resolveLoot(g, [0, 2]), "resolveLoot finalizes the choice");
+  A(!g.pendingLoot, "pending choice cleared after resolve");
+  A(p.backpack.length === 2 && want.every(id => p.backpack.includes(id)), "exactly the chosen 2 cards are kept");
+
+  // AI / non-interactive path auto-keeps best (no pending)
+  const g2 = E.newGame({ numPlayers: 4, seed: 31, allAI: true });
+  const a = g2.players[0]; g2.activePlayer = a.idx; E.beginTurn(g2);
+  placeAt(g2, a, villageKey(g2)); a.backpack = []; a.defensePool = 5; g2.phase = "action"; g2.needsParachute = false;
+  E.doActivate(g2);   // no interactive flag
+  A(!g2.pendingLoot && a.backpack.length === 2, "AI village draw auto-keeps 2 with no pending choice");
+
+  // invalid pick count falls back to best (never strands the player)
+  const g3 = E.newGame({ numPlayers: 4, seed: 32, allAI: false });
+  const q = g3.players[0]; q.human = true; g3.activePlayer = q.idx; g3.phase = "action"; g3.needsParachute = false; q.defensePool = 5;
+  placeAt(g3, q, villageKey(g3)); q.backpack = []; q.equipped = { head: null, torso: null, hand: [] };
+  E.doActivate(g3, true);
+  A(E.resolveLoot(g3, []) && q.backpack.length === 2, "an empty/invalid pick falls back to keeping the best 2");
+}
+
 console.log(fails ? `HEX ABILITIES TEST FAILED (${fails})` : "HEX ABILITIES TEST PASSED");
 process.exitCode = fails ? 1 : 0;
