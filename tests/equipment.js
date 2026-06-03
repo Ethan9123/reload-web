@@ -149,6 +149,17 @@ A(closeSkullVsVest(5, "machete") === 0, "Machete's skull (no ignoreArmor) is abs
   g2.decks.equip2.push("riot_vest", "semi_auto_pistol");
   E.doDroneLoot(g2, hk, g2.board[hk].tokens.findIndex(t => t.kind === "supply"));
   A(E.equippedRanged(cb) && E.equippedRanged(cb).id === "semi_auto_pistol", "drone-looting a supply box auto-equips the weapon too");
+  // auto-equip only the NEWLY-kept card — gear intentionally left unequipped stays unequipped
+  const g3 = E.newGame({ numPlayers: 4, seed: 73, allAI: true });
+  const q = g3.players[0]; g3.activePlayer = q.idx; E.beginTurn(g3);
+  const qk = Object.keys(g3.board).find(x => !g3.board[x].hasTower);
+  q.pos = { q: g3.board[qk].q, r: g3.board[qk].r }; q.reloadZone = false; g3.needsParachute = false; g3.phase = "action";
+  q.equipped = { head: null, torso: null, hand: [] }; q.backpack = ["machine_gun"]; q.defensePool = 5;  // a 2-hand gun left unequipped on purpose
+  g3.board[qk].tokens.push({ kind: "supply", star: 1 });
+  g3.decks.equip1.push("light_helmet", "sickle");   // kept card = sickle (a 1-hand close weapon)
+  E.doLoot(g3, E.lootOptions(g3, q).findIndex(t => t.kind === "supply"));
+  A(!q.equipped.hand.includes("machine_gun"), "a pre-existing unequipped weapon is NOT auto-equipped by a later loot");
+  A(q.equipped.hand.includes("sickle"), "only the freshly-kept card auto-equips");
 }
 
 console.log(fails ? `EQUIPMENT TEST FAILED (${fails})` : "EQUIPMENT TEST PASSED");

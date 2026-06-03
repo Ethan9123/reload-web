@@ -639,7 +639,7 @@
       const got = []; for (let i = 0; i < draws; i++) { const c = state.decks[dk].pop(); if (c) got.push(c); }
       if (got.length) { p.backpack.push(got[0]); for (let i = 1; i < got.length; i++) state.decks[xk].push(got[i]); }
       log(state, `${p.name} 开 ${tok.star || 2} 星补给箱，抽${got.length}留1${draws === 3 ? "（Gift From Father）" : ""}`, draws === 3 ? "openSupplyGift" : "openSupply", { name: p.name, star: tok.star || 2, drew: got.length });
-      equipFreeSlots(p);   // a freshly-looted weapon/armor goes straight into any empty slot
+      if (got.length) equipFreeSlots(p, [got[0]]);   // the freshly-kept card goes straight into any empty slot
     }
     return true;
   }
@@ -666,7 +666,7 @@
       const a = state.decks[dk].pop(), b = state.decks[dk].pop();
       if (a) p.backpack.push(a); if (b) state.decks[xk].push(b);
       log(state, `🤖 ${p.name} 的无人机巴兹开 ${tok.star || 2}★ 补给箱`, "droneSupply", { name: p.name, star: tok.star || 2 });
-      equipFreeSlots(p);   // drone-looted gear also fills any empty slot
+      if (a) equipFreeSlots(p, [a]);   // the drone-kept card fills any empty slot
     }
     return true;
   }
@@ -706,7 +706,7 @@
       got.sort((a, b) => equipScore(b) - equipScore(a));
       got.slice(0, 2).forEach(c => p.backpack.push(c));
       got.slice(2).forEach(c => state.decks.discard1.push(c));
-      equipFreeSlots(p);   // kept gear fills any empty slot so it's usable immediately
+      equipFreeSlots(p, got.slice(0, 2));   // the 2 kept cards fill any empty slot so they're usable immediately
       log(state, `${p.name} 在村庄搜刮装备：抽 ${got.length} 留 ${Math.min(2, got.length)}`, "villageDraw", { name: p.name, drew: got.length, kept: Math.min(2, got.length) });
       return true;
     }
@@ -1150,11 +1150,11 @@
     const tryHand = (e) => { if (!e) return; const need = e.hands || 1; if (used + need <= cap) { p.equipped.hand.push(e.id); used += need; } };
     tryHand(ranged[0]); tryHand(close[0]); tryHand(ranged[1]); tryHand(close[1]);
   }
-  // Fill ONLY empty equipment slots from the backpack (never swaps/unequips), so newly-looted gear is
-  // usable the moment you pick it up (rulebook: you may equip newly-acquired equipment during your turn).
-  // Used after a mid-turn loot/draw — fixes "I looted a gun but couldn't shoot".
-  function equipFreeSlots(p) {
-    for (const id of p.backpack) {
+  // Equip the NEWLY-acquired cards (ids) into any empty slot — never swaps, never touches gear the player
+  // intentionally left unequipped. Rulebook: only newly-acquired equipment may be equipped mid-turn.
+  // Fixes "I looted a gun but couldn't shoot" without bypassing the turn-start equipment lock.
+  function equipFreeSlots(p, ids) {
+    for (const id of (ids || [])) {
       const e = byId(id); if (!e || e.slot === "special") continue;
       if (e.slot === "head" && !p.equipped.head) p.equipped.head = id;
       else if (e.slot === "torso" && !p.equipped.torso) p.equipped.torso = id;
