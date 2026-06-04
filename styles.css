@@ -196,6 +196,13 @@ button.small { padding: 4px 10px; font-size: 13px; cursor: pointer; }
 .cb-actions { flex: none; display: flex; flex-direction: column; gap: 5px; }
 .cb-act { display: flex; align-items: center; gap: 7px; font-size: 12px; color: #aab0bc; background: #181d26; border: 1px solid #262c38; border-radius: 6px; padding: 4px 9px 4px 6px; }
 .cb-act-i { display: inline-flex; width: 22px; height: 22px; align-items: center; justify-content: center; background: #232a36; border-radius: 5px; font-size: 13px; }
+/* dice physically placed on an action space this turn (the tabletop ritual) */
+.cb-act.on { border-color: #4a6b8a; background: #1c2532; color: #e8eef6; }
+.cb-act-dice { margin-left: auto; display: inline-flex; gap: 3px; }
+.cb-act-dice .die { width: 17px; height: 17px; font-size: 11px; background: #e8eef6; color: #11141a; font-weight: 700; border-radius: 3px; }
+/* HUD chip: which action a placed die went on (glyph + value) */
+.ph-chip { display: inline-flex; align-items: center; gap: 1px; font-size: 11px; background: #232a36; border-radius: 4px; padding: 0 4px; height: 16px; margin-right: 2px; }
+.ph-chip b { color: #e8eef6; }
 .cb-art { flex: none; }
 .cb-art .cb-card { height: 240px; }
 .cb-art .cb-cardfallback { height: 240px; width: 170px; }

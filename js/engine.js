@@ -101,6 +101,7 @@
       equipped: { head: null, torso: null, hand: [] },
       backpack: [],                    // equipment ids (facedown)
       carryingBeacons: 0,
+      actionsThisTurn: [],             // {kind,die} placed on action spaces this turn (for the board's dice-placement view)
       hideout: null,                   // hex key of own hideout, or null
       barriersUsed: 0, trapsUsed: 0,   // placed counts (max 6 each)
       _noMove: false,                  // set when a trap tie stops further movement this turn
@@ -382,6 +383,8 @@
   // dice animation for both the human and the AI (combat has its own overlay, so it isn't recorded here).
   function recordAction(state, p, kind, die) {
     (state.actionFeed || (state.actionFeed = [])).push({ by: p.idx, kind, die: die == null ? 1 : die, hex: p.pos ? hexKey(p.pos.q, p.pos.r) : null, seq: (state._actSeq = (state._actSeq || 0) + 1) });
+    // turn-scoped record of which action each placed die went to — drives the "dice on action spaces" board view
+    (p.actionsThisTurn || (p.actionsThisTurn = [])).push({ kind, die: die == null ? 1 : die });
     if (state.actionFeed.length > 60) state.actionFeed.shift();
   }
   function curP(state) { return state.players[state.activePlayer]; }
@@ -480,7 +483,7 @@
   function beginTurn(state) {
     const p = curP(state);
     p.actionDice = START_ACTION_DICE - p.injuries;       // injuries reduce available dice
-    p.defensePool = p.actionDice; p.assigned = 0; p.assignedDice = []; p.boost = false; p.boostDice = 0; p.combatLine = [];
+    p.defensePool = p.actionDice; p.assigned = 0; p.assignedDice = []; p.boost = false; p.boostDice = 0; p.combatLine = []; p.actionsThisTurn = [];
     p._closeEndedTurn = false; p._noMove = false; p.hasActed = false; p._gaveThisTurn = false; p._runBonus = false; p._runBonusUsed = false;
     p._freeBuildUsed = false; p._revealed = false; p._droneUsed = false; p._wallCombo = 0;   // Betty free-build / Echo cloak / Cody drone / wall-combo reset each turn
     for (const x of state.players) x._injFameTurn = 0;   // DOUBLE TROUBLE counts injury fame within a single turn

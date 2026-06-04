@@ -73,5 +73,19 @@ function setup(seed) {
   A(sawFeed, "AI turns populate the action feed");
 }
 
+// per-action dice placement: p.actionsThisTurn records which action each placed die went on, resets each turn
+{
+  const { g, p, tk } = setup(7);
+  A((p.actionsThisTurn || []).length === 0, "actionsThisTurn starts empty");
+  g.board[tk].tokens = [{ kind: "beacon" }];
+  E.doLoot(g, 0);                 // loot on the tower hex
+  const runs = E.legalRuns(g, p); if (runs.length) E.doRun(g, runs[0]);   // then a run
+  const kinds = p.actionsThisTurn.map(a => a.kind);
+  A(kinds.includes("loot") && (kinds.includes("run") || kinds.includes("portal")), "actionsThisTurn records the action each die was placed on");
+  A(p.actionsThisTurn.every(a => typeof a.die === "number"), "each placement records the die value");
+  E.beginTurn(g);
+  A(p.actionsThisTurn.length === 0, "actionsThisTurn resets at the start of the next turn");
+}
+
 console.log(fails ? `ACTIONFEED TEST FAILED (${fails})` : "ACTIONFEED TEST PASSED");
 process.exitCode = fails ? 1 : 0;
