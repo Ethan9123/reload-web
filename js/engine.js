@@ -101,6 +101,7 @@
       equipped: { head: null, torso: null, hand: [] },
       backpack: [],                    // equipment ids (facedown)
       carryingBeacons: 0,
+      actionsThisTurn: [],             // {kind,die} placed on action spaces this turn (for the board's dice-placement view)
       hideout: null,                   // hex key of own hideout, or null
       barriersUsed: 0, trapsUsed: 0,   // placed counts (max 6 each)
       _noMove: false,                  // set when a trap tie stops further movement this turn
@@ -480,7 +481,7 @@
   function beginTurn(state) {
     const p = curP(state);
     p.actionDice = START_ACTION_DICE - p.injuries;       // injuries reduce available dice
-    p.defensePool = p.actionDice; p.assigned = 0; p.assignedDice = []; p.boost = false; p.boostDice = 0; p.combatLine = [];
+    p.defensePool = p.actionDice; p.assigned = 0; p.assignedDice = []; p.boost = false; p.boostDice = 0; p.combatLine = []; p.actionsThisTurn = [];
     p._closeEndedTurn = false; p._noMove = false; p.hasActed = false; p._gaveThisTurn = false; p._runBonus = false; p._runBonusUsed = false;
     p._freeBuildUsed = false; p._revealed = false; p._droneUsed = false; p._wallCombo = 0;   // Betty free-build / Echo cloak / Cody drone / wall-combo reset each turn
     for (const x of state.players) x._injFameTurn = 0;   // DOUBLE TROUBLE counts injury fame within a single turn
@@ -565,14 +566,19 @@
   function sortCombatLine(line) { return line.filter(isNumericDie).sort((a, b) => b - a); }
   // dice available for COMBAT/injury = pool minus the Energy Drink boost dice (which can't be used in combat / as injury)
   function combatDice(p) { return p.defensePool - (p.boostDice || 0); }
-  function spendDice(state, p, n, face) {
+  function spendDice(state, p, n, face, kind) {
     const f = face == null ? 1 : face;
     for (let i = 0; i < n; i++) {
       if (p.defensePool <= 0) break;
       const realAvail = p.defensePool - (p.boostDice || 0);   // real action dice remaining before this spend
       p.defensePool -= 1;
-      if (realAvail > 0) p.assignedDice.push(f);              // a real action die -> becomes a combat-line die in End Phase
-      else p.boostDice = Math.max(0, (p.boostDice || 0) - 1); // the Energy Drink boost die: spent now, never enters the combat line / injury zone
+      if (realAvail > 0) {
+        p.assignedDice.push(f);                               // a real action die -> becomes a combat-line die in End Phase
+        if (kind) (p.actionsThisTurn || (p.actionsThisTurn = [])).push({ kind, die: f });   // one record per die ACTUALLY placed
+      } else {
+        p.boostDice = Math.max(0, (p.boostDice || 0) - 1);    // the Energy Drink/solar boost die: spent now, never enters the combat line / injury zone
+        if (kind) (p.actionsThisTurn || (p.actionsThisTurn = [])).push({ kind, die: "⚡", boost: true });   // boost die placed on an action space (not injurable)
+      }
     }
     p.assigned = p.assignedDice.length;
     p.hasActed = true;                                        // locks equipment for the rest of the turn (survives injury die-pops)
@@ -585,7 +591,7 @@
     let line = sortCombatLine([...(p.combatLine || []), ...(p.assignedDice || [])]);
     if (line.length > p.actionDice) line = line.slice(0, p.actionDice);
     p.combatLine = line;
-    p.assignedDice = []; p.assigned = 0; p.boostDice = 0;
+    p.assignedDice = []; p.assigned = 0; p.boostDice = 0; p.actionsThisTurn = [];   // dice moved off action spaces onto the combat line
     p.defensePool = Math.max(0, p.actionDice - p.combatLine.length);
   }
   function hasFriendlyHideout(state, p) {
@@ -612,7 +618,7 @@
     const cur = hexKey(p.pos.q, p.pos.r);
     const portalJump = state.board[cur].portal && state.board[toKey].portal && dirIndex(p.pos, state.board[toKey]) < 0;
     if (blitzBonusStep(p)) { p._runBonus = false; p._runBonusUsed = true; p.hasActed = true; log(state, `⚡ ${p.name} 疾速：追加一步`, "blitzStep", { name: p.name }); }  // free bonus hex
-    else { spendDice(state, p, portalJump ? 1 : runCost(state, toKey, p), 1); if (p.character === "blitz" && !p._runBonusUsed) p._runBonus = true; } // a paid Run unlocks the bonus step
+    else { spendDice(state, p, portalJump ? 1 : runCost(state, toKey, p), 1, portalJump ? "portal" : "run"); if (p.character === "blitz" && !p._runBonusUsed) p._runBonus = true; } // a paid Run unlocks the bonus step
     const c = state.board[toKey]; p.pos = { q: c.q, r: c.r };
     recordAction(state, p, portalJump ? "portal" : "run", 1);
     log(state, `${p.name} ${portalJump ? "穿越传送门到" : "移动到"} ${c.terrain}`, portalJump ? "portal" : "move", { name: p.name, terrain: c.terrain });
@@ -631,7 +637,7 @@
     const cell = state.board[hexKey(p.pos.q, p.pos.r)];
     const tok = cell.tokens.filter(isLootable)[tokenIdx];   // tokenIdx indexes the lootable list (matches lootOptions)
     if (!tok) return false;
-    spendDice(state, p, 1, 1); recordAction(state, p, "loot", 1); cell.tokens.splice(cell.tokens.indexOf(tok), 1);
+    spendDice(state, p, 1, 1, "loot"); recordAction(state, p, "loot", 1); cell.tokens.splice(cell.tokens.indexOf(tok), 1);
     if (tok.kind === "beacon") { p.carryingBeacons += 1; log(state, `${p.name} 拾取信标（需带到中央塔上缴）`, "lootBeacon", { name: p.name }); }
     else if (tok.kind === "crown") { grabCrown(state, p); }
     else if (tok.kind === "supply") {
@@ -660,7 +666,7 @@
     if (key !== here && !neighbors(state, p.pos.q, p.pos.r).includes(key)) return false;   // current or adjacent only
     const cell = state.board[key]; if (!cell) return false;
     const tok = cell.tokens[tokenIdx]; if (!tok || !isLootable(tok)) return false;   // never drone-loot a CTF flag
-    spendDice(state, p, 1, 1); recordAction(state, p, "loot", 1); cell.tokens.splice(tokenIdx, 1); p._droneUsed = true;
+    spendDice(state, p, 1, 1, "loot"); recordAction(state, p, "loot", 1); cell.tokens.splice(tokenIdx, 1); p._droneUsed = true;
     if (tok.kind === "beacon") { p.carryingBeacons += 1; log(state, `🤖 ${p.name} 的无人机巴兹拾取信标`, "droneBeacon", { name: p.name }); }
     else if (tok.kind === "crown") { grabCrown(state, p); }   // Hunter's Crown is grabbable by the drone too
     else if (tok.kind === "supply") {
@@ -695,14 +701,14 @@
   function doActivate(state, interactive) {
     const p = curP(state);
     if (canUpload(state, p)) {
-      spendDice(state, p, 1, 1); recordAction(state, p, "activate", 1);
+      spendDice(state, p, 1, 1, "activate"); recordAction(state, p, "activate", 1);
       const n = p.carryingBeacons, fame = n * FAME.beacon.value;
       log(state, `${p.name} 在中央塔上传 ${n} 个信标 → +${fame} 名望`, "upload", { name: p.name, n, fame });
       gainFame(state, p, "beacon", n); p.carryingBeacons = 0;
       return true;
     }
     if (canVillageDraw(state, p)) {     // Village: draw 3 from the 1★ deck, keep 2 (player chooses; AI keeps best)
-      spendDice(state, p, 1, 1); recordAction(state, p, "activate", 1);
+      spendDice(state, p, 1, 1, "activate"); recordAction(state, p, "activate", 1);
       const got = []; for (let i = 0; i < 3; i++) { const c = drawEquipCard(state, 1); if (c) got.push(c); }
       const keep = Math.min(2, got.length);
       log(state, `${p.name} 在村庄搜刮装备：抽 ${got.length} 留 ${keep}`, "villageDraw", { name: p.name, drew: got.length, kept: keep });
@@ -727,7 +733,7 @@
     const p = curP(state); if (!canGrabFlag(state, p)) return false;
     const et = enemyTeamOf(p), cell = state.board[hexKey(p.pos.q, p.pos.r)];
     const i = cell.tokens.findIndex(t => t.kind === "flag" && t.team === et); if (i < 0) return false;
-    spendDice(state, p, 1, 1); recordAction(state, p, "loot", 1);
+    spendDice(state, p, 1, 1, "loot"); recordAction(state, p, "loot", 1);
     cell.tokens.splice(i, 1); p.carryingFlag = et; state.flags[et].carrier = p.idx; state.flags[et].at = null;
     log(state, `🚩 ${p.name} 夺取了队伍${et + 1}的旗帜！`, "grabFlag", { name: p.name, team: et + 1 });
     return true;
@@ -743,7 +749,7 @@
   function scoreFlag(state) {
     const p = curP(state); if (!canScoreFlag(state, p)) return false;
     const t = p.carryingFlag;
-    spendDice(state, p, 1, 1); recordAction(state, p, "activate", 1);
+    spendDice(state, p, 1, 1, "activate"); recordAction(state, p, "activate", 1);
     p.carryingFlag = null; returnFlagHome(state, t); state.captures[p.team] = (state.captures[p.team] || 0) + 1;
     log(state, `🏁 ${p.name} 将旗帜带回基地，夺旗成功！ +${FAME.flag.value} 名望`, "scoreFlag", { name: p.name, n: FAME.flag.value });
     gainFame(state, p, "flag", 1);   // one Flag fame token (worth FAME.flag.value on the track)
@@ -838,7 +844,7 @@
     if (p.character === "emmet" && die !== "skull") die = rollDie(state.rnd);   // Emmet — Field Medic: re-roll the heal die (skull = +1)
     const base = target === p ? 1 : 2;                                          // healing a teammate restores 2 (rules p.8)
     const heal = Math.min(target.injuries, base + (die === "skull" ? 1 : 0));   // skull +1
-    spendDice(state, p, 1, die); recordAction(state, p, "heal", die);
+    spendDice(state, p, 1, die, "heal"); recordAction(state, p, "heal", die);
     target.injuries -= heal; target.actionDice = START_ACTION_DICE - target.injuries; target.defensePool += heal;
     if (target !== p) { log(state, `${p.name} 治疗队友 ${target.name}：掷${die === "skull" ? "骷髅" : die}，恢复 ${heal} 点（+1 团队精神）`, "healMate", { name: p.name, mate: target.name, heal }); gainFame(state, p, "teamSpirit", 1); }
     else log(state, `${p.name} 治疗：掷${die === "skull" ? "骷髅(+2)" : die}，恢复 ${heal} 点伤`, "healSelf", { name: p.name, heal });
@@ -860,9 +866,9 @@
   const SETUP_WALLS = SETUP.walls, SETUP_TRAPS = SETUP.traps;
   function noEnemyHere(state, p) { return !!p.pos && !enemyOnHex(state, p); }   // teammates sharing the hex don't restrict
   function bettyFreeBuild(p) { return p.character === "betty" && !p._freeBuildUsed; }   // Betty — Demolitions: one free Build per turn
-  function payBuild(state, p) {                                                          // a Build action: free for Betty's first, else 1 action die
+  function payBuild(state, p, kind) {                                                    // a Build action: free for Betty's first, else 1 action die
     if (bettyFreeBuild(p)) { p._freeBuildUsed = true; p.hasActed = true; }
-    else spendDice(state, p, 1, 1);
+    else spendDice(state, p, 1, 1, kind || "barrier");
   }
   function canBuild(state, p) { return state.phase === "action" && (p.defensePool >= 1 || bettyFreeBuild(p)) && noEnemyHere(state, p); }
   function emptyEdges(state, p) {
@@ -882,7 +888,7 @@
     if (combo) { if (p._wallCombo !== 1 || state.phase !== "action" || !noEnemyHere(state, p)) return false; }
     else if (!canBuild(state, p)) return false;
     if (wallsUsed(state, p) >= SETUP_WALLS || !emptyEdges(state, p).includes(edge)) return false;  // teams share the 6-wall limit
-    if (!combo) payBuild(state, p);
+    if (!combo) payBuild(state, p, "barrier");   // the free 2nd wall spends no die, so it adds no placement
     state.board[hexKey(p.pos.q, p.pos.r)].walls[edge] = p.idx; p.barriersUsed++;
     p._wallCombo = combo ? 0 : 1;                  // a paid 1st wall opens a free 2nd; the 2nd closes it
     if (!combo) recordAction(state, p, "barrier", 1);
@@ -894,14 +900,14 @@
     if (cell.walls[edge] == null) return false;
     const owner = cell.walls[edge]; delete cell.walls[edge];
     if (typeof owner === "number" && state.players[owner]) state.players[owner].barriersUsed = Math.max(0, state.players[owner].barriersUsed - 1);
-    payBuild(state, p); recordAction(state, p, "demolish", 1); log(state, `${p.name} 拆除屏障`, "demolishBarrier", { name: p.name }); return true;
+    payBuild(state, p, "demolish"); recordAction(state, p, "demolish", 1); log(state, `${p.name} 拆除屏障`, "demolishBarrier", { name: p.name }); return true;
   }
   function doBuildHideout(state) {
     const p = curP(state); if (!canBuild(state, p)) return false;
     const k = hexKey(p.pos.q, p.pos.r);
     if (state.board[k].hideouts.length) return false;
     if (p.hideout && state.board[p.hideout]) state.board[p.hideout].hideouts = state.board[p.hideout].hideouts.filter(h => h !== p.idx);
-    payBuild(state, p); state.board[k].hideouts.push(p.idx); p.hideout = k;
+    payBuild(state, p, "hideout"); state.board[k].hideouts.push(p.idx); p.hideout = k;
     recordAction(state, p, "hideout", 1);
     log(state, `${p.name} 设置藏身处`, "buildHideout", { name: p.name }); return true;
   }
@@ -913,13 +919,13 @@
     if (idx < 0) return false;
     const owner = cell.hideouts.splice(idx, 1)[0];
     if (state.players[owner]) state.players[owner].hideout = null;
-    payBuild(state, p); recordAction(state, p, "demolish", 1); log(state, `${p.name} 拆除藏身处`, "demolishHideout", { name: p.name }); return true;
+    payBuild(state, p, "demolish"); recordAction(state, p, "demolish", 1); log(state, `${p.name} 拆除藏身处`, "demolishHideout", { name: p.name }); return true;
   }
   function doBuildTrap(state) {
     const p = curP(state); if (!canBuild(state, p) || p.trapsUsed >= SETUP_TRAPS) return false;
     const cell = state.board[hexKey(p.pos.q, p.pos.r)];
     if (cell.trap != null) return false;
-    payBuild(state, p); cell.trap = p.idx; p.trapsUsed++;
+    payBuild(state, p, "trap"); cell.trap = p.idx; p.trapsUsed++;
     recordAction(state, p, "trap", 1);
     log(state, `${p.name} 埋设陷阱`, "buildTrap", { name: p.name });
     // Team Spirit: building a trap in the same hex as a teammate scores +1 (rules 002 modules)
@@ -1289,7 +1295,7 @@
     p.combatLine = sortCombatLine(p.combatLine || []);
     if (p.combatLine.length) { p.combatLine.pop(); return "combatLine"; }
     if (combatDice(p) > 0) { p.defensePool -= 1; return "defensePool"; }   // boost dice can't be taken as injury
-    if (p.assignedDice && p.assignedDice.length) { p.assignedDice.pop(); p.assigned = p.assignedDice.length; return "assigned"; }
+    if (p.assignedDice && p.assignedDice.length) { p.assignedDice.pop(); if (p.actionsThisTurn) { for (let i = p.actionsThisTurn.length - 1; i >= 0; i--) if (!p.actionsThisTurn[i].boost) { p.actionsThisTurn.splice(i, 1); break; } } p.assigned = p.assignedDice.length; return "assigned"; }   // drop the matching REAL placement (boost dice can't be injured)
     return "none";
   }
   function takeInjuries(state, p, n, opts) {
@@ -1342,7 +1348,7 @@
     p.equipped = { head: null, torso: null, hand: [] }; p.backpack = [];
     const a = state.decks.equip2.pop(), b = state.decks.equip2.pop();
     if (a) p.backpack.push(a); if (b) state.decks.discard2.push(b);
-    p.injuries = 0; p.actionDice = START_ACTION_DICE; p.defensePool = 0; p.assigned = 0; p.assignedDice = [];
+    p.injuries = 0; p.actionDice = START_ACTION_DICE; p.defensePool = 0; p.assigned = 0; p.assignedDice = []; p.actionsThisTurn = [];
     p.pos = null; p.reloadZone = true; p.combatLine = []; p._runBonus = false; p._runBonusUsed = true; p._noMove = false;
     log(state, `💥 ${p.name} 被迫 RELOAD！丢弃装备，回到跳伞区`, "reloadForced", { name: p.name });
     if (attacker) {
@@ -1358,7 +1364,7 @@
     T._lastAttacker = A.idx;                                              // remember the aggressor (Vendetta persona)
     const w = equippedRanged(A); assignValue = assignValue || 3;
     if (A.character === "echo") A._revealed = true;                        // firing reveals Echo
-    spendDice(state, A, 1, assignValue);
+    spendDice(state, A, 1, assignValue, "ranged");
     const shooterDice = rollDice(state.rnd, Math.min(4, (w.dice || 2) + equipSum(A, "diceBonus")));   // Sniper Helmet +1 die (max 4)
     if (A.character === "duke") bumpOneDie(shooterDice, assignValue, w);   // Duke — Sharpshooter
     if (A.character === "diana") rerollLowestDie(state, shooterDice);      // Diana — Huntress: re-roll one shooting die
@@ -1402,7 +1408,7 @@
     if (!closeTargets(state, A).includes(targetIdx)) return false;
     if (hasTruce(state, A.idx, T.idx)) breakTruce(state, A.idx, T.idx);   // attacking a truce partner = betrayal
     T._lastAttacker = A.idx; A._lastAttacker = T.idx;                     // close combat is mutual (Vendetta persona)
-    spendDice(state, A, 1, 1);
+    spendDice(state, A, 1, 1, "close");
     if (A.character === "echo") A._revealed = true;                       // close combat reveals Echo (attacker)
     if (T.character === "echo") T._revealed = true;                       // ...or defender
     const aRaw = rollDice(state.rnd, ownedDice(A)), tRaw = rollDice(state.rnd, ownedDice(T));
