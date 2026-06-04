@@ -132,7 +132,7 @@ function setup(seed) {
 // a boost die spent on an action is recorded as a (boost) placement so it doesn't vanish from the view
 {
   const { g, p, tk } = setup(12);
-  p.defensePool = 0; p.boostDice = 1; p.assignedDice = []; p.actionsThisTurn = [];   // only a boost die available
+  p.defensePool = 1; p.boostDice = 1; p.assignedDice = []; p.actionsThisTurn = [];   // pool of 1, and it's the boost die (realAvail = 0)
   g.board[tk].tokens = [{ kind: "beacon" }];
   E.doLoot(g, 0);
   const boostEntry = p.actionsThisTurn.find(x => x.boost);
