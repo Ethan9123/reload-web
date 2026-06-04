@@ -575,7 +575,10 @@
       if (realAvail > 0) {
         p.assignedDice.push(f);                               // a real action die -> becomes a combat-line die in End Phase
         if (kind) (p.actionsThisTurn || (p.actionsThisTurn = [])).push({ kind, die: f });   // one record per die ACTUALLY placed
-      } else p.boostDice = Math.max(0, (p.boostDice || 0) - 1); // the Energy Drink boost die: spent now, never enters the combat line / injury zone
+      } else {
+        p.boostDice = Math.max(0, (p.boostDice || 0) - 1);    // the Energy Drink/solar boost die: spent now, never enters the combat line / injury zone
+        if (kind) (p.actionsThisTurn || (p.actionsThisTurn = [])).push({ kind, die: "⚡", boost: true });   // boost die placed on an action space (not injurable)
+      }
     }
     p.assigned = p.assignedDice.length;
     p.hasActed = true;                                        // locks equipment for the rest of the turn (survives injury die-pops)
@@ -1292,7 +1295,7 @@
     p.combatLine = sortCombatLine(p.combatLine || []);
     if (p.combatLine.length) { p.combatLine.pop(); return "combatLine"; }
     if (combatDice(p) > 0) { p.defensePool -= 1; return "defensePool"; }   // boost dice can't be taken as injury
-    if (p.assignedDice && p.assignedDice.length) { p.assignedDice.pop(); if (p.actionsThisTurn && p.actionsThisTurn.length) p.actionsThisTurn.pop(); p.assigned = p.assignedDice.length; return "assigned"; }   // keep the action-space placement view in sync
+    if (p.assignedDice && p.assignedDice.length) { p.assignedDice.pop(); if (p.actionsThisTurn) { for (let i = p.actionsThisTurn.length - 1; i >= 0; i--) if (!p.actionsThisTurn[i].boost) { p.actionsThisTurn.splice(i, 1); break; } } p.assigned = p.assignedDice.length; return "assigned"; }   // drop the matching REAL placement (boost dice can't be injured)
     return "none";
   }
   function takeInjuries(state, p, n, opts) {

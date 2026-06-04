@@ -129,5 +129,16 @@ function setup(seed) {
   A(p.actionsThisTurn.length === 0, "RELOAD clears the action-space placements");
 }
 
+// a boost die spent on an action is recorded as a (boost) placement so it doesn't vanish from the view
+{
+  const { g, p, tk } = setup(12);
+  p.defensePool = 0; p.boostDice = 1; p.assignedDice = []; p.actionsThisTurn = [];   // only a boost die available
+  g.board[tk].tokens = [{ kind: "beacon" }];
+  E.doLoot(g, 0);
+  const boostEntry = p.actionsThisTurn.find(x => x.boost);
+  A(boostEntry && boostEntry.kind === "loot", "a boost die placed on an action is recorded (flagged boost)");
+  A(p.assignedDice.length === 0, "the boost placement is NOT in assignedDice (never a combat-line/injury die)");
+}
+
 console.log(fails ? `ACTIONFEED TEST FAILED (${fails})` : "ACTIONFEED TEST PASSED");
 process.exitCode = fails ? 1 : 0;
