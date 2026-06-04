@@ -544,7 +544,7 @@
                      Array.from({ length: boost }, () => `<span class="die boost">⚡</span>`).join("")) ||
                     `<i class="lg-dim">${T("legend.nodice")}</i>`;
       // dice already placed this turn, tagged with WHICH action space they went on (the tabletop ritual)
-      const placed = (p.actionsThisTurn || []).map(a => `<span class="ph-chip">${ACT_GLYPH[a.kind] || "·"}<b>${a.die}</b></span>`).join("");
+      const placed = (p.actionsThisTurn || []).map(a => `<span class="ph-chip">${ACT_GLYPH[a.kind] || "·"}<b>${dieFace(a.die)}</b></span>`).join("");
       // what's equipped to attack with — or a nudge if a weapon is sitting unequipped in the backpack
       const rw = E.equippedRanged(p), cw = E.equippedClose(p);
       let weapon = "";
@@ -1037,7 +1037,7 @@
       </div>
       <div class="cb-boardmain">
         <div class="cb-actions">${[["➤", "act.move", ["run", "portal"]], ["✋", "act.loot", ["loot"]], ["⚙", "act.activate", ["activate"]], ["🔨", "act.build", ["barrier", "trap", "hideout", "demolish"]], ["✚", "act.heal", ["heal"]], ["🔫", "act.ranged", ["ranged"]], ["🗡", "act.melee", ["close"]]].map(a => {
-          const placed = (p.actionsThisTurn || []).filter(x => a[2].includes(x.kind)).map(x => `<span class="die used">${x.die}</span>`).join("");
+          const placed = (p.actionsThisTurn || []).filter(x => a[2].includes(x.kind)).map(x => `<span class="die used">${dieFace(x.die)}</span>`).join("");
           return `<div class="cb-act${placed ? " on" : ""}"><span class="cb-act-i">${a[0]}</span>${T(a[1])}${placed ? `<span class="cb-act-dice">${placed}</span>` : ""}</div>`;
         }).join("")}</div>
         <div class="cb-art">${emblemSVG(p, ch, 200)}</div>

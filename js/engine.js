@@ -885,8 +885,7 @@
     if (combo) { if (p._wallCombo !== 1 || state.phase !== "action" || !noEnemyHere(state, p)) return false; }
     else if (!canBuild(state, p)) return false;
     if (wallsUsed(state, p) >= SETUP_WALLS || !emptyEdges(state, p).includes(edge)) return false;  // teams share the 6-wall limit
-    if (!combo) payBuild(state, p, "barrier");
-    else (p.actionsThisTurn || (p.actionsThisTurn = [])).push({ kind: "barrier", die: 1 });   // the free 2nd wall is still a placed wall
+    if (!combo) payBuild(state, p, "barrier");   // the free 2nd wall spends no die, so it adds no placement
     state.board[hexKey(p.pos.q, p.pos.r)].walls[edge] = p.idx; p.barriersUsed++;
     p._wallCombo = combo ? 0 : 1;                  // a paid 1st wall opens a free 2nd; the 2nd closes it
     if (!combo) recordAction(state, p, "barrier", 1);
