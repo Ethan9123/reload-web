@@ -591,7 +591,7 @@
     let line = sortCombatLine([...(p.combatLine || []), ...(p.assignedDice || [])]);
     if (line.length > p.actionDice) line = line.slice(0, p.actionDice);
     p.combatLine = line;
-    p.assignedDice = []; p.assigned = 0; p.boostDice = 0;
+    p.assignedDice = []; p.assigned = 0; p.boostDice = 0; p.actionsThisTurn = [];   // dice moved off action spaces onto the combat line
     p.defensePool = Math.max(0, p.actionDice - p.combatLine.length);
   }
   function hasFriendlyHideout(state, p) {

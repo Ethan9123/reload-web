@@ -140,5 +140,15 @@ function setup(seed) {
   A(p.assignedDice.length === 0, "the boost placement is NOT in assignedDice (never a combat-line/injury die)");
 }
 
+// ending the turn moves dice off action spaces onto the combat line — placements must clear (no double-show)
+{
+  const { g, p, tk } = setup(13);
+  g.board[tk].tokens = [{ kind: "beacon" }];
+  E.doLoot(g, 0);
+  A(p.actionsThisTurn.length > 0, "has a placement mid-turn");
+  E.endTurn(g);
+  A(p.actionsThisTurn.length === 0, "End Phase clears action-space placements (dice now on the combat line)");
+}
+
 console.log(fails ? `ACTIONFEED TEST FAILED (${fails})` : "ACTIONFEED TEST PASSED");
 process.exitCode = fails ? 1 : 0;
