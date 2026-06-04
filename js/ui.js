@@ -1036,7 +1036,7 @@
         </div>
       </div>
       <div class="cb-boardmain">
-        <div class="cb-actions">${[["➤", "act.move", ["run", "portal"]], ["✋", "act.loot", ["loot"]], ["⚙", "act.activate", ["activate"]], ["🔨", "act.build", ["barrier", "trap", "hideout", "demolish"]], ["✚", "act.heal", ["heal"]], ["🔫", "act.ranged", []], ["🗡", "act.melee", []]].map(a => {
+        <div class="cb-actions">${[["➤", "act.move", ["run", "portal"]], ["✋", "act.loot", ["loot"]], ["⚙", "act.activate", ["activate"]], ["🔨", "act.build", ["barrier", "trap", "hideout", "demolish"]], ["✚", "act.heal", ["heal"]], ["🔫", "act.ranged", ["ranged"]], ["🗡", "act.melee", ["close"]]].map(a => {
           const placed = (p.actionsThisTurn || []).filter(x => a[2].includes(x.kind)).map(x => `<span class="die used">${x.die}</span>`).join("");
           return `<div class="cb-act${placed ? " on" : ""}"><span class="cb-act-i">${a[0]}</span>${T(a[1])}${placed ? `<span class="cb-act-dice">${placed}</span>` : ""}</div>`;
         }).join("")}</div>
@@ -1195,7 +1195,7 @@
   }
   // an action die "drops" onto the target hex (placed, not rolled)
   // ---- per-action dice animation: every action drops a die showing its VALUE + an action glyph ----
-  const ACT_GLYPH = { run: "🏃", portal: "🌀", loot: "🎒", activate: "📡", heal: "➕", barrier: "🧱", trap: "💣", hideout: "🏠", demolish: "🛠" };
+  const ACT_GLYPH = { run: "🏃", portal: "🌀", loot: "🎒", activate: "📡", heal: "➕", barrier: "🧱", trap: "💣", hideout: "🏠", demolish: "🛠", ranged: "🔫", close: "🗡" };
   const dieFace = (v) => (v === "skull" ? "💀" : v);
   function animateActionDie(entry) {
     const svg = $("board"); if (!svg || !entry || !entry.hex) return Promise.resolve();
