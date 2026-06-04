@@ -1292,7 +1292,7 @@
     p.combatLine = sortCombatLine(p.combatLine || []);
     if (p.combatLine.length) { p.combatLine.pop(); return "combatLine"; }
     if (combatDice(p) > 0) { p.defensePool -= 1; return "defensePool"; }   // boost dice can't be taken as injury
-    if (p.assignedDice && p.assignedDice.length) { p.assignedDice.pop(); p.assigned = p.assignedDice.length; return "assigned"; }
+    if (p.assignedDice && p.assignedDice.length) { p.assignedDice.pop(); if (p.actionsThisTurn && p.actionsThisTurn.length) p.actionsThisTurn.pop(); p.assigned = p.assignedDice.length; return "assigned"; }   // keep the action-space placement view in sync
     return "none";
   }
   function takeInjuries(state, p, n, opts) {
@@ -1345,7 +1345,7 @@
     p.equipped = { head: null, torso: null, hand: [] }; p.backpack = [];
     const a = state.decks.equip2.pop(), b = state.decks.equip2.pop();
     if (a) p.backpack.push(a); if (b) state.decks.discard2.push(b);
-    p.injuries = 0; p.actionDice = START_ACTION_DICE; p.defensePool = 0; p.assigned = 0; p.assignedDice = [];
+    p.injuries = 0; p.actionDice = START_ACTION_DICE; p.defensePool = 0; p.assigned = 0; p.assignedDice = []; p.actionsThisTurn = [];
     p.pos = null; p.reloadZone = true; p.combatLine = []; p._runBonus = false; p._runBonusUsed = true; p._noMove = false;
     log(state, `💥 ${p.name} 被迫 RELOAD！丢弃装备，回到跳伞区`, "reloadForced", { name: p.name });
     if (attacker) {
