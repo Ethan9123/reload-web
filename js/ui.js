@@ -874,6 +874,24 @@
     clearTimeout(yourTurnTimer);
     yourTurnTimer = setTimeout(() => { const x = $("ai-banner"); if (x) x.classList.remove("show", "your-turn"); }, 1700);
   }
+  // event-card reveal: a card deals in face-down then flips to show the drawn event — the round's "turn the card"
+  async function revealEvent(id, opts) {
+    opts = opts || {};
+    const ev = D.EVENTS && D.EVENTS[id]; if (!ev) return;
+    SFX("loot");
+    const ov = document.createElement("div"); ov.className = "event-reveal" + (opts.quick ? " er-quick" : "");
+    ov.innerHTML = `<div class="er-card">` +
+      `<div class="er-face er-back"><span>⚡</span></div>` +
+      `<div class="er-face er-front"><div class="er-tag">${L("事 件", "EVENT")}</div>` +
+      `<div class="er-name">${ev.name}</div><div class="er-desc">${TC("event." + id + ".desc", ev.desc || "")}</div></div>` +
+      `</div>`;
+    document.body.appendChild(ov);
+    await sleep(opts.quick ? 500 : 720);                        // flip lands face-up
+    await sleep(opts.hold != null ? opts.hold : 780);           // hold so it can be read
+    ov.classList.add("er-out");
+    await sleep(300);
+    ov.remove();
+  }
   function pulseActing(p) {                             // bright pulsing ring on the acting AI's hex (cleared by next render)
     if (!p.pos) return; const svg = $("board"); if (!svg) return;
     const { x, y } = hexToPixel(p.pos.q, p.pos.r);
@@ -914,7 +932,7 @@
     while (!G.gameOver && !E.curP(G).human) {
       const p = E.curP(G);
       const beforePos = p.pos ? { q: p.pos.q, r: p.pos.r } : null;
-      const beforeCombat = G.lastCombat, beforeLen = G.log.length, seq = G._trapSeq || 0;
+      const beforeCombat = G.lastCombat, beforeLen = G.log.length, seq = G._trapSeq || 0, evSeen = G.eventsResolved || 0;
       aiBanner(T("banner.acting", { name: p.name }), p.color); pulseActing(p);
       await sleep(Math.min(360, aiDelay));
 
@@ -935,6 +953,7 @@
       } else aiBanner(summarizeTurn(p, G.log.slice(0, Math.max(0, G.log.length - beforeLen))), p.color);
 
       if ((G._trapSeq || 0) > seq && G.lastTrap && G.players[G.lastTrap.owner].human) await animateTrap(G.lastTrap); // your mine triggered
+      if ((G.eventsResolved || 0) > evSeen && G.lastEvent) await revealEvent(G.lastEvent, { quick: true, hold: Math.min(440, Math.max(180, aiDelay)) });   // flip the event this turn drew
       await sleep(aiDelay);
     }
     aiRunning = false;
@@ -945,7 +964,9 @@
   async function endTurn() {
     if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
     barrierMode = false; clearAiBanner();   // never carry edge-select mode across turns
+    const evSeen = G.eventsResolved || 0;
     E.endTurn(G); render();
+    if ((G.eventsResolved || 0) > evSeen && G.lastEvent) await revealEvent(G.lastEvent);   // your End Phase drew an event — flip it
     if (!G.gameOver && !E.curP(G).human) await runAI();
   }
 
