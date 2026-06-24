@@ -350,6 +350,12 @@ button.small:active:not(:disabled) { transform: translateY(1px) scale(.97); filt
 .ch-btn { font: inherit; padding: 10px 12px; border-radius: 8px; border: 1px solid #3a6b4f; background: #234032; color: #d6ffe6; font-weight: 600; cursor: pointer; }
 .ch-btn:hover { filter: brightness(1.12); }
 .ch-btn.cancel { background: #232936; border-color: #3a4150; color: #aab0bc; }
+/* roll-then-place die picker (commit a specific rolled die to an action) */
+.ch-dice { display: flex; gap: 10px; justify-content: center; margin-bottom: 12px; }
+.ch-die { background: #1b1f28; border: 2px solid #3a4150; border-radius: 10px; padding: 8px; cursor: pointer; transition: border-color .1s, transform .08s; }
+.ch-die:hover { transform: translateY(-3px); border-color: #5a6478; }
+.ch-die.sel { border-color: #5fd0e0; box-shadow: 0 0 10px -2px #5fd0e0; }
+.ch-die .die { width: 34px; height: 34px; }
 
 /* ---- loot choice: pick which drawn card(s) to keep ---- */
 .modal-overlay { position: fixed; inset: 0; z-index: 95; display: flex; align-items: center; justify-content: center; background: rgba(8,10,14,.72); }

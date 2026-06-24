@@ -130,16 +130,15 @@ const tk10 = E.towerKey(g10), tc10 = g10.board[tk10];
 const p10 = E.curP(g10), other10 = g10.players[1];
 p10.pos = { q: tc10.q, r: tc10.r }; other10.pos = null; other10.reloadZone = true; // p10 alone -> can Heal
 g10.phase = "action"; g10.activePlayer = 0;
-// state right after: drank Energy Drink (boost die) + spent the 1 real die on a Run (assignedDice=[1])
-p10.injuries = 4; p10.actionDice = 2; p10.defensePool = 1; p10.boostDice = 1; p10.assignedDice = [1]; p10.combatLine = [];
-g10.rnd = () => 0.7;                                    // Heal rolls a 5
+// roll-then-place: the real die was already PLACED on a Run (consumed; logged in assignedDice). Only a boost die remains.
+p10.injuries = 4; p10.actionDice = 2; p10.dice = []; p10.boostDice = 1; p10.assignedDice = [1]; p10.combatLine = []; p10.defensePool = 1;
+g10.rnd = () => 0.7;                                    // the recovered die rolls a 5
 A(E.doHeal(g10), "Heal succeeds using the boost die");
 A(p10.injuries === 3, "Heal reduced injuries 4 -> 3");
-A(p10.boostDice === 0, "boost die was the die spent on Heal (real die was kept)");
+A(p10.boostDice === 0, "the boost die was the one spent on Heal (no real die was available)");
+A(p10.dice.length === 1 && p10.defensePool === 1, "the recovered real die sits (rolled) in the defense pool, not the combat line");
 E.moveAssignedDiceToCombatLine(p10);                   // End Phase
-A(!p10.combatLine.includes(5), "boost-die Heal roll (5) did NOT enter the combat line");
-A(p10.combatLine.length === 1 && p10.combatLine[0] === 1, "only the real action die remains in the combat line");
-A(p10.defensePool === 1, "the recovered real die sits in the defense pool, not the combat line");
+A(p10.combatLine.length === 1, "the recovered REAL die forms the combat line; the boost die never enters it");
 
 // 10c) Tactical Explosive range is enforced by the engine (out-of-range target rejected)
 const g10c = E.newGame({ numPlayers: 2, seed: 12, allAI: true });

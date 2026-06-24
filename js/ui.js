@@ -601,8 +601,9 @@
     } else {
       const h = highlightSet();
       const boost = p.boostDice || 0, real = Math.max(0, p.defensePool - boost);
-      // available dice as real die glyphs (blank = value chosen on use) + green boost dice
-      const avail = (Array.from({ length: real }, () => `<span class="die def"></span>`).join("") +
+      // available dice as their ROLLED faces (pips) + green boost dice
+      const rolled = (p.dice && p.dice.length) ? p.dice.map(v => dieSpan(v, "def")) : Array.from({ length: real }, () => `<span class="die def"></span>`);
+      const avail = (rolled.join("") +
                      Array.from({ length: boost }, () => `<span class="die boost">⚡</span>`).join("")) ||
                     `<i class="lg-dim">${T("legend.nodice")}</i>`;
       // dice already placed this turn, tagged with WHICH action space they went on (the tabletop ritual)
@@ -844,7 +845,11 @@
     if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
     const p = E.curP(G);
     if (o.kind === "close") { E.doClose(G, o.tgt); render(); await animateCombat(G.lastCombat); await endTurn(); return; }   // close ends turn
-    if (o.kind === "ranged") { const aKey = E.hexKey(p.pos.q, p.pos.r); E.doRanged(G, o.tgt, 3); render(); await vfxGunshot(aKey, o.key); await animateCombat(G.lastCombat); return; }
+    if (o.kind === "ranged") {
+      const pick = await pickActionDie(p, L("选择投入这次射击的行动骰", "Pick a die to commit to this shot"));
+      if (pick === null) return;   // cancelled the shot
+      const aKey = E.hexKey(p.pos.q, p.pos.r); E.doRanged(G, o.tgt, pick || 3); render(); await vfxGunshot(aKey, o.key); await animateCombat(G.lastCombat); return;
+    }
     if (o.kind === "grabFlag") { E.grabFlag(G); SFX("loot"); render(); consumeActionFeed(); return; }
     if (o.kind === "scoreFlag") { E.scoreFlag(G); SFX("score"); render(); consumeActionFeed(); return; }
     if (o.kind === "activate") { E.doActivate(G, true); SFX("upload"); render(); consumeActionFeed(); maybeLootChoice(); return; }
@@ -1181,9 +1186,10 @@
   }
   function diceRowsHTML(p) {
     const boost = p.boostDice || 0, real = Math.max(0, p.defensePool - boost);
-    // black/white action dice + (Energy Drink) GREEN boost dice the player may freely allocate to non-combat actions
-    const def = Array.from({ length: real }, () => dieSpan("", "def")).join("") +
-                Array.from({ length: boost }, () => dieSpan("⚡", "boost")).join("");
+    // the ROLLED, un-placed action dice (their real faces) + (Energy Drink) GREEN boost dice. Off-turn players
+    // have their dice on the combat line already, so fall back to blank placeholders off the count.
+    const rolled = (p.dice && p.dice.length) ? p.dice.map(v => dieSpan(v, "def")) : Array.from({ length: real }, () => dieSpan("", "def"));
+    const def = rolled.join("") + Array.from({ length: boost }, () => dieSpan("⚡", "boost")).join("");
     const line = (p.combatLine || []).map(v => dieSpan(v, "line")).join("");
     const inj = Array.from({ length: p.injuries }, () => dieSpan("✕", "inj")).join("");
     const row = (label, html) => `<div class="cb-dice"><span class="cb-dl">${label}</span>${html || '<i class="muted">—</i>'}</div>`;
@@ -1456,6 +1462,23 @@
       ov.innerHTML = `<div class="ch-panel"><div class="ch-title">选择治疗目标</div><div class="ch-btns">${btns}<button class="ch-btn cancel" data-i="">取消</button></div></div>`;
       ov.style.display = "flex";
       ov.querySelectorAll(".ch-btn").forEach(b => b.addEventListener("click", () => { ov.style.display = "none"; const v = b.dataset.i; resolve(v === "" ? null : +v); }));
+    });
+  }
+  // let the human pick WHICH rolled die to commit to an action (roll-then-place). Resolves the chosen value,
+  // 0 if there's no numeric die to choose (caller falls back), or null if cancelled.
+  function pickActionDie(p, prompt) {
+    const dice = (p.dice || []).filter(v => typeof v === "number" && v >= 1 && v <= 5);
+    if (!dice.length) return Promise.resolve(0);
+    if (dice.length === 1) return Promise.resolve(dice[0]);
+    return new Promise(resolve => {
+      let ov = $("choice-overlay");
+      if (!ov) { ov = document.createElement("div"); ov.id = "choice-overlay"; document.body.appendChild(ov); }
+      const lowest = Math.min(...dice);
+      const btns = dice.map(v => `<button class="ch-die${v === lowest ? " sel" : ""}" data-v="${v}">${dieSpan(v, "line")}</button>`).join("");
+      ov.innerHTML = `<div class="ch-panel"><div class="ch-title">${prompt}</div><div class="ch-dice">${btns}</div><button class="ch-btn cancel" data-cancel="1">${L("取消", "Cancel")}</button></div>`;
+      ov.style.display = "flex";
+      ov.querySelectorAll(".ch-die").forEach(b => b.addEventListener("click", () => { ov.style.display = "none"; resolve(+b.dataset.v); }));
+      ov.querySelector(".cancel").addEventListener("click", () => { ov.style.display = "none"; resolve(null); });
     });
   }
   function animateHeal(roll) {

@@ -101,6 +101,7 @@
       equipped: { head: null, torso: null, hand: [] },
       backpack: [],                    // equipment ids (facedown)
       carryingBeacons: 0,
+      dice: [],                        // rolled, un-placed action dice this turn (roll-then-place); defensePool stays its synced count
       actionsThisTurn: [],             // {kind,die} placed on action spaces this turn (for the board's dice-placement view)
       hideout: null,                   // hex key of own hideout, or null
       barriersUsed: 0, trapsUsed: 0,   // placed counts (max 6 each)
@@ -483,14 +484,16 @@
   function beginTurn(state) {
     const p = curP(state);
     p.actionDice = START_ACTION_DICE - p.injuries;       // injuries reduce available dice
-    p.defensePool = p.actionDice; p.assigned = 0; p.assignedDice = []; p.boost = false; p.boostDice = 0; p.combatLine = []; p.actionsThisTurn = [];
+    p.dice = []; for (let i = 0; i < p.actionDice; i++) p.dice.push(rollDie(state.rnd));   // ROLL the action dice (roll-then-place)
+    p.assigned = 0; p.assignedDice = []; p.boost = false; p.boostDice = 0; p.combatLine = []; p.actionsThisTurn = [];
+    p.defensePool = p.dice.length;                       // synced count of unplaced rolled dice
     p._closeEndedTurn = false; p._noMove = false; p.hasActed = false; p._gaveThisTurn = false; p._runBonus = false; p._runBonusUsed = false;
     p._freeBuildUsed = false; p._revealed = false; p._droneUsed = false; p._wallCombo = 0;   // Betty free-build / Echo cloak / Cody drone / wall-combo reset each turn
     for (const x of state.players) x._injFameTurn = 0;   // DOUBLE TROUBLE counts injury fame within a single turn
     state.lastAchievement = null;
     autoEquip(p);                                        // MVP: auto-equip best weapon/armor (no equip UI yet)
     // Solar Array terrain: starting your turn on it grants +1 boost die (energy — non-combat, like Energy Drink).
-    if (p.pos) { const _c = state.board[hexKey(p.pos.q, p.pos.r)]; if (_c && TERRAIN[_c.terrain].energy) { p.boostDice += 1; p.defensePool += 1; p.actionDice = Math.max(p.actionDice, p.defensePool); log(state, `☀ ${p.name} 在太阳能阵列充能 +1 行动骰`, "solarCharge", { name: p.name }); } }
+    if (p.pos) { const _c = state.board[hexKey(p.pos.q, p.pos.r)]; if (_c && TERRAIN[_c.terrain].energy) { p.boostDice += 1; p.actionDice = Math.max(p.actionDice, p.dice.length + p.boostDice); syncPool(p); log(state, `☀ ${p.name} 在太阳能阵列充能 +1 行动骰`, "solarCharge", { name: p.name }); } }
     // Hunter's Crown: holding it into the start of your turn banks it as permanent fame (out of circulation).
     if (p.carryingCrown && state.crown) {
       p.carryingCrown = false; state.crown = { at: null, carrier: null };
@@ -573,19 +576,40 @@
   function sortCombatLine(line) { return line.filter(isNumericDie).sort((a, b) => b - a); }
   // dice available for COMBAT/injury = pool minus the Energy Drink boost dice (which can't be used in combat / as injury)
   function combatDice(p) { return p.defensePool - (p.boostDice || 0); }
-  function spendDice(state, p, n, face, kind) {
-    const f = face == null ? 1 : face;
+  // roll-then-place model: p.dice is the source of truth for UN-PLACED rolled action dice; defensePool is a
+  // synced count (= unplaced rolled dice + boost dice). Keep them in lockstep via syncPool after any mutation.
+  function syncPool(p) { p.defensePool = (p.dice ? p.dice.length : 0) + (p.boostDice || 0); }
+  // reconcile p.dice to the real-dice count implied by defensePool/boostDice. A no-op in real play (the
+  // invariant defensePool === p.dice.length + boostDice always holds); it only fixes states built without
+  // beginTurn (tests set defensePool/boostDice directly), filling any gap with neutral 3s.
+  function ensureDice(p) {
+    if (!p.dice) p.dice = [];
+    const real = Math.max(0, (p.defensePool || 0) - (p.boostDice || 0));
+    if (p.dice.length > real) p.dice.length = real;
+    while (p.dice.length < real) p.dice.push(3);
+  }
+  // which rolled die to place on an action: an exact preferred value if present, else the LOWEST numeric die
+  // (keeps the high dice for the combat line), else a skull. Deterministic (no RNG) so rollouts stay reproducible.
+  function pickDieIndex(dice, preferValue) {
+    if (typeof preferValue === "number") { const i = dice.indexOf(preferValue); if (i >= 0) return i; }
+    let idx = -1, lo = 7;
+    for (let i = 0; i < dice.length; i++) { const d = dice[i]; if (typeof d === "number" && d < lo) { lo = d; idx = i; } }
+    return idx >= 0 ? idx : 0;
+  }
+  // spend n action dice on an action. The 4th arg is a PREFERRED value to place (null = auto-pick lowest).
+  function spendDice(state, p, n, preferValue, kind) {
+    ensureDice(p);
     for (let i = 0; i < n; i++) {
       if (p.defensePool <= 0) break;
-      const realAvail = p.defensePool - (p.boostDice || 0);   // real action dice remaining before this spend
-      p.defensePool -= 1;
-      if (realAvail > 0) {
-        p.assignedDice.push(f);                               // a real action die -> becomes a combat-line die in End Phase
-        if (kind) (p.actionsThisTurn || (p.actionsThisTurn = [])).push({ kind, die: f });   // one record per die ACTUALLY placed
-      } else {
-        p.boostDice = Math.max(0, (p.boostDice || 0) - 1);    // the Energy Drink/solar boost die: spent now, never enters the combat line / injury zone
-        if (kind) (p.actionsThisTurn || (p.actionsThisTurn = [])).push({ kind, die: "⚡", boost: true });   // boost die placed on an action space (not injurable)
+      if (p.dice && p.dice.length > 0) {                      // place a real rolled die; its value is consumed off the pool
+        const v = p.dice.splice(pickDieIndex(p.dice, preferValue), 1)[0];
+        p.assignedDice.push(v);                               // log of placed values (for the UI/feed; the combat line is the UNSPENT dice)
+        if (kind) (p.actionsThisTurn || (p.actionsThisTurn = [])).push({ kind, die: v });
+      } else {                                                // no real die left -> consume a boost die (Energy Drink/solar)
+        p.boostDice = Math.max(0, (p.boostDice || 0) - 1);    // never enters the combat line / injury zone
+        if (kind) (p.actionsThisTurn || (p.actionsThisTurn = [])).push({ kind, die: "⚡", boost: true });
       }
+      syncPool(p);
     }
     p.assigned = p.assignedDice.length;
     p.hasActed = true;                                        // locks equipment for the rest of the turn (survives injury die-pops)
@@ -593,13 +617,13 @@
   }
   function moveAssignedDiceToCombatLine(p) {
     p.actionDice = START_ACTION_DICE - p.injuries;
-    // assignedDice holds only real action dice (boost dice are dropped at spend-time in spendDice and
-    // never reach here). Cap to real owned dice as a defensive safety net.
-    let line = sortCombatLine([...(p.combatLine || []), ...(p.assignedDice || [])]);
+    // the UNSPENT rolled dice (never placed on an action) form the combat line; placed dice are consumed.
+    // sortCombatLine filters non-numeric, so any unspent skull is dropped (a skull can't defend).
+    let line = sortCombatLine([...(p.combatLine || []), ...(p.dice || [])]);
     if (line.length > p.actionDice) line = line.slice(0, p.actionDice);
     p.combatLine = line;
-    p.assignedDice = []; p.assigned = 0; p.boostDice = 0; p.actionsThisTurn = [];   // dice moved off action spaces onto the combat line
-    p.defensePool = Math.max(0, p.actionDice - p.combatLine.length);
+    p.dice = []; p.assignedDice = []; p.assigned = 0; p.boostDice = 0; p.actionsThisTurn = [];   // dice now on the combat line
+    p.defensePool = Math.max(0, p.actionDice - p.combatLine.length);   // End-Phase derived count (p.dice is empty here)
   }
   function hasFriendlyHideout(state, p) {
     if (!p.pos) return false;
@@ -615,8 +639,8 @@
   }
   function syncDiceCounts(p) {
     p.actionDice = START_ACTION_DICE - p.injuries;
-    p.defensePool = Math.max(0, Math.min(p.defensePool, p.actionDice));
-    p.boostDice = Math.min(p.boostDice || 0, p.defensePool);
+    if (p.dice && p.dice.length > p.actionDice) p.dice.length = p.actionDice;   // injuries cut capacity -> shrink the pool
+    syncPool(p);
     p.assigned = p.assignedDice ? p.assignedDice.length : 0;
   }
   function doRun(state, toKey) {
@@ -851,8 +875,11 @@
     if (p.character === "emmet" && die !== "skull") die = rollDie(state.rnd);   // Emmet — Field Medic: re-roll the heal die (skull = +1)
     const base = target === p ? 1 : 2;                                          // healing a teammate restores 2 (rules p.8)
     const heal = Math.min(target.injuries, base + (die === "skull" ? 1 : 0));   // skull +1
-    spendDice(state, p, 1, die, "heal"); recordAction(state, p, "heal", die);
-    target.injuries -= heal; target.actionDice = START_ACTION_DICE - target.injuries; target.defensePool += heal;
+    spendDice(state, p, 1, null, "heal"); recordAction(state, p, "heal", die);   // spend the lowest die; the heal ROLL (die) is separate
+    target.injuries -= heal; target.actionDice = START_ACTION_DICE - target.injuries;
+    if (target === p) { for (let i = 0; i < heal; i++) (p.dice || (p.dice = [])).push(rollDie(state.rnd)); syncPool(p); }   // recovered dice are rolled and usable this turn
+    // off-turn teammate: the heal is fully captured by the injury reduction above — they re-roll at their own
+    // beginTurn, so do NOT bump defensePool here (that would break the defensePool === dice.length + boostDice invariant)
     if (target !== p) { log(state, `${p.name} 治疗队友 ${target.name}：掷${die === "skull" ? "骷髅" : die}，恢复 ${heal} 点（+1 团队精神）`, "healMate", { name: p.name, mate: target.name, heal }); gainFame(state, p, "teamSpirit", 1); }
     else log(state, `${p.name} 治疗：掷${die === "skull" ? "骷髅(+2)" : die}，恢复 ${heal} 点伤`, "healSelf", { name: p.name, heal });
     state.lastRoll = { kind: "heal", by: p.idx, target: target.idx, value: die, healed: heal };
@@ -991,14 +1018,16 @@
   function useSpecialItem(state, itemId, target) {
     const p = curP(state), e = byId(itemId);
     if (!e || !hasSpecial(p, itemId)) return false;
+    ensureDice(p);   // reconcile p.dice to the pool before mutating it (no-op in real play)
     if (itemId === "pain_killer") {
       if (p.injuries <= 0) return false;
-      p.injuries -= 1; p.actionDice = START_ACTION_DICE - p.injuries; p.defensePool += 1;
+      p.injuries -= 1; p.actionDice = START_ACTION_DICE - p.injuries; p.dice.push(rollDie(state.rnd)); syncPool(p);   // recover a (rolled) action die
       log(state, `💊 ${p.name} 使用止痛药，恢复 1 点伤`, "usePainkiller", { name: p.name });
     } else if (itemId === "energy_drink" || itemId === "adrenaline_mask") {
       if (state.phase !== "action") return false;
-      p.defensePool += 1; p.boostDice = (p.boostDice || 0) + 1;   // boost die: spendable on actions, not combat / injury
-      p.actionDice = Math.max(p.actionDice, p.defensePool);       // allow the extra die to exist beyond the injury-reduced base
+      p.boostDice = (p.boostDice || 0) + 1;   // boost die: spendable on actions, not combat / injury (kept out of p.dice)
+      p.actionDice = Math.max(p.actionDice, (p.dice ? p.dice.length : 0) + p.boostDice);   // allow the extra die beyond the injury-reduced base
+      syncPool(p);
       log(state, `🥤 ${p.name} 使用 ${e.name}，本回合 +1 行动骰（不可用于战斗/承伤）`, "useEnergy", { name: p.name });
     } else if (itemId === "tactical_explosive") {
       if (state.phase !== "action" || !target) return false;
@@ -1113,7 +1142,7 @@
     // End phase toxin (inert until events add toxin tokens): toxin hex & not safe -> 1 injury
     if (p.pos) {
       const cell = state.board[hexKey(p.pos.q, p.pos.r)], safe = hasFriendlyHideout(state, p) || equipFlag(p, "toxinImmune");  // Healing Armor immunity
-      if ((cell.toxin || cell.toxinIcon) && !safe) { log(state, `${p.name} 处于毒气区，受到 1 点伤害`, "toxinDamage", { name: p.name }); if (takeInjuries(state, p, 1)) reloadPlayer(state, p, null); }
+      if ((cell.toxin || cell.toxinIcon) && !safe) { log(state, `${p.name} 处于毒气区，受到 1 点伤害`, "toxinDamage", { name: p.name }); if (takeInjuries(state, p, 1, { hierarchy: false })) reloadPlayer(state, p, null); }   // End Phase: dice already on the line, so skip the hierarchy (avoids ensureDice fabricating phantom dice)
     }
     state._turnsTaken++;
     const isLastInRound = state.activePlayer === (state.firstPlayer + state.numPlayers - 1) % state.numPlayers;
@@ -1307,14 +1336,19 @@
   function takeInjuryDieByHierarchy(p) {
     p.combatLine = sortCombatLine(p.combatLine || []);
     if (p.combatLine.length) { p.combatLine.pop(); return "combatLine"; }
-    if (combatDice(p) > 0) { p.defensePool -= 1; return "defensePool"; }   // boost dice can't be taken as injury
+    if (combatDice(p) > 0 && p.dice && p.dice.length) {   // pop the lowest UNPLACED rolled die (boost dice can't be taken as injury)
+      let idx = -1, lo = 7; for (let i = 0; i < p.dice.length; i++) { const d = p.dice[i]; if (typeof d === "number" && d < lo) { lo = d; idx = i; } }
+      if (idx < 0) idx = p.dice.findIndex(d => d === "skull");   // only skulls left
+      if (idx >= 0) p.dice.splice(idx, 1);
+      syncPool(p); return "defensePool";
+    }
     if (p.assignedDice && p.assignedDice.length) { p.assignedDice.pop(); if (p.actionsThisTurn) { for (let i = p.actionsThisTurn.length - 1; i >= 0; i--) if (!p.actionsThisTurn[i].boost) { p.actionsThisTurn.splice(i, 1); break; } } p.assigned = p.assignedDice.length; return "assigned"; }   // drop the matching REAL placement (boost dice can't be injured)
     return "none";
   }
   function takeInjuries(state, p, n, opts) {
     if (n <= 0) return false;
     const useHierarchy = !opts || opts.hierarchy !== false;
-    if (useHierarchy) for (let i = 0; i < n; i++) takeInjuryDieByHierarchy(p);
+    if (useHierarchy) { ensureDice(p); for (let i = 0; i < n; i++) takeInjuryDieByHierarchy(p); }
     p.injuries = Math.min(INJURY_ZONE, p.injuries + n);
     syncDiceCounts(p);
     return p.injuries >= INJURY_ZONE;
@@ -1364,7 +1398,7 @@
     p.equipped = { head: null, torso: null, hand: [] }; p.backpack = [];
     const a = state.decks.equip2.pop(), b = state.decks.equip2.pop();
     if (a) p.backpack.push(a); if (b) state.decks.discard2.push(b);
-    p.injuries = 0; p.actionDice = START_ACTION_DICE; p.defensePool = 0; p.assigned = 0; p.assignedDice = []; p.actionsThisTurn = [];
+    p.injuries = 0; p.actionDice = START_ACTION_DICE; p.dice = []; p.boostDice = 0; p.defensePool = 0; p.assigned = 0; p.assignedDice = []; p.actionsThisTurn = [];
     p.pos = null; p.reloadZone = true; p.combatLine = []; p._runBonus = false; p._runBonusUsed = true; p._noMove = false;
     log(state, `💥 ${p.name} 被迫 RELOAD！丢弃装备，回到跳伞区`, "reloadForced", { name: p.name });
     if (attacker) {
@@ -1460,7 +1494,7 @@
     log(state, `🗡 近战 ${A.name} vs ${T.name}：造成 ${aDealt} / 受到 ${tDealt}`, "melee", { a: A.name, t: T.name, aDealt, tDealt });
     state.lastCombat = { type: "close", a: A.idx, t: T.idx, shooter: aRaw.slice(), defender: tRaw.slice(),
       aSkulls: aSk, dSkulls: tSk, dealt: aDealt, taken: tDealt, reload: tReload, selfReload: aReload };
-    A.defensePool = 0; A._closeEndedTurn = true;          // close combat ends the active player's turn
+    A.dice = []; A.boostDice = 0; A.defensePool = 0; A._closeEndedTurn = true;          // close combat ends the active player's turn (no leftover dice -> empty combat line)
     return true;
   }
 
