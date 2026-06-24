@@ -45,7 +45,22 @@ select, button { font: inherit; padding: 6px 10px; border-radius: 6px; border: 1
 /* ---- game-over results ---- */
 #over-overlay { position: fixed; inset: 0; background: rgba(8,10,14,.72); display: none; align-items: center; justify-content: center; z-index: 60; }
 .ov-panel { background: #161a22; border: 2px solid #2a2f3a; border-radius: 16px; padding: 22px 26px; min-width: 440px; max-width: 92vw; box-shadow: 0 18px 60px rgba(0,0,0,.6); }
-.ov-title { font-size: 24px; font-weight: 800; color: #f4d03f; text-align: center; margin-bottom: 16px; }
+/* the victory panel springs in instead of snapping — the climax deserves an entrance */
+.ov-panel.ov-pop { animation: ov-pop .5s cubic-bezier(.2,1.2,.35,1) both; }
+@keyframes ov-pop { from { opacity: 0; transform: translateY(18px) scale(.92); } }
+.ov-title { font-size: 24px; font-weight: 800; color: #f4d03f; text-align: center; margin-bottom: 14px; }
+/* champion spotlight: big emblem + a fame number that counts up */
+.ov-champion { display: flex; align-items: center; gap: 16px; justify-content: center; margin: 4px 0 16px; padding: 14px 18px;
+  background: linear-gradient(135deg, rgba(244,208,63,.14), rgba(244,208,63,.02)); border: 1px solid rgba(244,208,63,.35); border-radius: 14px; }
+.ov-champ-emb { flex: none; filter: drop-shadow(0 0 12px rgba(244,208,63,.5)); animation: ov-champ-rise .6s ease both; }
+@keyframes ov-champ-rise { from { opacity: 0; transform: translateY(8px) scale(.8); } }
+.ov-champ-info { display: flex; flex-direction: column; gap: 2px; }
+.ov-champ-tag { font-size: 12px; letter-spacing: 2px; color: #f4d03f; font-weight: 700; }
+.ov-champ-name { font-size: 22px; font-weight: 800; }
+.ov-champ-fame { font-size: 13px; color: #c7ccd6; }
+.ov-champ-fame b { font-size: 30px; color: #f4d03f; font-variant-numeric: tabular-nums; line-height: 1; }
+.ov-medals { display: inline-flex; flex-wrap: wrap; gap: 4px; vertical-align: middle; }
+.ov-medal { font-size: 10px; background: rgba(244,208,63,.14); border: 1px solid rgba(244,208,63,.3); color: #e8d48a; border-radius: 6px; padding: 1px 5px; white-space: nowrap; }
 .ov-list { display: flex; flex-direction: column; gap: 6px; }
 .ov-row { display: grid; grid-template-columns: 26px 36px 1fr auto; align-items: center; gap: 10px;
   padding: 8px 10px; border-radius: 8px; background: #1b1f28; }

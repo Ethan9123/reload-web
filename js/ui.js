@@ -732,16 +732,30 @@
       : T("hint.win", { name: G.players[G.winner].name });
     const fb = p => `🔆${p.fame.beacon} 🩸${p.fame.injury} 💥${p.fame.reload} ⚠${p.fame.trap || 0}` +
       (p.fame.teamSpirit ? ` 🤝${p.fame.teamSpirit}` : "") + (p.fame.achievement ? ` 🏅${p.fame.achievement}` : "");
+    const isTeamWin = G.isTeam && G.winnerTeam != null;
+    const medals = p => (p.achievementsWon && p.achievementsWon.length)
+      ? ` <span class="ov-medals">${p.achievementsWon.map(id => `<span class="ov-medal" title="${ACH[id] ? achName(ACH[id], true) : id}">🏅${ACH[id] ? achName(ACH[id]) : id}</span>`).join("")}</span>` : "";
     const ranked = G.players.slice().sort((a, b) => E.totalFame(b) - E.totalFame(a));
     const rows = ranked.map((p, i) => {
       const ch = CHAR[p.character], cn = lang === "zh" ? (ch && (ch.cn || ch.name)) : (ch && ch.name);
-      return `<div class="ov-row${p.idx === G.winner ? " win" : ""}">` +
+      const isWin = isTeamWin ? p.team === G.winnerTeam : p.idx === G.winner;
+      return `<div class="ov-row${isWin ? " win" : ""}">` +
         `<span class="ov-rank">${i + 1}</span><span class="ov-emb">${emblemSVG(p, ch, 30)}</span>` +
         `<span class="ov-name"><b style="color:${p.color}">${p.name}</b>${p.human ? " " + T("pc.you") : ""}` +
         `${p.team != null ? ` <span class="team-badge team${p.team}">${T("pc.team", { n: p.team + 1 })}</span>` : ""}<small>${cn}</small></span>` +
-        `<span class="ov-fame">${E.totalFame(p)}</span><span class="ov-fb">${fb(p)}</span></div>`;
+        `<span class="ov-fame">${E.totalFame(p)}</span><span class="ov-fb">${fb(p)}${medals(p)}</span></div>`;
     }).join("");
-    ov.innerHTML = `<div class="ov-panel"><div class="ov-title">${title}${sstar}</div>` +
+    // champion spotlight — big emblem + a fame number that counts up, so the session's payoff has a beat
+    const champ = isTeamWin ? ranked.find(p => p.team === G.winnerTeam) : G.players[G.winner];
+    const champCh = champ && CHAR[champ.character];
+    const champTotal = isTeamWin ? E.teamFame(G, G.winnerTeam) : (champ ? E.totalFame(champ) : 0);
+    const champName = isTeamWin ? T("pc.team", { n: G.winnerTeam + 1 }) : (champ ? champ.name : "");
+    const champBlock = champ ? `<div class="ov-champion"><span class="ov-champ-emb">${emblemSVG(champ, champCh, 76)}</span>` +
+      `<div class="ov-champ-info"><div class="ov-champ-tag">${G.superstar ? "★ " + T("over.superstar") : "🏆"}</div>` +
+      `<div class="ov-champ-name" style="color:${champ.color}">${champName}</div>` +
+      `<div class="ov-champ-fame"><b class="ov-count">${champTotal}</b> ${T("pc.fame")}</div></div></div>` : "";
+    ov.innerHTML = `<div class="ov-panel ov-pop"><div class="ov-title">${title}${sstar}</div>` +
+      champBlock +
       `<div class="ov-list">${rows}</div>` +
       `<div class="ov-bar"><button class="small" id="ov-close">${T("over.close")}</button>` +
       `<button class="small" id="ov-setup">${T("over.playAgain")}</button>` +
@@ -750,12 +764,23 @@
     ov.querySelector("#ov-close").addEventListener("click", closeOver);
     ov.querySelector("#ov-setup").addEventListener("click", () => { closeOver(); $("game-screen").classList.add("hidden"); $("setup-screen").classList.remove("hidden"); });
     ov.querySelector("#ov-again").addEventListener("click", () => { closeOver(); startGame(); });   // rematch: same settings + same human character
+    // count 0->total when rAF is live; a setTimeout backstop guarantees the final number even if rAF is throttled
+    const countEl = ov.querySelector(".ov-count");
+    if (countEl && champTotal > 0) {
+      animateRAF(1000, k => { const e = 1 - (1 - k) * (1 - k); countEl.textContent = Math.round(champTotal * e); }).then(() => { countEl.textContent = champTotal; });
+      setTimeout(() => { countEl.textContent = champTotal; }, 1150);
+    }
   }
 
   function render() {
     renderBoard(); renderPlayers(); renderTop(); renderLog(); renderAchievements(); renderDiplomacy();
-    if (G && (G._achSeq || 0) > lastAchSeq) { lastAchSeq = G._achSeq; if (G.lastAchievement) flashAchievement(G.lastAchievement); }
-    if (G && G.gameOver && !_overSfx) { _overSfx = true; SFX("win"); } else if (G && !G.gameOver) _overSfx = false;
+    if (G && (G._achSeq || 0) > lastAchSeq) { lastAchSeq = G._achSeq; if (G.lastAchievement) { flashAchievement(G.lastAchievement); SFX("achievement"); } }
+    if (G && G.gameOver && !_overSfx) {
+      _overSfx = true;
+      const me = G.players.find(p => p.human);
+      const meWon = me && (G.isTeam ? G.winnerTeam === me.team : G.winner === me.idx);
+      SFX(me && !meWon ? "lose" : "win");   // don't play the victory fanfare when the human just lost
+    } else if (G && !G.gameOver) _overSfx = false;
     renderGameOver();
   }
 
@@ -782,7 +807,7 @@
     if (o.kind === "close") { E.doClose(G, o.tgt); render(); await animateCombat(G.lastCombat); await endTurn(); return; }   // close ends turn
     if (o.kind === "ranged") { const aKey = E.hexKey(p.pos.q, p.pos.r); E.doRanged(G, o.tgt, 3); render(); await vfxGunshot(aKey, o.key); await animateCombat(G.lastCombat); return; }
     if (o.kind === "grabFlag") { E.grabFlag(G); SFX("loot"); render(); consumeActionFeed(); return; }
-    if (o.kind === "scoreFlag") { E.scoreFlag(G); SFX("upload"); render(); consumeActionFeed(); return; }
+    if (o.kind === "scoreFlag") { E.scoreFlag(G); SFX("score"); render(); consumeActionFeed(); return; }
     if (o.kind === "activate") { E.doActivate(G, true); SFX("upload"); render(); consumeActionFeed(); maybeLootChoice(); return; }
     if (o.kind === "loot") { E.doLoot(G, 0, true); SFX("loot"); render(); consumeActionFeed(); maybeLootChoice(); return; }
     if (o.kind === "move") {
@@ -905,7 +930,7 @@
   async function revealEvent(id, opts) {
     opts = opts || {};
     const ev = D.EVENTS && D.EVENTS[id]; if (!ev) return;
-    SFX("loot");
+    SFX("event");
     const ov = document.createElement("div"); ov.className = "event-reveal" + (opts.quick ? " er-quick" : "");
     ov.innerHTML = `<div class="er-card">` +
       `<div class="er-face er-back"><span>⚡</span></div>` +

@@ -71,6 +71,10 @@
     win()       { play(t => [523, 659, 784, 1047].forEach((f, i) => tone(t + i * 0.12, 0.2, { type: "square", f0: f, peak: 0.4, dec: 0.18 }))); },
     turn()      { play(t => [659, 988].forEach((f, i) => tone(t + i * 0.1, 0.22, { type: "triangle", f0: f, peak: 0.34, atk: 0.012, dec: 0.2 }))); }, // gentle "it's your turn" chime
     buzz()      { play(t => tone(t, 0.17, { type: "square", f0: 220, f1: 110, slide: "lin", peak: 0.38, atk: 0.004, dec: 0.16 })); },               // invalid / not-allowed action
+    lose()      { play(t => { [392, 330, 262, 196].forEach((f, i) => tone(t + i * 0.13, 0.24, { type: "sawtooth", f0: f, peak: 0.32, dec: 0.22 })); tone(t, 0.7, { type: "sine", f0: 110, f1: 66, peak: 0.4, atk: 0.02, dec: 0.66 }); }); }, // defeat: descending minor + low swell
+    achievement() { play(t => { [784, 1047, 1319].forEach((f, i) => tone(t + i * 0.07, 0.16, { type: "triangle", f0: f, peak: 0.34, dec: 0.15 })); tone(t + 0.21, 0.3, { type: "sine", f0: 1568, peak: 0.22, atk: 0.005, dec: 0.28 }); }); },  // bright unlock bell + sparkle
+    event()     { play(t => { burst(t, 0.18, { type: "highpass", f0: 1900, peak: 0.4, atk: 0.004, dec: 0.16 }); tone(t + 0.08, 0.2, { type: "triangle", f0: 392, f1: 587, slide: "lin", peak: 0.3, dec: 0.18 }); }); }, // card-flip whoosh + reveal
+    score()     { play(t => [988, 1319].forEach((f, i) => tone(t + i * 0.09, 0.13, { type: "square", f0: f, peak: 0.3, dec: 0.12 }))); },           // coin-drop "you banked points"
   };
 
   root.RL = Object.assign(root.RL || {}, { sfx: SFX });
