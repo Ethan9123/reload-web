@@ -1010,7 +1010,7 @@
       if (G !== myGame) return;                // a restart started a fresh runAI — abandon this orphaned loop
       const p = E.curP(G);
       const beforePos = p.pos ? { q: p.pos.q, r: p.pos.r } : null;
-      const beforeCombat = G.lastCombat, beforeLen = G.log.length, seq = G._trapSeq || 0, evSeen = G.eventsResolved || 0;
+      const beforeCombat = G.lastCombat, beforeLen = G.log.length, seq = G._trapSeq || 0, evSeen = G.eventsResolved || 0, relSeen = G._reloadSeq || 0;
       aiBanner(T("banner.acting", { name: p.name }), p.color); pulseActing(p);
       await sleep(Math.min(360, aiDelay));
       if (G !== myGame) return;                // restart landed during the think-delay — don't act on the new game
@@ -1038,6 +1038,7 @@
 
       if ((G._trapSeq || 0) > seq && G.lastTrap && G.players[G.lastTrap.owner].human) await animateTrap(G.lastTrap); // your mine triggered
       if ((G.eventsResolved || 0) > evSeen && G.lastEvent) await revealEvent(G.lastEvent, { quick: true, hold: Math.min(440, Math.max(180, aiDelay)) });   // flip the event this turn drew
+      if ((G._reloadSeq || 0) > relSeen && G.lastReload && G.lastReload.by == null) await animateReload(G.lastReload);   // toxin/quake knockout (combat reloads already shown)
       await sleep(aiDelay);
     }
     aiRunning = false;
@@ -1048,9 +1049,10 @@
   async function endTurn() {
     if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
     barrierMode = false; clearAiBanner();   // never carry edge-select mode across turns
-    const evSeen = G.eventsResolved || 0;
+    const evSeen = G.eventsResolved || 0, relSeen = G._reloadSeq || 0;
     E.endTurn(G); render();
     if ((G.eventsResolved || 0) > evSeen && G.lastEvent) await revealEvent(G.lastEvent);   // your End Phase drew an event — flip it
+    if ((G._reloadSeq || 0) > relSeen && G.lastReload && G.lastReload.by == null) await animateReload(G.lastReload);   // your toxin/quake knockout
     if (!G.gameOver && !E.curP(G).human) await runAI();
   }
 
@@ -1306,6 +1308,26 @@
     const ring = svgEl("polygon", { points: hexCorners(pos.x, pos.y), fill: "none", stroke: "#e3424b", "stroke-width": 3.5, opacity: 0.95, "pointer-events": "none" });
     g.appendChild(ring);
     animateRAF(360, k => { ring.setAttribute("opacity", (0.95 * (1 - k)).toFixed(2)); ring.setAttribute("stroke-width", (3.5 + k * 2).toFixed(1)); }).then(() => g.remove());
+  }
+  // knockout VFX for an environmental RELOAD (toxin/quake) — combat reloads already get the dice overlay.
+  // A ring implodes onto the hex the piece fell on + a 💥 floats up; shake + reload sting + a banner.
+  function animateReload(rep) {
+    const pos = rep && pxOf(rep.at); if (!pos) return Promise.resolve();
+    const g = vfxGroup(); if (!g) return Promise.resolve();
+    const victim = G.players[rep.idx], col = (victim && victim.color) || "#e3424b";
+    SFX("reload"); shake(12);
+    if (victim) aiBanner(`💥 ${victim.name} RELOAD！`, "#ff5a4b");
+    const ring = svgEl("circle", { cx: pos.x, cy: pos.y, r: 36, fill: "none", stroke: "#ff5a4b", "stroke-width": 4, opacity: 0.9, "pointer-events": "none" });
+    const flash = svgEl("circle", { cx: pos.x, cy: pos.y, r: 6, fill: col, "fill-opacity": 0.5, "pointer-events": "none" });
+    const pop = Object.assign(svgEl("text", { x: pos.x, y: pos.y + 6, "text-anchor": "middle", "font-size": 22, "pointer-events": "none" }), { textContent: "💥" });
+    g.appendChild(flash); g.appendChild(ring); g.appendChild(pop);
+    return animateRAF(640, k => {
+      const e = 1 - (1 - k) * (1 - k);
+      ring.setAttribute("r", (6 + 30 * (1 - e)).toFixed(1)); ring.setAttribute("opacity", (0.9 * (1 - k)).toFixed(2));   // collapse inward
+      flash.setAttribute("r", (6 + k * 22).toFixed(1)); flash.setAttribute("opacity", (0.5 * (1 - k)).toFixed(2));        // burst outward
+      pop.setAttribute("transform", `translate(0,${(-18 * e).toFixed(1)})`);
+      pop.setAttribute("opacity", (k < 0.6 ? 1 : 1 - (k - 0.6) / 0.4).toFixed(2));
+    }).then(() => g.remove());
   }
   // multi-phase combat: roll -> skull compare -> combat-line row-by-row -> result
   async function animateCombat(rep) {
