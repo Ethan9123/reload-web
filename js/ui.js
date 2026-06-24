@@ -1446,6 +1446,31 @@
   // ---- per-action dice animation: every action drops a die showing its VALUE + an action glyph ----
   const ACT_GLYPH = { run: "🏃", portal: "🌀", loot: "🎒", activate: "📡", heal: "➕", barrier: "🧱", trap: "💣", hideout: "🏠", demolish: "🛠", ranged: "🔫", close: "🗡" };
   const dieFace = (v) => (v === "skull" ? "💀" : v);
+  // draw a small token glyph (matching the on-board tokens) at (x,y) inside group g
+  function tokenGlyph(g, kind, x, y, color) {
+    if (kind === "crown") g.appendChild(Object.assign(svgEl("text", { x, y: y + 6, "text-anchor": "middle", "font-size": 18, "pointer-events": "none" }), { textContent: "👑" }));
+    else if (kind === "flag") { g.appendChild(svgEl("line", { x1: x - 1, y1: y - 9, x2: x - 1, y2: y + 7, stroke: "#3a2a14", "stroke-width": 2, "pointer-events": "none" })); g.appendChild(svgEl("polygon", { points: `${x - 1},${y - 9} ${x + 12},${y - 5} ${x - 1},${y - 1}`, fill: color || "#e3424b", stroke: "#0c0e12", "stroke-width": 1, "pointer-events": "none" })); }
+    else g.appendChild(svgEl("polygon", { points: `${x},${y - 9} ${x + 7},${y} ${x},${y + 9} ${x - 7},${y}`, fill: "#f4d03f", stroke: "#7a5c00", "stroke-width": 1.5, "pointer-events": "none" }));   // beacon diamond
+  }
+  // a looted/grabbed token rises into the standee that picked it up
+  function popPickup(hexKey, kind, color) {
+    const pos = pxOf(hexKey), g = vfxGroup(); if (!pos || !g) return;
+    tokenGlyph(g, kind, pos.x, pos.y - 10, color);
+    animateRAF(520, k => { const e = 1 - (1 - k) * (1 - k); g.setAttribute("transform", `translate(0,${(-26 * e).toFixed(1)})`); g.setAttribute("opacity", (1 - e).toFixed(2)); }).then(() => g.remove());
+  }
+  // beacons uploaded at the tower fan upward + a gold pulse rings the hex (the scoring moment)
+  function burstUpload(hexKey, n) {
+    const pos = pxOf(hexKey), g = vfxGroup(); if (!pos || !g) return;
+    const ring = svgEl("circle", { cx: pos.x, cy: pos.y, r: 8, fill: "none", stroke: "#f4d03f", "stroke-width": 3, opacity: 0.9, "pointer-events": "none" });
+    g.appendChild(ring);
+    const cnt = Math.min(n, 6), beacons = [];
+    for (let i = 0; i < cnt; i++) { const ang = -Math.PI / 2 + (i - (cnt - 1) / 2) * 0.42; const d = svgEl("polygon", { points: `${pos.x},${pos.y - 9} ${pos.x + 7},${pos.y} ${pos.x},${pos.y + 9} ${pos.x - 7},${pos.y}`, fill: "#f4d03f", stroke: "#7a5c00", "stroke-width": 1.5, "pointer-events": "none" }); g.appendChild(d); beacons.push({ el: d, ang }); }
+    animateRAF(660, k => {
+      const e = 1 - (1 - k) * (1 - k);
+      ring.setAttribute("r", (8 + e * 30).toFixed(1)); ring.setAttribute("opacity", (0.9 * (1 - k)).toFixed(2));
+      beacons.forEach(b => { const dist = e * 36; b.el.setAttribute("transform", `translate(${(Math.cos(b.ang) * dist).toFixed(1)},${(Math.sin(b.ang) * dist).toFixed(1)})`); b.el.setAttribute("opacity", (1 - k).toFixed(2)); });
+    }).then(() => g.remove());
+  }
   function animateActionDie(entry) {
     const svg = $("board"); if (!svg || !entry || !entry.hex) return Promise.resolve();
     const c = G.board[entry.hex]; if (!c) return Promise.resolve();
@@ -1463,6 +1488,9 @@
     }
     g.appendChild(Object.assign(svgEl("text", { x, y: y - 19, "text-anchor": "middle", "font-size": 14 }), { textContent: ACT_GLYPH[entry.kind] || "🎲" }));
     svg.appendChild(g);
+    // token-travel: a looted beacon/crown rises into the picker; uploaded beacons fan up at the tower
+    if (entry.tok === "beacon" || entry.tok === "crown") popPickup(entry.hex, entry.tok);
+    else if (entry.up) burstUpload(entry.hex, entry.up);
     return animateRAF(560, k => {
       g.setAttribute("transform", `translate(0,${(-30 * (1 - k) * (1 - k)).toFixed(1)})`);
       g.setAttribute("opacity", (k < 0.7 ? 1 : 1 - (k - 0.7) / 0.3).toFixed(2));

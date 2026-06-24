@@ -381,8 +381,10 @@
   function log(state, msg, k, p) { state.log.unshift(k ? { s: msg, k, p } : msg); if (state.log.length > 120) state.log.pop(); }
   // a UI-facing feed of "an action die of value <die> was placed for <kind> at <hex>" — drives the per-action
   // dice animation for both the human and the AI (combat has its own overlay, so it isn't recorded here).
-  function recordAction(state, p, kind, die) {
-    (state.actionFeed || (state.actionFeed = [])).push({ by: p.idx, kind, die: die == null ? 1 : die, hex: p.pos ? hexKey(p.pos.q, p.pos.r) : null, seq: (state._actSeq = (state._actSeq || 0) + 1) });
+  function recordAction(state, p, kind, die, extra) {
+    const e = { by: p.idx, kind, die: die == null ? 1 : die, hex: p.pos ? hexKey(p.pos.q, p.pos.r) : null, seq: (state._actSeq = (state._actSeq || 0) + 1) };
+    if (extra) Object.assign(e, extra);   // e.g. {tok:"beacon"} on a loot, {up:n} on a beacon upload — for the UI token-travel VFX
+    (state.actionFeed || (state.actionFeed = [])).push(e);
     if (state.actionFeed.length > 60) state.actionFeed.shift();
   }
   function curP(state) { return state.players[state.activePlayer]; }
@@ -642,7 +644,7 @@
     const cell = state.board[hexKey(p.pos.q, p.pos.r)];
     const tok = cell.tokens.filter(isLootable)[tokenIdx];   // tokenIdx indexes the lootable list (matches lootOptions)
     if (!tok) return false;
-    spendDice(state, p, 1, 1, "loot"); recordAction(state, p, "loot", 1); cell.tokens.splice(cell.tokens.indexOf(tok), 1);
+    spendDice(state, p, 1, 1, "loot"); recordAction(state, p, "loot", 1, { tok: tok.kind }); cell.tokens.splice(cell.tokens.indexOf(tok), 1);
     if (tok.kind === "beacon") { p.carryingBeacons += 1; log(state, `${p.name} 拾取信标（需带到中央塔上缴）`, "lootBeacon", { name: p.name }); }
     else if (tok.kind === "crown") { grabCrown(state, p); }
     else if (tok.kind === "supply") {
@@ -706,8 +708,8 @@
   function doActivate(state, interactive) {
     const p = curP(state);
     if (canUpload(state, p)) {
-      spendDice(state, p, 1, 1, "activate"); recordAction(state, p, "activate", 1);
       const n = p.carryingBeacons, fame = n * FAME.beacon.value;
+      spendDice(state, p, 1, 1, "activate"); recordAction(state, p, "activate", 1, { up: n });
       log(state, `${p.name} 在中央塔上传 ${n} 个信标 → +${fame} 名望`, "upload", { name: p.name, n, fame });
       gainFame(state, p, "beacon", n); p.carryingBeacons = 0;
       return true;
