@@ -878,7 +878,8 @@
     spendDice(state, p, 1, null, "heal"); recordAction(state, p, "heal", die);   // spend the lowest die; the heal ROLL (die) is separate
     target.injuries -= heal; target.actionDice = START_ACTION_DICE - target.injuries;
     if (target === p) { for (let i = 0; i < heal; i++) (p.dice || (p.dice = [])).push(rollDie(state.rnd)); syncPool(p); }   // recovered dice are rolled and usable this turn
-    else target.defensePool = (target.defensePool || 0) + heal;   // off-turn teammate: count bump, re-rolls at their own beginTurn
+    // off-turn teammate: the heal is fully captured by the injury reduction above — they re-roll at their own
+    // beginTurn, so do NOT bump defensePool here (that would break the defensePool === dice.length + boostDice invariant)
     if (target !== p) { log(state, `${p.name} 治疗队友 ${target.name}：掷${die === "skull" ? "骷髅" : die}，恢复 ${heal} 点（+1 团队精神）`, "healMate", { name: p.name, mate: target.name, heal }); gainFame(state, p, "teamSpirit", 1); }
     else log(state, `${p.name} 治疗：掷${die === "skull" ? "骷髅(+2)" : die}，恢复 ${heal} 点伤`, "healSelf", { name: p.name, heal });
     state.lastRoll = { kind: "heal", by: p.idx, target: target.idx, value: die, healed: heal };
@@ -1141,7 +1142,7 @@
     // End phase toxin (inert until events add toxin tokens): toxin hex & not safe -> 1 injury
     if (p.pos) {
       const cell = state.board[hexKey(p.pos.q, p.pos.r)], safe = hasFriendlyHideout(state, p) || equipFlag(p, "toxinImmune");  // Healing Armor immunity
-      if ((cell.toxin || cell.toxinIcon) && !safe) { log(state, `${p.name} 处于毒气区，受到 1 点伤害`, "toxinDamage", { name: p.name }); if (takeInjuries(state, p, 1)) reloadPlayer(state, p, null); }
+      if ((cell.toxin || cell.toxinIcon) && !safe) { log(state, `${p.name} 处于毒气区，受到 1 点伤害`, "toxinDamage", { name: p.name }); if (takeInjuries(state, p, 1, { hierarchy: false })) reloadPlayer(state, p, null); }   // End Phase: dice already on the line, so skip the hierarchy (avoids ensureDice fabricating phantom dice)
     }
     state._turnsTaken++;
     const isLastInRound = state.activePlayer === (state.firstPlayer + state.numPlayers - 1) % state.numPlayers;
