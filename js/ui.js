@@ -967,7 +967,13 @@
       <div class="ecard-meta">${T("slotcn." + e.slot)}${stats ? " · " + stats : ""}</div>
       <div class="ecard-eff">${TC("equip." + e.id + ".effect", e.effect || "")}</div>${tag}</div>`;
   }
-  function dieSpan(v, cls) { return `<span class="die ${cls}">${v == null ? "" : v}</span>`; }
+  const PIPS9 = '<i class="pip"></i>'.repeat(9);   // 3x3 pip grid; CSS reveals dots per data-v face
+  // a real rolled face (1-5) renders as classic pips; ⚡ boost / ✕ injury / 💀 skull / blank stay as glyphs
+  function dieSpan(v, cls) {
+    const n = typeof v === "number" && v >= 1 && v <= 5;
+    const face = v === "skull" ? "💀" : (v == null ? "" : v);
+    return `<span class="die ${cls}${n ? " pips" : ""}"${n ? ` data-v="${v}"` : ""}>${n ? PIPS9 : face}</span>`;
+  }
   function diceRowsHTML(p) {
     const boost = p.boostDice || 0, real = Math.max(0, p.defensePool - boost);
     // black/white action dice + (Energy Drink) GREEN boost dice the player may freely allocate to non-combat actions
@@ -1037,7 +1043,7 @@
       </div>
       <div class="cb-boardmain">
         <div class="cb-actions">${[["➤", "act.move", ["run", "portal"]], ["✋", "act.loot", ["loot"]], ["⚙", "act.activate", ["activate"]], ["🔨", "act.build", ["barrier", "trap", "hideout", "demolish"]], ["✚", "act.heal", ["heal"]], ["🔫", "act.ranged", ["ranged"]], ["🗡", "act.melee", ["close"]]].map(a => {
-          const placed = (p.actionsThisTurn || []).filter(x => a[2].includes(x.kind)).map(x => `<span class="die used">${dieFace(x.die)}</span>`).join("");
+          const placed = (p.actionsThisTurn || []).filter(x => a[2].includes(x.kind)).map(x => dieSpan(x.die, "used")).join("");
           return `<div class="cb-act${placed ? " on" : ""}"><span class="cb-act-i">${a[0]}</span>${T(a[1])}${placed ? `<span class="cb-act-dice">${placed}</span>` : ""}</div>`;
         }).join("")}</div>
         <div class="cb-art">${emblemSVG(p, ch, 200)}</div>
@@ -1076,6 +1082,17 @@
   // ---- dice animations: combat/heal rolls (tumble→settle) + action-die placement ----
   const DFACE = (v) => v === "skull" ? "💀" : v;
   const rollFace = () => { const r = Math.floor(Math.random() * 6) + 1; return r === 6 ? "💀" : r; };
+  // settle a big combat die (.adie) in place: classic pips for a numeric face, 💀 glyph for a skull
+  function settleAdie(el, v) {
+    el.classList.remove("rolling"); el.classList.add("settled");
+    if (typeof v === "number" && v >= 1 && v <= 5) { el.classList.add("pips"); el.setAttribute("data-v", v); el.innerHTML = PIPS9; }
+    else { el.textContent = DFACE(v); if (v === "skull") el.classList.add("skull"); }
+  }
+  // build a settled .adie span (pips for numeric faces) used when re-laying the combat line
+  function adieHTML(v) {
+    const n = typeof v === "number" && v >= 1 && v <= 5;
+    return `<span class="adie settled${n ? " pips" : ""}"${n ? ` data-v="${v}"` : ""}>${n ? PIPS9 : DFACE(v)}</span>`;
+  }
   function ensureDiceOverlay() {
     let ov = $("dice-overlay");
     if (!ov) {
@@ -1099,7 +1116,7 @@
     groups.forEach((g, gi) => [...body.querySelectorAll(`[data-g="${gi}"] .adie`)].forEach((el, i) => all.push({ el, v: g.values[i] })));
     const t0 = Date.now();
     await new Promise(res => { const iv = setInterval(() => { all.forEach(d => { if (!d.el.classList.contains("settled")) d.el.textContent = rollFace(); }); if (Date.now() - t0 > 620) { clearInterval(iv); res(); } }, 70); });
-    for (const d of all) { d.el.textContent = DFACE(d.v); d.el.classList.remove("rolling"); d.el.classList.add("settled"); if (d.v === "skull") d.el.classList.add("skull"); SFX("dice"); await sleep(55); }
+    for (const d of all) { settleAdie(d.el, d.v); SFX("dice"); await sleep(55); }
     rEl.textContent = resultText || ""; if (resultClass) rEl.classList.add(resultClass);
     await sleep(850); ov.style.display = "none";
   }
@@ -1143,7 +1160,7 @@
     // PHASE 1 — roll (tumble -> settle), skulls marked
     const t0 = Date.now();
     await new Promise(res => { const iv = setInterval(() => { all.forEach(d => { if (!d.el.classList.contains("settled")) d.el.textContent = rollFace(); }); if (Date.now() - t0 > 600) { clearInterval(iv); res(); } }, 70); });
-    for (const d of all) { d.el.textContent = DFACE(d.v); d.el.classList.remove("rolling"); d.el.classList.add("settled"); if (d.v === "skull") d.el.classList.add("skull"); SFX("dice"); }
+    for (const d of all) { settleAdie(d.el, d.v); SFX("dice"); }
     await sleep(450);
     // PHASE 2 — skull step
     const aS = rep.aSkulls || 0, dS = rep.dSkulls || 0;
@@ -1157,8 +1174,8 @@
     if (dS > aS) aNum.splice(Math.max(0, aNum.length - (dS - aS)), dS - aS);
     else if (aS > dS) dNum.splice(Math.max(0, dNum.length - (aS - dS)), aS - dS);
     mid.innerHTML = T("cb.compare");
-    aWrap.innerHTML = aNum.map(v => `<span class="adie settled">${v}</span>`).join("") || '<i class="muted">—</i>';
-    dWrap.innerHTML = dNum.map(v => `<span class="adie settled">${v}</span>`).join("") || '<i class="muted">—</i>';
+    aWrap.innerHTML = aNum.map(v => adieHTML(v)).join("") || '<i class="muted">—</i>';
+    dWrap.innerHTML = dNum.map(v => adieHTML(v)).join("") || '<i class="muted">—</i>';
     const aN = [...aWrap.querySelectorAll(".adie")], dN = [...dWrap.querySelectorAll(".adie")];
     for (let i = 0; i < Math.max(aN.length, dN.length); i++) {
       const av = aNum[i], dv = dNum[i];
@@ -1205,7 +1222,13 @@
     const g = svgEl("g", { "pointer-events": "none" });
     g.appendChild(svgEl("rect", { x: x - 13, y: y - 13, width: 26, height: 26, rx: 5, fill: "#eef2f8", stroke: "#11141a", "stroke-width": 1.5 }));
     g.appendChild(svgEl("rect", { x: x - 13, y: y - 13, width: 26, height: 26, rx: 5, fill: "none", stroke: col, "stroke-width": 2.5 }));
-    g.appendChild(Object.assign(svgEl("text", { x, y: y + 6, "text-anchor": "middle", "font-size": 16, "font-weight": 700, fill: "#11141a" }), { textContent: dieFace(entry.die) }));
+    const dv = entry.die;   // real action dice are 1-5 → draw classic pips; anything else falls back to a glyph
+    if (typeof dv === "number" && dv >= 1 && dv <= 5) {
+      const o = 6, pr = 2.4, P = { 1: [[0, 0]], 2: [[-1, -1], [1, 1]], 3: [[-1, -1], [0, 0], [1, 1]], 4: [[-1, -1], [1, -1], [-1, 1], [1, 1]], 5: [[-1, -1], [1, -1], [0, 0], [-1, 1], [1, 1]] };
+      for (const [sx, sy] of P[dv]) g.appendChild(svgEl("circle", { cx: x + sx * o, cy: y + sy * o, r: pr, fill: "#11141a" }));
+    } else {
+      g.appendChild(Object.assign(svgEl("text", { x, y: y + 6, "text-anchor": "middle", "font-size": 16, "font-weight": 700, fill: "#11141a" }), { textContent: dieFace(dv) }));
+    }
     g.appendChild(Object.assign(svgEl("text", { x, y: y - 19, "text-anchor": "middle", "font-size": 14 }), { textContent: ACT_GLYPH[entry.kind] || "🎲" }));
     svg.appendChild(g);
     return animateRAF(560, k => {
