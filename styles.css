@@ -147,8 +147,15 @@ button.small:active:not(:disabled) { transform: translateY(1px) scale(.97); filt
 #hex-legend .lg-nudge::before { content: "🎒 "; }
 #side { width: 300px; border-left: 1px solid #2a2f3a; padding: 10px; overflow: auto; background: #161a22; }
 
-.hex-poly { stroke: #0c0e12; stroke-width: 2; cursor: pointer; }
-.hex-poly:hover { stroke: #f4d03f; stroke-width: 3; }
+.hex-poly { stroke: #0c0e12; stroke-width: 2; cursor: pointer; transition: stroke .1s, stroke-width .1s, fill .1s; }
+/* legality-aware hover — the hex lights up in its OWN color only where the player can actually act */
+.hex-poly.hl-run:hover  { stroke: #9fe9f4; stroke-width: 4; fill: rgba(95,208,224,.12); }
+.hex-poly.hl-atk:hover  { stroke: #ff6b73; stroke-width: 5; fill: rgba(227,66,75,.14); }
+.hex-poly.hl-para:hover { stroke: #ffe066; stroke-width: 5; fill: rgba(244,208,63,.12); }
+.hex-poly.hl-loot:hover { stroke: #f4d03f; stroke-width: 4; fill: rgba(244,208,63,.10); }
+.hex-poly.hl-cur:hover  { stroke: #ffffff; stroke-width: 4; fill: rgba(255,255,255,.06); }
+.hex-poly.hl-dead { cursor: default; }
+.hex-poly.hl-dead:hover { stroke: rgba(255,255,255,.16); stroke-width: 2.5; }
 .hex-label { fill: #0c0e12; font-size: 11px; text-anchor: middle; pointer-events: none; }
 .tok-beacon { fill: #f4d03f; stroke: #7a5b00; }
 .tok-supply { fill: #b08948; stroke: #5e4520; }
@@ -345,7 +352,10 @@ button.small:active:not(:disabled) { transform: translateY(1px) scale(.97); filt
 #loot-choice .lc-need { color: #f1c40f; }
 #loot-choice .lc-cards { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; max-width: 640px; }
 #loot-choice .lc-card { cursor: pointer; border: 2px solid transparent; border-radius: 10px; padding: 2px; transition: border-color .1s, transform .1s; }
-#loot-choice .lc-card:hover { transform: translateY(-2px); }
+#loot-choice .lc-card:hover { transform: translateY(-4px); box-shadow: 0 8px 20px rgba(0,0,0,.45); }
+/* deal each drawn card in off the top of the deck (staggered via inline animation-delay) */
+#loot-choice .lc-card.lc-deal { animation: lc-deal .34s cubic-bezier(.2,.9,.3,1) both; }
+@keyframes lc-deal { from { opacity: 0; transform: translateY(-40px) rotate(-6deg) scale(.85); } }
 #loot-choice .lc-card.sel { border-color: #5fd06f; box-shadow: 0 0 10px rgba(95,208,111,.5); }
 #loot-choice .lc-ok { margin: 14px auto 0; display: block; font: inherit; font-weight: 700; padding: 9px 26px; border-radius: 8px; border: 1px solid #3a6b4f; background: #234032; color: #d6ffe6; cursor: pointer; }
 #loot-choice .lc-ok:disabled { opacity: .45; cursor: not-allowed; }

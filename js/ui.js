@@ -462,10 +462,13 @@
       svg.appendChild(svgEl("polygon", { points: pts, fill: `url(#hg-${c.terrain})`, "pointer-events": "none" })); // raised painted tile (gradient)
       terrainDecal(svg, c.terrain, x, y);   // crisp procedural terrain motif (no art files)
       const poly = svgEl("polygon", { points: pts, fill: "transparent", class: "hex-poly" }); // interactive + highlight
-      if (hl.atk.has(key)) { poly.setAttribute("stroke", "#e3424b"); poly.setAttribute("stroke-width", "4"); }
-      else if (hl.para.has(key)) { poly.setAttribute("stroke", "#f4d03f"); poly.setAttribute("stroke-width", "4"); poly.setAttribute("stroke-dasharray", "6 4"); }
-      else if (hl.run.has(key)) { poly.setAttribute("stroke", "#5fd0e0"); poly.setAttribute("stroke-width", "3"); }
-      else if (key === curKey) { poly.setAttribute("stroke", "#fff"); poly.setAttribute("stroke-width", "3"); }
+      // tag each hex with its legality so hover lights up ONLY where the player can actually act (not a blanket gild)
+      let hlc = "hl-dead";
+      if (hl.atk.has(key)) { poly.setAttribute("stroke", "#e3424b"); poly.setAttribute("stroke-width", "4"); hlc = "hl-atk"; }
+      else if (hl.para.has(key)) { poly.setAttribute("stroke", "#f4d03f"); poly.setAttribute("stroke-width", "4"); poly.setAttribute("stroke-dasharray", "6 4"); hlc = "hl-para"; }
+      else if (hl.run.has(key)) { poly.setAttribute("stroke", "#5fd0e0"); poly.setAttribute("stroke-width", "3"); hlc = "hl-run"; }
+      else if (key === curKey) { poly.setAttribute("stroke", "#fff"); poly.setAttribute("stroke-width", "3"); hlc = hl.loot ? "hl-loot" : "hl-cur"; }
+      poly.classList.add(hlc);
       poly.addEventListener("click", (ev) => onHex(key, ev));
       bindTip(poly, () => hexTip(c));
       svg.appendChild(poly);
@@ -573,12 +576,15 @@
     modeLabel += ` · ${diffCN}`;
     $("game-info").textContent = `${G.map} · ${G.numPlayers}${T("meta.players")} · ${modeLabel} · ${T("meta.round")} ${G.round} · ${T("meta.events")} ${G.eventsResolved}/${G.eventTotal}${le} — ${hint}`;
     const human = !G.gameOver && p.human, showAct = human && !G.needsParachute;
-    const setBtn = (id, ok) => { const bt = $(id); if (!bt) return; bt.disabled = !ok; bt.classList.toggle("hidden", !human); };
+    // keep the action buttons visible-but-disabled (don't hide) so the toolbar stays stable AND their
+    // localized tooltips stay reachable; stash a short reason (data-why) the button tooltip appends.
+    const baseWhy = G.gameOver ? L("游戏已结束", "Game over") : (!human ? L("当前是对方回合", "Not your turn") : (G.needsParachute ? L("请先跳伞降落", "Parachute in first") : ""));
+    const setBtn = (id, ok, why) => { const bt = $(id); if (!bt) return; bt.disabled = !ok; bt.classList.remove("hidden"); bt.dataset.why = ok ? "" : (baseWhy || why || ""); };
     setBtn("btn-end", human && !G.needsParachute);
-    setBtn("btn-heal", showAct && E.canHeal(G, p));
-    setBtn("btn-barrier", showAct && E.canBuild(G, p) && E.emptyEdges(G, p).length > 0 && p.barriersUsed < 6);
-    setBtn("btn-hideout", showAct && E.canBuild(G, p));
-    setBtn("btn-trap", showAct && E.canBuild(G, p) && p.pos && G.board[E.hexKey(p.pos.q, p.pos.r)].trap == null && p.trapsUsed < 6);
+    setBtn("btn-heal", showAct && E.canHeal(G, p), L("此刻无法治疗（无伤可治 / 同格有敌 / 无行动骰）", "Can't heal now (no damage / enemy on your hex / no dice)"));
+    setBtn("btn-barrier", showAct && E.canBuild(G, p) && E.emptyEdges(G, p).length > 0 && p.barriersUsed < 6, L("无法建屏障（无行动骰 / 没有空边 / 已达 6 个上限）", "Can't build a barrier (no dice / no free edge / 6-wall limit)"));
+    setBtn("btn-hideout", showAct && E.canBuild(G, p), L("无法建藏身处（没有行动骰）", "Can't build a hideout (no action dice)"));
+    setBtn("btn-trap", showAct && E.canBuild(G, p) && p.pos && G.board[E.hexKey(p.pos.q, p.pos.r)].trap == null && p.trapsUsed < 6, L("无法埋陷阱（无行动骰 / 此格已有陷阱 / 已达 6 个上限）", "Can't lay a trap (no dice / one already here / 6-trap limit)"));
     renderLegend(p, human);
   }
   // a persistent, always-visible key for the board's highlight colors + your remaining action dice
@@ -830,7 +836,8 @@
     const sel = new Set();
     const cards = pl.drawn.map((id, i) => {
       const e = EQ[id];
-      return `<div class="lc-card" data-i="${i}">${equipCardHTML(e, null)}</div>`;
+      // each drawn card deals in off the deck with a stagger, so a Loot reads as dealing cards onto the table
+      return `<div class="lc-card lc-deal" data-i="${i}" style="animation-delay:${i * 90}ms">${equipCardHTML(e, null)}</div>`;
     }).join("");
     m.innerHTML = `<div class="lc-box"><h3>${L("选择保留", "Choose to keep")} <b class="lc-need">0/${pl.keep}</b></h3>` +
       `<div class="lc-cards">${cards}</div>` +
@@ -1630,7 +1637,7 @@
     });
     $("btn-hideout").addEventListener("click", () => act(p => E.canBuild(G, p) && E.doBuildHideout(G), "build"));
     $("btn-trap").addEventListener("click", () => act(() => E.doBuildTrap(G), "mine"));
-    Object.keys(BTN_TIP).forEach(id => { const b = $(id); if (b) bindTip(b, () => T(BTN_TIP[id])); });
+    Object.keys(BTN_TIP).forEach(id => { const b = $(id); if (b) bindTip(b, () => T(BTN_TIP[id]) + (b.disabled && b.dataset.why ? `<div class="tt-sub">⛔ ${b.dataset.why}</div>` : "")); });
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
   else init();
