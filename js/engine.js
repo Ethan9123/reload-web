@@ -494,6 +494,8 @@
       p.carryingCrown = false; state.crown = { at: null, carrier: null };
       log(state, `👑 ${p.name} 将狩猎之冠纳入名望榜 (+${FAME.crown.value})`, "crownScore", { name: p.name, n: FAME.crown.value });
       gainFame(state, p, "crown", 1);   // one Crown (Event) fame token, worth FAME.crown.value
+      state.lastCrownBank = { idx: p.idx, got: FAME.crown.value };   // signal for the UI "banked the crown" moment
+      state._crownBankSeq = (state._crownBankSeq || 0) + 1;
     }
     // NOTE: carried beacons are NOT auto-scored. Per rules they stay in temp storage
     // until the player Activates the Central Tower to upload them (see doActivate).
