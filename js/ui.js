@@ -424,7 +424,7 @@
   }
   // a colored game-piece standee (board) with the character emblem
   function drawMini(svg, p, ch, cx, cy, active) {
-    const g = svgEl("g", { "pointer-events": "none" });
+    const g = svgEl("g", { "pointer-events": "none", class: "mini", "data-pidx": p.idx });   // data-pidx lets a move slide this exact piece
     const add = (tag, a) => { const e = svgEl(tag, a); g.appendChild(e); return e; };
     const hw = 10.5, top = cy - 16, mid = cy - 8, bot = cy + 12;
     const body = `M ${cx - hw} ${bot} L ${cx - hw} ${mid} Q ${cx - hw} ${top} ${cx} ${top} Q ${cx + hw} ${top} ${cx + hw} ${mid} L ${cx + hw} ${bot} Z`;
@@ -821,9 +821,9 @@
       const beforePos = p.pos ? { q: p.pos.q, r: p.pos.r } : null;
       E.doRun(G, o.key); SFX("move"); render();
       const afterPos = p.pos ? { q: p.pos.q, r: p.pos.r } : null;
-      // glide the same streaking dot the AI gets, so the human's own move reads as motion (not a teleport)
+      // slide the human's own standee (not a teleport), same as the AI gets
       if (beforePos && afterPos && (beforePos.q !== afterPos.q || beforePos.r !== afterPos.r))
-        await animateAIMove(beforePos, afterPos, p.color);
+        await animateAIMove(beforePos, afterPos, p.color, p.idx);
       await consumeActionFeed({ skipMove: true });   // glide replaces the move-die pop; show any other dice
       if ((G._trapSeq || 0) > seq && G.lastTrap && (G.players[G.lastTrap.walker].human || G.players[G.lastTrap.owner].human)) await animateTrap(G.lastTrap);
     }
@@ -958,18 +958,24 @@
     ring.innerHTML = '<animate attributeName="r" values="15;27;15" dur="0.9s" repeatCount="indefinite"/><animate attributeName="opacity" values="0.95;0.25;0.95" dur="0.9s" repeatCount="indefinite"/>';
     svg.appendChild(ring);
   }
-  function animateAIMove(from, to, color) {             // a glowing dot streaks from old hex to new hex, leaving a trail
-    const a = pxOf(E.hexKey(from.q, from.r)), b = pxOf(E.hexKey(to.q, to.r)), g = vfxGroup();
-    if (!a || !b || !g) return Promise.resolve();
-    const trail = svgEl("line", { x1: a.x, y1: a.y, x2: a.x, y2: a.y, stroke: color, "stroke-width": 4, "stroke-linecap": "round", opacity: 0.5, "stroke-dasharray": "2 6" });
-    const dot = svgEl("circle", { cx: a.x, cy: a.y, r: 7, fill: color, stroke: "#fff", "stroke-width": 2 });
-    g.appendChild(trail); g.appendChild(dot);
+  // slide the ACTUAL standee from old->new hex (the piece moves, not a decoy dot). render() has already
+  // repainted the mini at its destination, so we back-offset its <g> to the old hex and ease the offset to 0,
+  // leaving a faint trail behind it. Falls back to a trail-only glide if the standee group can't be found.
+  function animateAIMove(from, to, color, idx) {
+    const a = pxOf(E.hexKey(from.q, from.r)), b = pxOf(E.hexKey(to.q, to.r));
+    if (!a || !b) return Promise.resolve();
+    const svg = $("board"), vg = vfxGroup();
+    const mini = (svg && idx != null) ? svg.querySelector(`.mini[data-pidx="${idx}"]`) : null;
+    const trail = vg ? svgEl("line", { x1: a.x, y1: a.y, x2: a.x, y2: a.y, stroke: color, "stroke-width": 4, "stroke-linecap": "round", opacity: 0.4, "stroke-dasharray": "2 6", "pointer-events": "none" }) : null;
+    if (trail) vg.appendChild(trail);
+    const dx = a.x - b.x, dy = a.y - b.y;
+    if (mini) mini.setAttribute("transform", `translate(${dx.toFixed(1)},${dy.toFixed(1)})`);   // jump it back to the old hex
+    if (!mini && vg) { const dot = svgEl("circle", { cx: a.x, cy: a.y, r: 7, fill: color, stroke: "#fff", "stroke-width": 2, "pointer-events": "none" }); vg.appendChild(dot); trail && (trail._dot = dot); }
     return animateRAF(380, k => {
-      const e = 1 - (1 - k) * (1 - k);
-      dot.setAttribute("cx", (a.x + (b.x - a.x) * e).toFixed(1)); dot.setAttribute("cy", (a.y + (b.y - a.y) * e).toFixed(1));
-      trail.setAttribute("x2", (a.x + (b.x - a.x) * e).toFixed(1)); trail.setAttribute("y2", (a.y + (b.y - a.y) * e).toFixed(1));
-      dot.setAttribute("opacity", (1 - k * 0.5).toFixed(2));
-    }).then(() => g.remove());
+      const e = 1 - (1 - k) * (1 - k), cx = a.x + (b.x - a.x) * e, cy = a.y + (b.y - a.y) * e;
+      if (mini) mini.setAttribute("transform", `translate(${(dx * (1 - e)).toFixed(1)},${(dy * (1 - e)).toFixed(1)})`);   // ease the offset to 0 = slide to new
+      if (trail) { trail.setAttribute("x2", cx.toFixed(1)); trail.setAttribute("y2", cy.toFixed(1)); trail.setAttribute("opacity", (0.4 * (1 - k)).toFixed(2)); if (trail._dot) { trail._dot.setAttribute("cx", cx.toFixed(1)); trail._dot.setAttribute("cy", cy.toFixed(1)); } }
+    }).then(() => { if (mini) mini.removeAttribute("transform"); if (vg) vg.remove(); });
   }
   // staged parachute: a canopy sways down onto the aimed hex, then (if a front pushed it) drifts one hex to land
   function animateParachute(drift) {
@@ -1023,9 +1029,9 @@
         await animateParachute(G.lastDrift);                                  // the AI just dropped in — stage the chute
         const land = G.lastDrift.to && G.board[G.lastDrift.to];              // landing hex (beforePos is null here)
         if (land && (land.q !== afterPos.q || land.r !== afterPos.r))
-          await animateAIMove({ q: land.q, r: land.r }, afterPos, p.color);   // then show the post-drop walk
+          await animateAIMove({ q: land.q, r: land.r }, afterPos, p.color, p.idx);   // then show the post-drop walk
       } else if (beforePos && afterPos && (beforePos.q !== afterPos.q || beforePos.r !== afterPos.r))
-        await animateAIMove(beforePos, afterPos, p.color);                    // show the move
+        await animateAIMove(beforePos, afterPos, p.color, p.idx);             // show the move
       await consumeActionFeed({ skipMove: true, delay: Math.min(260, Math.max(120, aiDelay / 2)) });   // show the dice the AI placed (loot/build/heal/upload)
 
       if (G.lastCombat && G.lastCombat !== beforeCombat) {                    // a fight happened this turn
