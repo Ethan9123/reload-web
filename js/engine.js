@@ -673,7 +673,7 @@
     if (key !== here && !neighbors(state, p.pos.q, p.pos.r).includes(key)) return false;   // current or adjacent only
     const cell = state.board[key]; if (!cell) return false;
     const tok = cell.tokens[tokenIdx]; if (!tok || !isLootable(tok)) return false;   // never drone-loot a CTF flag
-    spendDice(state, p, 1, 1, "loot"); recordAction(state, p, "loot", 1); cell.tokens.splice(tokenIdx, 1); p._droneUsed = true;
+    spendDice(state, p, 1, 1, "loot"); recordAction(state, p, "loot", 1, { tok: tok.kind }); cell.tokens.splice(tokenIdx, 1); p._droneUsed = true;
     if (tok.kind === "beacon") { p.carryingBeacons += 1; log(state, `🤖 ${p.name} 的无人机巴兹拾取信标`, "droneBeacon", { name: p.name }); }
     else if (tok.kind === "crown") { grabCrown(state, p); }   // Hunter's Crown is grabbable by the drone too
     else if (tok.kind === "supply") {
@@ -740,7 +740,7 @@
     const p = curP(state); if (!canGrabFlag(state, p)) return false;
     const et = enemyTeamOf(p), cell = state.board[hexKey(p.pos.q, p.pos.r)];
     const i = cell.tokens.findIndex(t => t.kind === "flag" && t.team === et); if (i < 0) return false;
-    spendDice(state, p, 1, 1, "loot"); recordAction(state, p, "loot", 1);
+    spendDice(state, p, 1, 1, "loot"); recordAction(state, p, "loot", 1, { tok: "flag" });
     cell.tokens.splice(i, 1); p.carryingFlag = et; state.flags[et].carrier = p.idx; state.flags[et].at = null;
     log(state, `🚩 ${p.name} 夺取了队伍${et + 1}的旗帜！`, "grabFlag", { name: p.name, team: et + 1 });
     return true;

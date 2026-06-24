@@ -1488,8 +1488,8 @@
     }
     g.appendChild(Object.assign(svgEl("text", { x, y: y - 19, "text-anchor": "middle", "font-size": 14 }), { textContent: ACT_GLYPH[entry.kind] || "🎲" }));
     svg.appendChild(g);
-    // token-travel: a looted beacon/crown rises into the picker; uploaded beacons fan up at the tower
-    if (entry.tok === "beacon" || entry.tok === "crown") popPickup(entry.hex, entry.tok);
+    // token-travel: a looted beacon/crown/flag rises into the picker; uploaded beacons fan up at the tower
+    if (entry.tok === "beacon" || entry.tok === "crown" || entry.tok === "flag") popPickup(entry.hex, entry.tok);
     else if (entry.up) burstUpload(entry.hex, entry.up);
     return animateRAF(560, k => {
       g.setAttribute("transform", `translate(0,${(-30 * (1 - k) * (1 - k)).toFixed(1)})`);
