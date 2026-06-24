@@ -1022,31 +1022,36 @@
 
   function ringFromTower(state, cell) { const tc = state.board[towerKey(state)]; return hexDistance(cell, tc); }
   function resolveEvent(state, id) {
-    state.lastEvent = id;
+    state.lastEvent = id; state.lastEventFx = null;
     const ev = DATA.EVENTS[id] || { name: id };
     log(state, `⚡ 事件：${ev.name}`, "event", { id, name: ev.name });
+    // record which hexes an event changed so the UI can play a per-hex flourish after the card flip
+    const fx = (kind, hexes) => { if (hexes && hexes.length) { state.lastEventFx = { id, kind, hexes }; state._eventFxSeq = (state._eventFxSeq || 0) + 1; } };
     if (id === "contamination") {
       if (state._toxinFrontier == null) state._toxinFrontier = (state.maxRing != null ? state.maxRing : 2);   // storm starts at the outermost ring and creeps inward
-      const fr = state._toxinFrontier; let n = 0;
-      for (const k in state.board) { const c = state.board[k]; if (!c.toxin && !c.dome && ringFromTower(state, c) === fr) { c.toxin = true; n++; } }
+      const fr = state._toxinFrontier; const hit = [];
+      for (const k in state.board) { const c = state.board[k]; if (!c.toxin && !c.dome && ringFromTower(state, c) === fr) { c.toxin = true; hit.push(k); } }
       state._toxinFrontier = Math.max(0, fr - 1);
-      log(state, `　毒气扩张：${n} 格被污染`, "toxinSpread", { n });
+      log(state, `　毒气扩张：${hit.length} 格被污染`, "toxinSpread", { n: hit.length });
+      fx("toxin", hit);
     } else if (id === "supply_drop") {
       // Supply Drop refills EACH village (playthroughs: "a 2★ box to each village; the 2nd drop is 3★").
       const star = (state._supplyDrops || 0) === 0 ? 2 : 3; state._supplyDrops = (state._supplyDrops || 0) + 1;
-      let n = 0;
-      for (const k in state.board) { const c = state.board[k]; if (TERRAIN[c.terrain] === TERRAIN.village && !c.tokens.some(t => t.kind === "supply")) { c.tokens.push({ kind: "supply", star }); n++; } }
-      log(state, `　补给空投：${n} 个 ${star}★ 补给箱补满村庄`, "supplyDrop", { n, star });
+      const hit = [];
+      for (const k in state.board) { const c = state.board[k]; if (TERRAIN[c.terrain] === TERRAIN.village && !c.tokens.some(t => t.kind === "supply")) { c.tokens.push({ kind: "supply", star }); hit.push(k); } }
+      log(state, `　补给空投：${hit.length} 个 ${star}★ 补给箱补满村庄`, "supplyDrop", { n: hit.length, star });
+      fx("drop", hit);
     } else if (id === "ex_tech") {
       // Ex-Tech Drop: two 3★ boxes land in the outer ring. (The tabletop game targets specific zone
       // sectors by die roll; this engine has no per-hex zone markers — like Contamination & the Crown,
       // it works in rings — so we place on random supply-free outermost-ring hexes.)
       const ring = state.maxRing != null ? state.maxRing : 2;
       const outer = shuffle(Object.keys(state.board).filter(k => { const c = state.board[k]; return !c.hasTower && ringFromTower(state, c) === ring && !c.tokens.some(t => t.kind === "supply"); }), state.rnd);
-      let n = 0; for (const k of outer) { if (n >= 2) break; state.board[k].tokens.push({ kind: "supply", star: 3 }); n++; }
-      log(state, `　高科技空投：${n} 个 3★ 补给箱`, "exTechDrop", { n });
+      const hit = []; for (const k of outer) { if (hit.length >= 2) break; state.board[k].tokens.push({ kind: "supply", star: 3 }); hit.push(k); }
+      log(state, `　高科技空投：${hit.length} 个 3★ 补给箱`, "exTechDrop", { n: hit.length });
+      fx("drop", hit);
     } else if (id === "dome") {
-      state.board[towerKey(state)].dome = true; log(state, "　穹顶降临中央塔（安全区）", "domeEvent", {});
+      const tk = towerKey(state); state.board[tk].dome = true; log(state, "　穹顶降临中央塔（安全区）", "domeEvent", {}); fx("dome", [tk]);
     } else if (id === "gift_fans") {
       for (const p of state.players) { const c = state.decks.equip1.pop(); if (c) p.backpack.push(c); }
       log(state, "　每位玩家抽 1 张 1★ 装备", "giftFans", {});
@@ -1057,6 +1062,7 @@
       for (const p of state.players) p.carryingBeacons += 1; log(state, "　每位玩家 +1 携带信标", "giftSponsors", {});
     } else if (id === "crown") {
       placeCrown(state); log(state, "　狩猎之冠降临外圈（Loot 拾取，回合开始或终局计入名望）", "crownDrop", {});
+      if (state.crown && state.crown.at) fx("crown", [state.crown.at]);
     } else if (id === "earthquake") {
       earthquakeReroll(state);
     } else if (id === "announcement") {
