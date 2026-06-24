@@ -319,7 +319,8 @@ button.small:active:not(:disabled) { transform: translateY(1px) scale(.97); filt
 #action-menu { position: fixed; z-index: 90; min-width: 180px; background: #161a22;
   border: 1px solid #3a4150; border-radius: 10px; padding: 6px; box-shadow: 0 14px 44px rgba(0,0,0,0.6);
   transform-origin: top left; animation: menu-pop .12s cubic-bezier(.2,1.2,.4,1) both; }
-@keyframes menu-pop { from { opacity: 0; transform: scale(.92) translateY(-5px); } }
+/* fade + drop-in only — NO scale, so showActionMenu's getBoundingClientRect measures the full size and clamps correctly near edges */
+@keyframes menu-pop { from { opacity: 0; transform: translateY(-6px); } }
 #action-menu .am-title { font-size: 11px; color: #8a909c; padding: 4px 8px 6px; }
 #action-menu .am-opt { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
   font: inherit; font-size: 13px; padding: 8px 10px; border: none; border-radius: 7px; cursor: pointer;
