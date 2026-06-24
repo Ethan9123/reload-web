@@ -852,14 +852,17 @@
     if (!b) { b = document.createElement("div"); b.id = "ai-banner"; ($("board-wrap") || document.body).appendChild(b); }
     return b;
   }
+  let yourTurnTimer = null;   // pending auto-hide for the your-turn cue (declared before the banner helpers that cancel it)
   function aiBanner(text, color) {
+    clearTimeout(yourTurnTimer);   // reusing the shared banner must cancel the pending your-turn auto-hide
     const b = ensureAiBanner();
+    b.style.borderColor = ""; b.style.removeProperty("--turn-glow");   // drop any leftover your-turn tint
     b.innerHTML = `<span class="ab-dot" style="background:${color || "#888"}"></span>${text}`;
+    b.classList.remove("your-turn");
     b.classList.add("show");
   }
-  function clearAiBanner() { const b = $("ai-banner"); if (b) b.classList.remove("show", "your-turn"); }
+  function clearAiBanner() { clearTimeout(yourTurnTimer); const b = $("ai-banner"); if (b) b.classList.remove("show", "your-turn"); }
   // handoff cue: when control returns to the human, a chime + a brief "your turn" banner pop
-  let yourTurnTimer = null;
   function yourTurnCue() {
     const me = E.curP(G); if (!me || !me.human) return;
     SFX("turn");
