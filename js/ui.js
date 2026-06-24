@@ -778,8 +778,41 @@
     }
   }
 
+  // a brief centered "moment" toast (below the AI banner) for big swings: first blood, crown bank, lead change
+  function momentToast(html, color) {
+    let t = $("moment-toast");
+    if (!t) { t = document.createElement("div"); t.id = "moment-toast"; ($("board-wrap") || document.body).appendChild(t); }
+    t.style.setProperty("--mt", color || "#f4d03f");
+    t.innerHTML = html;
+    t.classList.remove("show"); void t.offsetWidth; t.classList.add("show");
+    clearTimeout(momentToast._t); momentToast._t = setTimeout(() => { const x = $("moment-toast"); if (x) x.classList.remove("show"); }, 2200);
+  }
+  let momentGame = null, momentSeen = {};
+  function leaderIdx() {   // unique positive fame leader (battle-royale only); null on a tie / all-zero
+    if (!G || !G.players || G.isTeam) return null;
+    let best = -1, second = -1, bi = null;
+    for (const p of G.players) { const f = E.totalFame(p); if (f > best) { second = best; best = f; bi = p.idx; } else if (f > second) second = f; }
+    return best > 0 && best > second ? bi : null;
+  }
+  function surfaceMoments() {   // fires from render() on a fresh signal; trackers reset per game (keyed on G)
+    if (momentGame !== G) { momentGame = G; momentSeen = { firstBlood: false, crownBank: 0, leader: null }; }
+    if (!G || G.gameOver) return;
+    if (!momentSeen.firstBlood && (G._reloadSeq || 0) > 0) { momentSeen.firstBlood = true; momentToast("⚔ " + L("第一滴血！", "First blood!"), "#e3424b"); }
+    if ((G._crownBankSeq || 0) > momentSeen.crownBank) {
+      momentSeen.crownBank = G._crownBankSeq;
+      const cb = G.lastCrownBank, who = cb && G.players[cb.idx];
+      if (who) { momentToast(`👑 ${who.name} ${L("收下狩猎之冠", "banks the Crown")} +${cb.got}`, "#f4d03f"); SFX("score"); }
+    }
+    const lead = leaderIdx();
+    if (lead !== momentSeen.leader) { const prev = momentSeen.leader; momentSeen.leader = lead; if (prev != null && lead != null) { const who = G.players[lead]; momentToast(`👑 ${who.name} ${L("反超领先！", "takes the lead!")}`, who.color); } }
+    if (G.flags && Array.isArray(G.captures)) {   // CTF: a team just banked the enemy flag
+      if (!momentSeen.caps) momentSeen.caps = G.captures.slice();
+      else { for (let t = 0; t < G.captures.length; t++) if (G.captures[t] > (momentSeen.caps[t] || 0)) momentToast(`🏁 ${T("pc.team", { n: t + 1 })} ${L("夺旗得分！", "captures the flag!")}`, (TEAM_COLOR[t] || "#f4d03f")); momentSeen.caps = G.captures.slice(); }
+    }
+  }
   function render() {
     renderBoard(); renderPlayers(); renderTop(); renderLog(); renderAchievements(); renderDiplomacy();
+    surfaceMoments();
     if (G && (G._achSeq || 0) > lastAchSeq) { lastAchSeq = G._achSeq; if (G.lastAchievement) { flashAchievement(G.lastAchievement); SFX("achievement"); } }
     if (G && G.gameOver && !_overSfx) {
       _overSfx = true;
