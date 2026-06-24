@@ -64,11 +64,18 @@ select, button { font: inherit; padding: 6px 10px; border-radius: 6px; border: 1
 #topbar { display: flex; align-items: center; gap: 16px; padding: 8px 14px;
   background: #1b1f28; border-bottom: 1px solid #2a2f3a; }
 #game-info { font-weight: 600; flex: 1; }
-button.small { padding: 4px 10px; font-size: 13px; cursor: pointer; }
+button.small { padding: 4px 10px; font-size: 13px; cursor: pointer; transition: transform .07s ease, filter .12s ease, background .12s ease, border-color .12s ease; }
+button.small:not(:disabled):hover { background: #222a38; border-color: #5a6478; }
+button.small:active:not(:disabled) { transform: translateY(1px) scale(.97); filter: brightness(.88); }
 #game-screen { height: 100vh; }
 .game-body { display: flex; flex: 1; min-height: 0; }
-#board-wrap { flex: 1; padding: 12px; overflow: auto; display: flex; position: relative; }
-#board { width: 100%; height: 100%; }
+/* the board sits like a physical board resting on a lit felt table */
+#board-wrap { flex: 1; padding: 18px; overflow: hidden; display: flex; align-items: center; justify-content: center; position: relative;
+  background: radial-gradient(135% 130% at 50% 22%, #222a3c 0%, #11151e 55%, #07090d 100%); }
+/* fill + upscale to the larger axis (preserveAspectRatio meet); the margin becomes part of the framed mat */
+#board { width: 100%; height: 100%; border-radius: 20px;
+  background: radial-gradient(circle at 50% 32%, #181d28, #0e1118 78%);
+  box-shadow: 0 0 0 8px #232a37, 0 0 0 10px #0b0d12, 0 22px 52px rgba(0,0,0,.62); }
 #ai-banner { position: absolute; top: 10px; left: 50%; transform: translateX(-50%) translateY(-8px);
   background: rgba(16,19,26,.92); border: 1px solid #2b3340; border-radius: 999px; padding: 6px 14px; font-size: 13px; color: #e6e8ec;
   display: flex; align-items: center; gap: 8px; pointer-events: none; opacity: 0; transition: opacity .18s, transform .18s; z-index: 30; white-space: nowrap; box-shadow: 0 4px 16px rgba(0,0,0,.4); }
@@ -310,12 +317,16 @@ button.small { padding: 4px 10px; font-size: 13px; cursor: pointer; }
 /* ---- hover tooltip (semi-transparent floating help) ---- */
 /* ---- action-confirm menu (what to do at a clicked hex) ---- */
 #action-menu { position: fixed; z-index: 90; min-width: 180px; background: #161a22;
-  border: 1px solid #3a4150; border-radius: 10px; padding: 6px; box-shadow: 0 14px 44px rgba(0,0,0,0.6); }
+  border: 1px solid #3a4150; border-radius: 10px; padding: 6px; box-shadow: 0 14px 44px rgba(0,0,0,0.6);
+  transform-origin: top left; animation: menu-pop .12s cubic-bezier(.2,1.2,.4,1) both; }
+/* fade + drop-in only — NO scale, so showActionMenu's getBoundingClientRect measures the full size and clamps correctly near edges */
+@keyframes menu-pop { from { opacity: 0; transform: translateY(-6px); } }
 #action-menu .am-title { font-size: 11px; color: #8a909c; padding: 4px 8px 6px; }
 #action-menu .am-opt { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
   font: inherit; font-size: 13px; padding: 8px 10px; border: none; border-radius: 7px; cursor: pointer;
-  background: #232936; color: #e6e8ec; margin-top: 4px; }
+  background: #232936; color: #e6e8ec; margin-top: 4px; transition: transform .06s ease, background .1s ease; }
 #action-menu .am-opt:hover { background: #2e3647; }
+#action-menu .am-opt:active { transform: scale(.97); background: #353f52; }
 #action-menu .am-opt span { width: 18px; text-align: center; }
 #action-menu .am-cancel { background: #2a2230; color: #c9b6c6; }
 
