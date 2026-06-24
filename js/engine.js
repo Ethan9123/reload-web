@@ -507,6 +507,7 @@
     if (!state.needsParachute || !legalParachute(state).includes(key)) return false;
     const p = curP(state), c = state.board[key];
     p.pos = { q: c.q, r: c.r };
+    const aimedKey = key;   // where the chute was aimed (before any drift), so the UI can stage the drop
     // drift: roll 2 dice — land on chosen hex if same value OR opposite directions; else a
     // front pushes you 1 hex in a rolled direction (drift ignores walls). (rules 07:08)
     const f1 = rollDie(state.rnd), f2 = rollDie(state.rnd), d1 = faceDir(f1), d2 = faceDir(f2);
@@ -518,7 +519,9 @@
       log(state, `${p.name} 空降遇锋面，飘移一格`, "drift", { name: p.name });
     }
     p.reloadZone = false; state.needsParachute = false; state.phase = "action";
-    log(state, `${p.name} 跳伞降落到 ${state.board[hexKey(p.pos.q, p.pos.r)].terrain}`, "parachute", { name: p.name, terrain: state.board[hexKey(p.pos.q, p.pos.r)].terrain });
+    const finalKey = hexKey(p.pos.q, p.pos.r);
+    state.lastDrift = { by: p.idx, from: aimedKey, to: finalKey, drifted: finalKey !== aimedKey };   // for the UI drop animation
+    log(state, `${p.name} 跳伞降落到 ${state.board[finalKey].terrain}`, "parachute", { name: p.name, terrain: state.board[finalKey].terrain });
     return true;
   }
 

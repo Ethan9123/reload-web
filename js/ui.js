@@ -282,19 +282,44 @@
   // a horizontal fame track: width = Superstar threshold; colored segments sized by (count × token value).
   // In Team/CTF modes the Superstar check uses the TEAM's combined fame, so the track aggregates teammates
   // (each teammate's card shows the same shared team track); Battle Royale shows the player's own fame.
+  let fameAnim = {}, fameAnimGame = null;   // p.idx -> {total, seg:{fameKey:pct}} from the last render, to ease width deltas
   function fameTrackHTML(p) {
+    if (fameAnimGame !== G) { fameAnim = {}; fameAnimGame = G; }   // reset the cache for a fresh game
     const thr = G.superstarFame || 60;
     const members = p.team != null ? G.players.filter(x => x.team === p.team) : [p];
     const cnt = {};
     for (const m of members) for (const k in m.fame) cnt[k] = (cnt[k] || 0) + (m.fame[k] || 0);
+    const prev = fameAnim[p.idx] || { total: 0, seg: {} }, nowSeg = {};
     let total = 0, segs = "";
     for (const k of FAME_ORDER) {
       const c = cnt[k] || 0; if (!c) continue;
       const val = (D.FAME[k] && D.FAME[k].value) || 1; total += c * val;
-      const w = (c * val) / thr * 100;
-      segs += `<span class="ft-seg" style="width:${w}%;background:${FAME_COLOR[k] || "#888"}" title="${(D.FAME[k] && D.FAME[k].name) || k} ×${c} = ${c * val}"></span>`;
+      const w = (c * val) / thr * 100; nowSeg[k] = w;
+      const startW = prev.seg[k] != null ? prev.seg[k] : 0;   // a new fame type grows in from 0
+      segs += `<span class="ft-seg" data-k="${k}" data-w="${w}" style="width:${startW}%;background:${FAME_COLOR[k] || "#888"}" title="${(D.FAME[k] && D.FAME[k].name) || k} ×${c} = ${c * val}"></span>`;
     }
-    return `<div class="fametrack-wrap"><div class="fametrack" title="${total} / ${thr}">${segs}</div><span class="ft-num">${total}/${thr}</span></div>`;
+    const gain = total > prev.total ? " ft-gain" : "";   // fame went up this render → pulse + sheen
+    fameAnim[p.idx] = { total, seg: nowSeg };
+    return `<div class="fametrack-wrap"><div class="fametrack${gain}" data-pidx="${p.idx}" title="${total} / ${thr}">${segs}</div><span class="ft-num${gain}">${total}/${thr}</span></div>`;
+  }
+  // capture each fame segment's CURRENTLY-displayed width before renderPlayers wipes the cards, so an
+  // ease still in flight resumes from where the bar actually is instead of snapping to the target.
+  function snapshotFameWidths() {
+    const box = $("players-area"); if (!box) return;
+    box.querySelectorAll(".fametrack[data-pidx]").forEach(ft => {
+      const rec = fameAnim[ft.getAttribute("data-pidx")]; if (!rec) return;
+      const tw = ft.clientWidth || 1;
+      ft.querySelectorAll(".ft-seg[data-k]").forEach(s => { rec.seg[s.getAttribute("data-k")] = s.getBoundingClientRect().width / tw * 100; });
+    });
+  }
+  // after renderPlayers rebuilds the cards, ease each fame segment from its rendered start width to its
+  // data-w target. Apply synchronously (one forced reflow commits the start widths, then set the targets)
+  // so the transition fires reliably even under render churn — an rAF here can be outpaced and leave the bar stuck.
+  function animateFameTracks() {
+    const box = $("players-area"); if (!box) return;
+    const segs = box.querySelectorAll(".fametrack .ft-seg"); if (!segs.length) return;
+    void box.offsetWidth;   // commit the just-rendered start widths in one reflow before retargeting
+    segs.forEach(s => { const w = s.getAttribute("data-w"); if (w != null) s.style.width = w + "%"; });
   }
   function svgText(x, y, s, size, fill, opacity) {
     const t = svgEl("text", { x, y, "text-anchor": "middle", "font-size": size, fill: fill || "#fff", "pointer-events": "none" });
@@ -502,6 +527,7 @@
   }
 
   function renderPlayers() {
+    snapshotFameWidths();   // record in-flight fame-bar widths before the rebuild so the ease resumes (no snap)
     const box = $("players-area"); box.innerHTML = "";
     for (const p of G.players) {
       const d = document.createElement("div");
@@ -526,6 +552,7 @@
       bindTip(d, () => playerTip(p));
       box.appendChild(d);
     }
+    animateFameTracks();   // ease fame segments from their previous widths to the new totals
   }
 
   function renderTop() {
@@ -799,7 +826,7 @@
     if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
     if (barrierMode) { barrierMode = false; clearAiBanner(); render(); return; }   // clicking a hex cancels edge-select
     const p = E.curP(G);
-    if (G.needsParachute) { if (E.parachute(G, key)) { SFX("parachute"); render(); } else { SFX("buzz"); nudgeHex(key); } return; }
+    if (G.needsParachute) { if (E.parachute(G, key)) { SFX("parachute"); render(); await animateParachute(G.lastDrift); } else { SFX("buzz"); nudgeHex(key); } return; }
     const opts = hexActionOptions(p, key);
     if (!opts.length) {
       // feedback only when the player clearly *tried* to act: an enemy they can't reach, or loot out of range
@@ -912,6 +939,23 @@
       dot.setAttribute("opacity", (1 - k * 0.5).toFixed(2));
     }).then(() => g.remove());
   }
+  // staged parachute: a canopy sways down onto the aimed hex, then (if a front pushed it) drifts one hex to land
+  function animateParachute(drift) {
+    if (!drift) return Promise.resolve();
+    const a = pxOf(drift.from), g = vfxGroup();
+    if (!a || !g) return Promise.resolve();
+    const dropH = HEX * 3.2;
+    const chute = Object.assign(svgEl("text", { "text-anchor": "middle", "font-size": 30, "pointer-events": "none" }), { textContent: "🪂" });
+    chute.setAttribute("x", a.x); g.appendChild(chute);
+    return animateRAF(620, k => {                        // 1) descend onto the aimed hex, swaying
+      const e = 1 - (1 - k) * (1 - k), sway = Math.sin(k * Math.PI * 3) * 5 * (1 - k);
+      chute.setAttribute("x", (a.x + sway).toFixed(1));
+      chute.setAttribute("y", (a.y + 4 - dropH * (1 - e)).toFixed(1));
+      chute.setAttribute("opacity", (k < 0.12 ? k / 0.12 : 1).toFixed(2));
+    }).then(() => {                                       // 2) drift one hex if a front caught the chute
+      if (drift.drifted) { const b = pxOf(drift.to); if (b) return animateRAF(360, k => { const e = 1 - (1 - k) * (1 - k); chute.setAttribute("x", (a.x + (b.x - a.x) * e).toFixed(1)); chute.setAttribute("y", (a.y + 4 + (b.y - a.y) * e).toFixed(1)); }); }
+    }).then(() => animateRAF(180, k => chute.setAttribute("opacity", (1 - k).toFixed(2)))).then(() => g.remove());
+  }
   function combatToast(rep) {                           // compact AI-vs-AI combat readout (no full modal)
     const A = G.players[rep.a], Tp = G.players[rep.t];
     const icon = rep.type === "ranged" ? "🔫" : "🗡";
@@ -929,18 +973,26 @@
   async function runAI() {
     if (aiRunning) return;
     aiRunning = true;
+    const myGame = G;                          // the game this loop drives; a Rematch swaps G out from under us
     while (!G.gameOver && !E.curP(G).human) {
+      if (G !== myGame) return;                // a restart started a fresh runAI — abandon this orphaned loop
       const p = E.curP(G);
       const beforePos = p.pos ? { q: p.pos.q, r: p.pos.r } : null;
       const beforeCombat = G.lastCombat, beforeLen = G.log.length, seq = G._trapSeq || 0, evSeen = G.eventsResolved || 0;
       aiBanner(T("banner.acting", { name: p.name }), p.color); pulseActing(p);
       await sleep(Math.min(360, aiDelay));
+      if (G !== myGame) return;                // restart landed during the think-delay — don't act on the new game
 
       RL.ai.takeTurn(G);
       render();
 
       const afterPos = p.pos ? { q: p.pos.q, r: p.pos.r } : null;
-      if (beforePos && afterPos && (beforePos.q !== afterPos.q || beforePos.r !== afterPos.r))
+      if (!beforePos && afterPos && G.lastDrift && G.lastDrift.by === p.idx) {
+        await animateParachute(G.lastDrift);                                  // the AI just dropped in — stage the chute
+        const land = G.lastDrift.to && G.board[G.lastDrift.to];              // landing hex (beforePos is null here)
+        if (land && (land.q !== afterPos.q || land.r !== afterPos.r))
+          await animateAIMove({ q: land.q, r: land.r }, afterPos, p.color);   // then show the post-drop walk
+      } else if (beforePos && afterPos && (beforePos.q !== afterPos.q || beforePos.r !== afterPos.r))
         await animateAIMove(beforePos, afterPos, p.color);                    // show the move
       await consumeActionFeed({ skipMove: true, delay: Math.min(260, Math.max(120, aiDelay / 2)) });   // show the dice the AI placed (loot/build/heal/upload)
 
@@ -1007,6 +1059,7 @@
   }
 
   async function startGame() {
+    aiRunning = false; clearAiBanner();   // a Rematch may fire mid-animation of the old game — drop any in-flight AI loop/banner
     const modeSel = $("mode-select"), mode = modeSel ? modeSel.value : "battleRoyale";
     let n = parseInt($("player-count").value, 10);
     if (mode === "team" || mode === "captureFlag") n = 4;        // 2v2 (CTF is 2v2)
