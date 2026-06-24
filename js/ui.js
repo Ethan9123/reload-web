@@ -1076,7 +1076,7 @@
       } else aiBanner(summarizeTurn(p, G.log.slice(0, Math.max(0, G.log.length - beforeLen))), p.color);
 
       if ((G._trapSeq || 0) > seq && G.lastTrap && G.players[G.lastTrap.owner].human) await animateTrap(G.lastTrap); // your mine triggered
-      if ((G.eventsResolved || 0) > evSeen && G.lastEvent) await revealEvent(G.lastEvent, { quick: true, hold: Math.min(440, Math.max(180, aiDelay)) });   // flip the event this turn drew
+      if ((G.eventsResolved || 0) > evSeen && G.lastEvent) { await revealEvent(G.lastEvent, { quick: true, hold: Math.min(440, Math.max(180, aiDelay)) }); if (G.lastEventFx) await animateEventFx(G.lastEventFx); }   // flip the event card, then flash what it changed
       if ((G._reloadSeq || 0) > relSeen && G.lastReload && G.lastReload.by == null) await animateReload(G.lastReload);   // toxin/quake knockout (combat reloads already shown)
       await sleep(aiDelay);
     }
@@ -1090,7 +1090,7 @@
     barrierMode = false; clearAiBanner();   // never carry edge-select mode across turns
     const evSeen = G.eventsResolved || 0, relSeen = G._reloadSeq || 0;
     E.endTurn(G); render();
-    if ((G.eventsResolved || 0) > evSeen && G.lastEvent) await revealEvent(G.lastEvent);   // your End Phase drew an event — flip it
+    if ((G.eventsResolved || 0) > evSeen && G.lastEvent) { await revealEvent(G.lastEvent); if (G.lastEventFx) await animateEventFx(G.lastEventFx); }   // flip the event card, then flash what it changed
     if ((G._reloadSeq || 0) > relSeen && G.lastReload && G.lastReload.by == null) await animateReload(G.lastReload);   // your toxin/quake knockout
     if (!G.gameOver && !E.curP(G).human) await runAI();
   }
@@ -1347,6 +1347,29 @@
     const ring = svgEl("polygon", { points: hexCorners(pos.x, pos.y), fill: "none", stroke: "#e3424b", "stroke-width": 3.5, opacity: 0.95, "pointer-events": "none" });
     g.appendChild(ring);
     animateRAF(360, k => { ring.setAttribute("opacity", (0.95 * (1 - k)).toFixed(2)); ring.setAttribute("stroke-width", (3.5 + k * 2).toFixed(1)); }).then(() => g.remove());
+  }
+  // event-board flourish: each hex an event just changed FLASHES in the event's color, ring-by-ring
+  // (toxin spread / supply drops / crown landing / dome) — played after the event card flip.
+  function animateEventFx(fx) {
+    if (!fx || !fx.hexes || !fx.hexes.length) return Promise.resolve();
+    const g = vfxGroup(); if (!g) return Promise.resolve();
+    const col = ({ toxin: "#caa6ff", drop: "#f0c060", crown: "#f4d03f", dome: "#7fd0ff" })[fx.kind] || "#f4d03f";
+    const nodes = [];
+    fx.hexes.forEach((k, i) => {
+      const pos = pxOf(k); if (!pos) return;
+      const cell = svgEl("polygon", { points: hexCorners(pos.x, pos.y), fill: col, "fill-opacity": 0, stroke: col, "stroke-width": 0, "pointer-events": "none" });
+      g.appendChild(cell); nodes.push({ cell, delay: i * 90 });
+    });
+    if (!nodes.length) { g.remove(); return Promise.resolve(); }
+    const span = 460, dur = span + nodes.length * 90;
+    return animateRAF(dur, k => {
+      const t = k * dur;
+      nodes.forEach(n => {
+        const local = (t - n.delay) / span, on = local > 0 && local < 1, s = on ? Math.sin(local * Math.PI) : 0;
+        n.cell.setAttribute("fill-opacity", (s * 0.42).toFixed(2));
+        n.cell.setAttribute("stroke-width", (s * 4).toFixed(1));
+      });
+    }).then(() => g.remove());
   }
   // knockout VFX for an environmental RELOAD (toxin/quake) — combat reloads already get the dice overlay.
   // A ring implodes onto the hex the piece fell on + a 💥 floats up; shake + reload sting + a banner.
