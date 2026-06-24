@@ -14,7 +14,7 @@
   const $ = (id) => document.getElementById(id);
   const SVGNS = "http://www.w3.org/2000/svg";
   const HEX = 46;
-  let G = null, aiRunning = false, _overSfx = false;
+  let G = null, aiRunning = false, _overSfx = false, uiBusy = false;   // uiBusy: a human-facing animation is in flight — block new human input (re-entrancy guard)
   // ---- i18n: play-guidance strings (legend / banner / speed / combat / hints / meta). {name} etc. are filled by T(). ----
   const LANG = {
     zh: {
@@ -842,29 +842,32 @@
     return opts;
   }
   async function runHexAction(o) {
-    if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
-    const p = E.curP(G);
-    if (o.kind === "close") { E.doClose(G, o.tgt); render(); await animateCombat(G.lastCombat); await endTurn(); return; }   // close ends turn
-    if (o.kind === "ranged") {
-      const pick = await pickActionDie(p, L("选择投入这次射击的行动骰", "Pick a die to commit to this shot"));
-      if (pick === null) return;   // cancelled the shot
-      const aKey = E.hexKey(p.pos.q, p.pos.r); E.doRanged(G, o.tgt, pick || 3); render(); await vfxGunshot(aKey, o.key); await animateCombat(G.lastCombat); return;
-    }
-    if (o.kind === "grabFlag") { E.grabFlag(G); SFX("loot"); render(); consumeActionFeed(); return; }
-    if (o.kind === "scoreFlag") { E.scoreFlag(G); SFX("score"); render(); consumeActionFeed(); return; }
-    if (o.kind === "activate") { E.doActivate(G, true); SFX("upload"); render(); consumeActionFeed(); maybeLootChoice(); return; }
-    if (o.kind === "loot") { E.doLoot(G, 0, true); SFX("loot"); render(); consumeActionFeed(); maybeLootChoice(); return; }
-    if (o.kind === "move") {
-      const seq = G._trapSeq || 0;
-      const beforePos = p.pos ? { q: p.pos.q, r: p.pos.r } : null;
-      E.doRun(G, o.key); SFX("move"); render();
-      const afterPos = p.pos ? { q: p.pos.q, r: p.pos.r } : null;
-      // slide the human's own standee (not a teleport), same as the AI gets
-      if (beforePos && afterPos && (beforePos.q !== afterPos.q || beforePos.r !== afterPos.r))
-        await animateAIMove(beforePos, afterPos, p.color, p.idx);
-      await consumeActionFeed({ skipMove: true });   // glide replaces the move-die pop; show any other dice
-      if ((G._trapSeq || 0) > seq && G.lastTrap && (G.players[G.lastTrap.walker].human || G.players[G.lastTrap.owner].human)) await animateTrap(G.lastTrap);
-    }
+    if (uiBusy || aiRunning || G.gameOver || !E.isHumanTurn(G)) return;   // block re-entry while a human animation runs
+    uiBusy = true;
+    try {
+      const p = E.curP(G);
+      if (o.kind === "close") { E.doClose(G, o.tgt); render(); await animateCombat(G.lastCombat); await _endTurn(); return; }   // close ends turn
+      if (o.kind === "ranged") {
+        const pick = await pickActionDie(p, L("选择投入这次射击的行动骰", "Pick a die to commit to this shot"));
+        if (pick === null) return;   // cancelled the shot
+        const aKey = E.hexKey(p.pos.q, p.pos.r); E.doRanged(G, o.tgt, pick || 3); render(); await vfxGunshot(aKey, o.key); await animateCombat(G.lastCombat); return;
+      }
+      if (o.kind === "grabFlag") { E.grabFlag(G); SFX("loot"); render(); consumeActionFeed(); return; }
+      if (o.kind === "scoreFlag") { E.scoreFlag(G); SFX("score"); render(); consumeActionFeed(); return; }
+      if (o.kind === "activate") { E.doActivate(G, true); SFX("upload"); render(); consumeActionFeed(); maybeLootChoice(); return; }
+      if (o.kind === "loot") { E.doLoot(G, 0, true); SFX("loot"); render(); consumeActionFeed(); maybeLootChoice(); return; }
+      if (o.kind === "move") {
+        const seq = G._trapSeq || 0;
+        const beforePos = p.pos ? { q: p.pos.q, r: p.pos.r } : null;
+        E.doRun(G, o.key); SFX("move"); render();
+        const afterPos = p.pos ? { q: p.pos.q, r: p.pos.r } : null;
+        // slide the human's own standee (not a teleport), same as the AI gets
+        if (beforePos && afterPos && (beforePos.q !== afterPos.q || beforePos.r !== afterPos.r))
+          await animateAIMove(beforePos, afterPos, p.color, p.idx);
+        await consumeActionFeed({ skipMove: true });   // glide replaces the move-die pop; show any other dice
+        if ((G._trapSeq || 0) > seq && G.lastTrap && (G.players[G.lastTrap.walker].human || G.players[G.lastTrap.owner].human)) await animateTrap(G.lastTrap);
+      }
+    } finally { uiBusy = false; }
   }
   // After a human loot/village-draw, prompt them to choose which card(s) to keep (rulebook: draw N, keep M).
   function maybeLootChoice() {
@@ -893,10 +896,10 @@
     refresh();
   }
   async function onHex(key, ev) {
-    if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
+    if (uiBusy || aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
     if (barrierMode) { barrierMode = false; clearAiBanner(); render(); return; }   // clicking a hex cancels edge-select
     const p = E.curP(G);
-    if (G.needsParachute) { if (E.parachute(G, key)) { SFX("parachute"); render(); await animateParachute(G.lastDrift); } else { SFX("buzz"); nudgeHex(key); } return; }
+    if (G.needsParachute) { if (E.parachute(G, key)) { SFX("parachute"); render(); uiBusy = true; try { await animateParachute(G.lastDrift); } finally { uiBusy = false; } } else { SFX("buzz"); nudgeHex(key); } return; }
     const opts = hexActionOptions(p, key);
     if (!opts.length) {
       // feedback only when the player clearly *tried* to act: an enemy they can't reach, or loot out of range
@@ -929,7 +932,7 @@
   function closeActionMenuOutside(e) { const m = $("action-menu"); if (m && !m.contains(e.target)) m.remove(); }
   // place a wall on the chosen edge; a single Build action may place up to 2 walls (the 2nd is free)
   function placeBarrierEdge(edge) {
-    if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
+    if (uiBusy || aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
     const p = E.curP(G), combo = p._wallCombo === 1;   // this click is the free 2nd wall of the action
     if (!E.doBuildBarrier(G, edge, combo)) return;
     SFX("build"); render(); if (!combo) consumeActionFeed();
@@ -1061,6 +1064,7 @@
 
       RL.ai.takeTurn(G);
       render();
+      if (G !== myGame) return;                // restart during takeTurn/render — don't animate over the new game
 
       const afterPos = p.pos ? { q: p.pos.q, r: p.pos.r } : null;
       if (!beforePos && afterPos && G.lastDrift && G.lastDrift.by === p.idx) {
@@ -1071,6 +1075,7 @@
       } else if (beforePos && afterPos && (beforePos.q !== afterPos.q || beforePos.r !== afterPos.r))
         await animateAIMove(beforePos, afterPos, p.color, p.idx);             // show the move
       await consumeActionFeed({ skipMove: true, delay: Math.min(260, Math.max(120, aiDelay / 2)) });   // show the dice the AI placed (loot/build/heal/upload)
+      if (G !== myGame) return;                // restart during the move/feed animations
 
       if (G.lastCombat && G.lastCombat !== beforeCombat) {                    // a fight happened this turn
         const rep = G.lastCombat, human = G.players[rep.a].human || G.players[rep.t].human;
@@ -1079,10 +1084,12 @@
           await animateCombat(rep);
         } else await combatToast(rep);                                        // AI vs AI → compact toast
       } else aiBanner(summarizeTurn(p, G.log.slice(0, Math.max(0, G.log.length - beforeLen))), p.color);
+      if (G !== myGame) return;                // restart during the combat animation
 
       if ((G._trapSeq || 0) > seq && G.lastTrap && G.players[G.lastTrap.owner].human) await animateTrap(G.lastTrap); // your mine triggered
       if ((G.eventsResolved || 0) > evSeen && G.lastEvent) { await revealEvent(G.lastEvent, { quick: true, hold: Math.min(440, Math.max(180, aiDelay)) }); if (G.lastEventFx) await animateEventFx(G.lastEventFx); }   // flip the event card, then flash what it changed
-      if ((G._reloadSeq || 0) > relSeen && G.lastReload && G.lastReload.by == null) await animateReload(G.lastReload);   // toxin/quake knockout (combat reloads already shown)
+      for (const r of (G.pendingReloads || []).splice(0)) if (r.by == null) await animateReload(r);   // drain + animate EVERY environmental knockout this turn (earthquake can reload several)
+      if (G !== myGame) return;
       await sleep(aiDelay);
     }
     aiRunning = false;
@@ -1090,13 +1097,18 @@
     if (!G.gameOver && E.curP(G).human) yourTurnCue();   // hand control back with a chime + banner
   }
 
-  async function endTurn() {
-    if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
+  async function endTurn() {   // btn-end handler: guard re-entry, then run the core
+    if (uiBusy || aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
+    uiBusy = true;
+    try { await _endTurn(); } finally { uiBusy = false; }
+  }
+  // core End-Phase flow (also called from runHexAction's close branch, which already holds uiBusy)
+  async function _endTurn() {
     barrierMode = false; clearAiBanner();   // never carry edge-select mode across turns
-    const evSeen = G.eventsResolved || 0, relSeen = G._reloadSeq || 0;
+    const evSeen = G.eventsResolved || 0;
     E.endTurn(G); render();
     if ((G.eventsResolved || 0) > evSeen && G.lastEvent) { await revealEvent(G.lastEvent); if (G.lastEventFx) await animateEventFx(G.lastEventFx); }   // flip the event card, then flash what it changed
-    if ((G._reloadSeq || 0) > relSeen && G.lastReload && G.lastReload.by == null) await animateReload(G.lastReload);   // your toxin/quake knockout
+    for (const r of (G.pendingReloads || []).splice(0)) if (r.by == null) await animateReload(r);   // your toxin/quake knockout(s)
     if (!G.gameOver && !E.curP(G).human) await runAI();
   }
 
@@ -1137,7 +1149,7 @@
   }
 
   async function startGame() {
-    aiRunning = false; clearAiBanner();   // a Rematch may fire mid-animation of the old game — drop any in-flight AI loop/banner
+    aiRunning = false; uiBusy = false; clearAiBanner();   // a Rematch may fire mid-animation of the old game — drop any in-flight AI loop / busy state / banner
     const modeSel = $("mode-select"), mode = modeSel ? modeSel.value : "battleRoyale";
     let n = parseInt($("player-count").value, 10);
     if (mode === "team" || mode === "captureFlag") n = 4;        // 2v2 (CTF is 2v2)
@@ -1155,7 +1167,7 @@
   }
 
   function act(fn, snd) {
-    if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
+    if (uiBusy || aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
     if (barrierMode) { barrierMode = false; clearAiBanner(); }   // a different action exits edge-select mode
     const p = E.curP(G), here = p.pos && E.hexKey(p.pos.q, p.pos.r);
     if (fn(p)) { if (snd) SFX(snd); render(); if (here) placeDieAnim(here); }
@@ -1754,13 +1766,16 @@
     });
     $("btn-end").addEventListener("click", endTurn);
     $("btn-heal").addEventListener("click", async () => {
-      if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
-      if (barrierMode) { barrierMode = false; clearAiBanner(); }
-      const p = E.curP(G), targets = E.healTargets(G, p);
-      if (!targets.length) return;
-      let targetIdx = targets[0];
-      if (targets.length > 1) { targetIdx = await pickHealTarget(p, targets); if (targetIdx == null) return; } // let the player choose self vs teammate
-      if (E.doHeal(G, targetIdx)) { render(); consumeActionFeed({ silent: true }); await animateHeal(G.lastRoll); }  // animateHeal is the heal visual; just advance the feed cursor
+      if (uiBusy || aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
+      uiBusy = true;
+      try {
+        if (barrierMode) { barrierMode = false; clearAiBanner(); }
+        const p = E.curP(G), targets = E.healTargets(G, p);
+        if (!targets.length) return;
+        let targetIdx = targets[0];
+        if (targets.length > 1) { targetIdx = await pickHealTarget(p, targets); if (targetIdx == null) return; } // let the player choose self vs teammate
+        if (E.doHeal(G, targetIdx)) { render(); consumeActionFeed({ silent: true }); await animateHeal(G.lastRoll); }  // animateHeal is the heal visual; just advance the feed cursor
+      } finally { uiBusy = false; }
     });
     $("btn-barrier").addEventListener("click", () => {
       if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;

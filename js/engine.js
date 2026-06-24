@@ -1380,7 +1380,9 @@
   function reloadPlayer(state, p, attacker) {
     const cell = p.pos && state.board[hexKey(p.pos.q, p.pos.r)];
     // signal for the UI knockout VFX: where the piece fell + who did it (by=null => environmental: toxin/quake)
-    state.lastReload = { idx: p.idx, by: attacker ? attacker.idx : null, at: p.pos ? hexKey(p.pos.q, p.pos.r) : null };
+    const reloadSig = { idx: p.idx, by: attacker ? attacker.idx : null, at: p.pos ? hexKey(p.pos.q, p.pos.r) : null };
+    state.lastReload = reloadSig;
+    (state.pendingReloads || (state.pendingReloads = [])).push(reloadSig);   // every reload this turn (earthquake/toxin can hit several) — UI drains + animates the environmental ones
     state._reloadSeq = (state._reloadSeq || 0) + 1;
     // Team Spirit: RELOADing an opponent in the same hex as a teammate (the victim's hex) scores +1
     const coopTeamSpirit = attacker && state.isTeam && p.pos &&
