@@ -57,7 +57,7 @@ A(ev.eventsResolved === 1, "first event resolves after the last player completes
 const dl = E.newGame({ numPlayers: 2, seed: 31, allAI: true });
 let dp = E.curP(dl);
 dp.pos = { q: 1, r: 0 }; dl.needsParachute = false; dl.phase = "action";
-dp.assignedDice = [4, 2, "skull"]; dp.assigned = 3; dp.defensePool = 2;
+dp.dice = [4, 2, "skull"];   // roll-then-place: UNSPENT rolled dice form the combat line (skull is dropped)
 E.endTurn(dl);
 A(JSON.stringify(dp.combatLine) === JSON.stringify([4, 2]), "End Phase moves numeric assigned dice to combat line, sorted high to low");
 A(dp.defensePool === 3 && dp.assigned === 0 && dp.assignedDice.length === 0, "End Phase returns non-combat-line dice to defense pool");
@@ -67,7 +67,7 @@ const ho = E.newGame({ numPlayers: 2, seed: 32, allAI: true });
 let hp = E.curP(ho);
 hp.pos = { q: 1, r: 0 }; hp.hideout = E.hexKey(1, 0); ho.board[hp.hideout].hideouts.push(hp.idx);
 ho.needsParachute = false; ho.phase = "action";
-hp.assignedDice = [5, 3, 1]; hp.assigned = 3; hp.defensePool = 2;
+hp.dice = [5, 3, 1];   // unspent rolled dice -> combat line, then the hideout returns the lowest
 E.endTurn(ho);
 A(JSON.stringify(hp.combatLine) === JSON.stringify([5, 3]), "hideout returns the lowest combat-line die");
 A(hp.defensePool === 3, "hideout benefit increases defense pool by 1");
@@ -91,13 +91,13 @@ A(op.injuries === 0, "own hideout protects from toxin");
 // injury hierarchy: combat line first, then defense pool, then assigned dice
 const ih = E.newGame({ numPlayers: 2, seed: 35, allAI: true });
 let ip = E.curP(ih);
-ip.injuries = 0; ip.actionDice = 5; ip.combatLine = [5, 2]; ip.defensePool = 3; ip.assignedDice = [];
+ip.injuries = 0; ip.actionDice = 5; ip.combatLine = [5, 2]; ip.dice = [3, 3, 3]; ip.defensePool = 3; ip.assignedDice = [];   // 3 un-placed rolled dice back the defense pool
 E.takeInjuries(ih, ip, 1);
 A(JSON.stringify(ip.combatLine) === JSON.stringify([5]) && ip.injuries === 1 && ip.defensePool === 3, "injury hierarchy takes the lowest combat-line die first");
-ip.combatLine = []; ip.defensePool = 3;
+ip.combatLine = [];
 E.takeInjuries(ih, ip, 1);
 A(ip.defensePool === 2 && ip.injuries === 2, "injury hierarchy takes from defense pool after combat line");
-ip.defensePool = 0; ip.assignedDice = [4, 1]; ip.assigned = 2;
+ip.dice = []; ip.defensePool = 0; ip.assignedDice = [4, 1]; ip.assigned = 2;
 E.takeInjuries(ih, ip, 1);
 A(JSON.stringify(ip.assignedDice) === JSON.stringify([4]) && ip.assigned === 1 && ip.injuries === 3, "injury hierarchy falls back to assigned dice");
 

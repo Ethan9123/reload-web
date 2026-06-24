@@ -49,7 +49,7 @@ function rangedScenario(seed, personaId) {
   g.activePlayer = 0; g.phase = "action"; g.needsParachute = false;
   for (const k in g.board) g.board[k].tokens = [];
   const p = g.players[0]; p.persona = byId("vendetta");
-  p.injuries = 0; p.actionDice = 5; p.defensePool = 5; p.backpack = ["combat_shotgun"]; E.autoEquip(p);
+  p.injuries = 0; p.actionDice = 1; p.defensePool = 1; p.backpack = ["combat_shotgun"]; E.autoEquip(p);   // one die = one attack, so lastCombat is unambiguously the vendetta target
   const tk = E.towerKey(g), tc = g.board[tk]; p.pos = { q: tc.q, r: tc.r };
   // both foes share our hex (d=0 -> ranged sees both, no LOS issues). f1 is easier (injured), f2 is the grudge.
   const f1 = g.players[1], f2 = g.players[2];
