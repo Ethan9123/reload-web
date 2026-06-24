@@ -760,7 +760,13 @@
     if (o.kind === "loot") { E.doLoot(G, 0, true); SFX("loot"); render(); consumeActionFeed(); maybeLootChoice(); return; }
     if (o.kind === "move") {
       const seq = G._trapSeq || 0;
-      E.doRun(G, o.key); SFX("move"); render(); consumeActionFeed();
+      const beforePos = p.pos ? { q: p.pos.q, r: p.pos.r } : null;
+      E.doRun(G, o.key); SFX("move"); render();
+      const afterPos = p.pos ? { q: p.pos.q, r: p.pos.r } : null;
+      // glide the same streaking dot the AI gets, so the human's own move reads as motion (not a teleport)
+      if (beforePos && afterPos && (beforePos.q !== afterPos.q || beforePos.r !== afterPos.r))
+        await animateAIMove(beforePos, afterPos, p.color);
+      await consumeActionFeed({ skipMove: true });   // glide replaces the move-die pop; show any other dice
       if ((G._trapSeq || 0) > seq && G.lastTrap && (G.players[G.lastTrap.walker].human || G.players[G.lastTrap.owner].human)) await animateTrap(G.lastTrap);
     }
   }
@@ -793,9 +799,15 @@
     if (aiRunning || G.gameOver || !E.isHumanTurn(G)) return;
     if (barrierMode) { barrierMode = false; clearAiBanner(); render(); return; }   // clicking a hex cancels edge-select
     const p = E.curP(G);
-    if (G.needsParachute) { if (E.parachute(G, key)) { SFX("parachute"); render(); } return; }
+    if (G.needsParachute) { if (E.parachute(G, key)) { SFX("parachute"); render(); } else { SFX("buzz"); nudgeHex(key); } return; }
     const opts = hexActionOptions(p, key);
-    if (!opts.length) return;
+    if (!opts.length) {
+      // feedback only when the player clearly *tried* to act: an enemy they can't reach, or loot out of range
+      const c = G.board[key];
+      const wanted = c && ((E.playersOnHex(G, c.q, c.r) || []).some(pl => pl.idx !== p.idx) || (c.tokens && c.tokens.length) || c.portal);
+      if (wanted) { SFX("buzz"); nudgeHex(key); }
+      return;
+    }
     // a lone unambiguous move just happens; anything else (esp. attacking an opponent) asks first
     if (opts.length === 1 && opts[0].kind === "move") { runHexAction(opts[0]); return; }
     showActionMenu(opts, ev);
@@ -845,7 +857,20 @@
     b.innerHTML = `<span class="ab-dot" style="background:${color || "#888"}"></span>${text}`;
     b.classList.add("show");
   }
-  function clearAiBanner() { const b = $("ai-banner"); if (b) b.classList.remove("show"); }
+  function clearAiBanner() { const b = $("ai-banner"); if (b) b.classList.remove("show", "your-turn"); }
+  // handoff cue: when control returns to the human, a chime + a brief "your turn" banner pop
+  let yourTurnTimer = null;
+  function yourTurnCue() {
+    const me = E.curP(G); if (!me || !me.human) return;
+    SFX("turn");
+    const b = ensureAiBanner();
+    b.style.borderColor = me.color; b.style.setProperty("--turn-glow", me.color);
+    b.innerHTML = `<span class="ab-dot" style="background:${me.color}"></span>${L("轮到你了", "Your turn")}`;
+    b.classList.remove("your-turn"); void b.offsetWidth;   // restart the pop animation
+    b.classList.add("show", "your-turn");
+    clearTimeout(yourTurnTimer);
+    yourTurnTimer = setTimeout(() => { const x = $("ai-banner"); if (x) x.classList.remove("show", "your-turn"); }, 1700);
+  }
   function pulseActing(p) {                             // bright pulsing ring on the acting AI's hex (cleared by next render)
     if (!p.pos) return; const svg = $("board"); if (!svg) return;
     const { x, y } = hexToPixel(p.pos.q, p.pos.r);
@@ -911,6 +936,7 @@
     }
     aiRunning = false;
     clearAiBanner(); render();
+    if (!G.gameOver && E.curP(G).human) yourTurnCue();   // hand control back with a chime + banner
   }
 
   async function endTurn() {
@@ -1164,6 +1190,13 @@
     const ring = svgEl("circle", { cx: x, cy: y, r: 13, fill: color, "fill-opacity": 0.5, stroke: color, "stroke-width": 3, "pointer-events": "none" });
     g.appendChild(ring);
     animateRAF(520, k => { ring.setAttribute("r", (13 + k * 22).toFixed(1)); ring.setAttribute("opacity", (1 - k).toFixed(2)); }).then(() => g.remove());
+  }
+  // a quick red outline flash on a hex — the "you can't do that here" nudge for an invalid action
+  function nudgeHex(key) {
+    const pos = pxOf(key), g = vfxGroup(); if (!pos || !g) return;
+    const ring = svgEl("polygon", { points: hexCorners(pos.x, pos.y), fill: "none", stroke: "#e3424b", "stroke-width": 3.5, opacity: 0.95, "pointer-events": "none" });
+    g.appendChild(ring);
+    animateRAF(360, k => { ring.setAttribute("opacity", (0.95 * (1 - k)).toFixed(2)); ring.setAttribute("stroke-width", (3.5 + k * 2).toFixed(1)); }).then(() => g.remove());
   }
   // multi-phase combat: roll -> skull compare -> combat-line row-by-row -> result
   async function animateCombat(rep) {

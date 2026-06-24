@@ -69,6 +69,8 @@
     upload()    { play(t => [523, 659, 784].forEach((f, i) => tone(t + i * 0.08, 0.14, { type: "triangle", f0: f, peak: 0.32, dec: 0.13 }))); },
     throwItem() { play(t => burst(t, 0.3, { type: "bandpass", f0: 1200, f1: 300, q: 2, peak: 0.45, atk: 0.02, dec: 0.28 })); },
     win()       { play(t => [523, 659, 784, 1047].forEach((f, i) => tone(t + i * 0.12, 0.2, { type: "square", f0: f, peak: 0.4, dec: 0.18 }))); },
+    turn()      { play(t => [659, 988].forEach((f, i) => tone(t + i * 0.1, 0.22, { type: "triangle", f0: f, peak: 0.34, atk: 0.012, dec: 0.2 }))); }, // gentle "it's your turn" chime
+    buzz()      { play(t => tone(t, 0.17, { type: "square", f0: 220, f1: 110, slide: "lin", peak: 0.38, atk: 0.004, dec: 0.16 })); },               // invalid / not-allowed action
   };
 
   root.RL = Object.assign(root.RL || {}, { sfx: SFX });
