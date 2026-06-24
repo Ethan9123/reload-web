@@ -210,6 +210,33 @@
     for (const k in attrs) e.setAttribute(k, attrs[k]);
     return e;
   }
+  // lighten (amt>0) or darken (amt<0) a #rrggbb color — used to derive hex-tile gradient stops
+  function shade(hex, amt) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex || ""); if (!m) return hex;
+    const n = parseInt(m[1], 16), r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+    const f = (c) => Math.max(0, Math.min(255, Math.round(amt < 0 ? c * (1 + amt) : c + (255 - c) * amt)));
+    return "#" + (((1 << 24) + (f(r) << 16) + (f(g) << 8) + f(b)).toString(16).slice(1));
+  }
+  // populate the board <defs> once per render: a top-lit radial gradient per terrain (so each hex reads
+  // as a raised painted tile), a plastic sheen for standees, and a soft drop-shadow for floating pieces.
+  function buildBoardDefs(defs) {
+    for (const key in D.TERRAIN) {
+      const col = D.TERRAIN[key].color || "#3a4150";
+      const grad = svgEl("radialGradient", { id: "hg-" + key, cx: "50%", cy: "36%", r: "72%" });
+      grad.innerHTML = `<stop offset="0%" stop-color="${shade(col, 0.22)}"/>` +
+                       `<stop offset="62%" stop-color="${col}"/>` +
+                       `<stop offset="100%" stop-color="${shade(col, -0.20)}"/>`;
+      defs.appendChild(grad);
+    }
+    const sheen = svgEl("linearGradient", { id: "standeeSheen", x1: "0", y1: "0", x2: "0", y2: "1" });
+    sheen.innerHTML = `<stop offset="0%" stop-color="#fff" stop-opacity="0.34"/>` +
+                      `<stop offset="46%" stop-color="#fff" stop-opacity="0.07"/>` +
+                      `<stop offset="100%" stop-color="#000" stop-opacity="0.18"/>`;
+    defs.appendChild(sheen);
+    const fil = svgEl("filter", { id: "pieceShadow", x: "-40%", y: "-30%", width: "180%", height: "175%" });
+    fil.innerHTML = `<feDropShadow dx="0" dy="1.3" stdDeviation="1.2" flood-color="#000" flood-opacity="0.5"/>`;
+    defs.appendChild(fil);
+  }
   function svgImg(href, x, y, w, h, opacity, fit) {
     const im = svgEl("image", { x, y, width: w, height: h, preserveAspectRatio: fit || "xMidYMid meet", "pointer-events": "none" });
     if (opacity != null) im.setAttribute("opacity", opacity);
@@ -379,6 +406,7 @@
     add("ellipse", { cx, cy: cy + 13, rx: 11, ry: 3.4, fill: "#000", "fill-opacity": 0.32 });           // ground shadow
     if (active) add("path", { d: body, fill: "none", stroke: "#fff", "stroke-width": 5, "stroke-linejoin": "round" }); // active halo
     add("path", { d: body, fill: p.color, stroke: "#0c0e12", "stroke-width": 1.6, "stroke-linejoin": "round" });       // standee
+    add("path", { d: body, fill: "url(#standeeSheen)", stroke: "none" });                               // plastic top-light sheen
     drawEmblem(add, p.character, cx, cy - 3, 7, inkFor(p.color));                                        // emblem
     svg.appendChild(g);
   }
@@ -401,11 +429,12 @@
       `${Math.min(...xs) - pad} ${Math.min(...ys) - pad} ${Math.max(...xs) - Math.min(...xs) + pad * 2} ${Math.max(...ys) - Math.min(...ys) + pad * 2}`);
 
     const defs = svgEl("defs", {}); svg.appendChild(defs);
+    buildBoardDefs(defs);   // terrain tile gradients + standee sheen + piece drop-shadow
     const cur = E.curP(G);
     const curKey = cur.pos ? E.hexKey(cur.pos.q, cur.pos.r) : null;
     for (const { c, x, y } of pix) {
       const key = E.hexKey(c.q, c.r), t = D.TERRAIN[c.terrain], pts = hexCorners(x, y);
-      svg.appendChild(svgEl("polygon", { points: pts, fill: t.color, "pointer-events": "none" })); // fallback tint
+      svg.appendChild(svgEl("polygon", { points: pts, fill: `url(#hg-${c.terrain})`, "pointer-events": "none" })); // raised painted tile (gradient)
       terrainDecal(svg, c.terrain, x, y);   // crisp procedural terrain motif (no art files)
       const poly = svgEl("polygon", { points: pts, fill: "transparent", class: "hex-poly" }); // interactive + highlight
       if (hl.atk.has(key)) { poly.setAttribute("stroke", "#e3424b"); poly.setAttribute("stroke-width", "4"); }
@@ -419,8 +448,8 @@
       if (c.toxin) { svg.appendChild(svgEl("polygon", { points: pts, fill: "#6a4f8a", opacity: 0.30, "pointer-events": "none" })); svg.appendChild(svgText(x + HEX * 0.5, y - HEX * 0.42, "☣", 15, "#caa6ff", 0.95)); }
       if (c.portal) for (let r = 8; r <= 20; r += 6) svg.appendChild(svgEl("circle", { cx: x, cy: y, r, fill: "none", stroke: "#5fd0e0", "stroke-width": 2.5, opacity: 0.85, "pointer-events": "none" }));
       if (c.dome) svg.appendChild(svgEl("path", { d: `M ${x - 26} ${y + 6} A 26 26 0 0 1 ${x + 26} ${y + 6} Z`, fill: "#7fd0ff", "fill-opacity": 0.16, stroke: "#7fd0ff", "stroke-width": 1.5, "pointer-events": "none" }));
-      if (c.tokens.some(k => k.kind === "beacon")) { svg.appendChild(svgEl("polygon", { points: `${x},${y - 21} ${x + 8},${y - 12} ${x},${y - 3} ${x - 8},${y - 12}`, fill: "#f4d03f", stroke: "#7a5c00", "stroke-width": 1.5, "pointer-events": "none" })); svg.appendChild(svgEl("circle", { cx: x, cy: y - 12, r: 2.4, fill: "#fff7cf", "pointer-events": "none" })); }
-      if (c.tokens.some(k => k.kind === "supply")) { svg.appendChild(svgEl("rect", { x: x - 12, y: y + 5, width: 24, height: 17, rx: 3, fill: "#b08948", stroke: "#5e4422", "stroke-width": 1.5, "pointer-events": "none" })); svg.appendChild(svgEl("line", { x1: x - 12, y1: y + 13.5, x2: x + 12, y2: y + 13.5, stroke: "#5e4422", "stroke-width": 1.5, "pointer-events": "none" })); svg.appendChild(svgEl("line", { x1: x, y1: y + 5, x2: x, y2: y + 22, stroke: "#5e4422", "stroke-width": 1.5, "pointer-events": "none" })); }
+      if (c.tokens.some(k => k.kind === "beacon")) { svg.appendChild(svgEl("polygon", { points: `${x},${y - 21} ${x + 8},${y - 12} ${x},${y - 3} ${x - 8},${y - 12}`, fill: "#f4d03f", stroke: "#7a5c00", "stroke-width": 1.5, filter: "url(#pieceShadow)", "pointer-events": "none" })); svg.appendChild(svgEl("circle", { cx: x, cy: y - 12, r: 2.4, fill: "#fff7cf", "pointer-events": "none" })); }
+      if (c.tokens.some(k => k.kind === "supply")) { svg.appendChild(svgEl("rect", { x: x - 12, y: y + 5, width: 24, height: 17, rx: 3, fill: "#b08948", stroke: "#5e4422", "stroke-width": 1.5, filter: "url(#pieceShadow)", "pointer-events": "none" })); svg.appendChild(svgEl("line", { x1: x - 12, y1: y + 13.5, x2: x + 12, y2: y + 13.5, stroke: "#5e4422", "stroke-width": 1.5, "pointer-events": "none" })); svg.appendChild(svgEl("line", { x1: x, y1: y + 5, x2: x, y2: y + 22, stroke: "#5e4422", "stroke-width": 1.5, "pointer-events": "none" })); }
       // Capture-the-Flag: home-base disc (team-tinted) + planted flag token
       if (G.flags && c.base != null) { const col = TEAM_COLOR[c.base] || "#888"; svg.appendChild(svgEl("circle", { cx: x, cy: y, r: HEX * 0.62, fill: col, "fill-opacity": 0.14, stroke: col, "stroke-width": 2, "stroke-dasharray": "5 4", "pointer-events": "none" })); }
       c.tokens.filter(k => k.kind === "flag").forEach(k => { const col = TEAM_COLOR[k.team] || "#888"; svg.appendChild(svgEl("line", { x1: x - 9, y1: y - 22, x2: x - 9, y2: y + 4, stroke: "#3a2a14", "stroke-width": 2, "pointer-events": "none" })); svg.appendChild(svgEl("polygon", { points: `${x - 9},${y - 22} ${x + 11},${y - 17} ${x - 9},${y - 12}`, fill: col, stroke: "#0c0e12", "stroke-width": 1, "pointer-events": "none" })); });
