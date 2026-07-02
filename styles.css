@@ -82,6 +82,9 @@ select, button { font: inherit; padding: 6px 10px; border-radius: 6px; border: 1
 button.small { padding: 4px 10px; font-size: 13px; cursor: pointer; transition: transform .07s ease, filter .12s ease, background .12s ease, border-color .12s ease; }
 button.small:not(:disabled):hover { background: #222a38; border-color: #5a6478; }
 button.small:active:not(:disabled) { transform: translateY(1px) scale(.97); filter: brightness(.88); }
+#vol-range { width: 72px; accent-color: #f4d03f; cursor: pointer; }
+#btn-resume { background: #1f3a2a; border-color: #3aa84b; }
+#btn-resume:hover { background: #26472f; }
 #game-screen { height: 100vh; }
 .game-body { display: flex; flex: 1; min-height: 0; }
 /* the board sits like a physical board resting on a lit felt table */

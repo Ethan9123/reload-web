@@ -22,7 +22,8 @@
       "legend.dice": "🎲 行动骰", "legend.cost": "移动/建造/治疗各 1 骰 · 上山 2 骰", "legend.para": "跳伞：点黄色虚线格降落", "legend.nodice": "（无骰）",
       "legend.placed": "已放", "legend.equiptip": "背包有武器 → 点你的角色卡装备", "legend.noweapon": "未装备武器", "legend.gun": "🔫", "legend.melee": "🗡",
       "banner.acting": "{name}（AI）行动中…", "banner.endTurn": "{name} 结束回合",
-      "speed.slow": "🐢 慢速", "speed.med": "🐇 中速", "speed.fast": "⚡ 快速",
+      "speed.slow": "🐢 慢速", "speed.med": "🐇 中速", "speed.fast": "⚡ 快速", "speed.skip": "⏩ 跳过",
+      "setup.resume": "▶ 继续上局（第 {n} 回合）",
       "cb.atk": "攻", "cb.def": "守", "cb.roll": "掷骰…", "cb.compare": "逐列比对 ▶",
       "cb.skullA": "攻方多 {n}", "cb.skullD": "守方多 {n}", "cb.skullTie": "持平",
       "cb.hit": "命中！造成 {n} 点伤", "cb.nohit": "未造成伤害", "cb.reload": "💥 {name} 被迫 RELOAD！",
@@ -57,7 +58,8 @@
       "legend.dice": "🎲 Action dice", "legend.cost": "Move/Build/Heal: 1 die · Mountain: 2", "legend.para": "Drop: click a yellow dashed hex", "legend.nodice": "(no dice)",
       "legend.placed": "Placed", "legend.equiptip": "Weapon in bag → click your card to equip", "legend.noweapon": "No weapon", "legend.gun": "🔫", "legend.melee": "🗡",
       "banner.acting": "{name} (AI) is thinking…", "banner.endTurn": "{name} ends turn",
-      "speed.slow": "🐢 Slow", "speed.med": "🐇 Normal", "speed.fast": "⚡ Fast",
+      "speed.slow": "🐢 Slow", "speed.med": "🐇 Normal", "speed.fast": "⚡ Fast", "speed.skip": "⏩ Skip",
+      "setup.resume": "▶ Resume game (round {n})",
       "cb.atk": "ATK", "cb.def": "DEF", "cb.roll": "rolling…", "cb.compare": "compare ▶",
       "cb.skullA": "ATK +{n}", "cb.skullD": "DEF +{n}", "cb.skullTie": "tie",
       "cb.hit": "Hit! {n} damage", "cb.nohit": "No damage", "cb.reload": "💥 {name} forced to RELOAD!",
@@ -92,7 +94,8 @@
       "legend.dice": "🎲 Dés d'action", "legend.cost": "Déplacer/Construire/Soigner : 1 dé · Montagne : 2", "legend.para": "Saut : cliquez une case en pointillés jaunes", "legend.nodice": "(aucun dé)",
       "legend.placed": "Placés", "legend.equiptip": "Arme dans le sac → cliquez votre carte pour l'équiper", "legend.noweapon": "Sans arme", "legend.gun": "🔫", "legend.melee": "🗡",
       "banner.acting": "{name} (IA) réfléchit…", "banner.endTurn": "{name} termine son tour",
-      "speed.slow": "🐢 Lent", "speed.med": "🐇 Normal", "speed.fast": "⚡ Rapide",
+      "speed.slow": "🐢 Lent", "speed.med": "🐇 Normal", "speed.fast": "⚡ Rapide", "speed.skip": "⏩ Passer",
+      "setup.resume": "▶ Reprendre la partie (manche {n})",
       "cb.atk": "ATT", "cb.def": "DÉF", "cb.roll": "lancer…", "cb.compare": "comparer ▶",
       "cb.skullA": "ATT +{n}", "cb.skullD": "DÉF +{n}", "cb.skullTie": "égalité",
       "cb.hit": "Touché ! {n} dégâts", "cb.nohit": "Aucun dégât", "cb.reload": "💥 {name} forcé de RELOAD !",
@@ -127,7 +130,8 @@
       "legend.dice": "🎲 Dados de acción", "legend.cost": "Mover/Construir/Curar: 1 dado · Montaña: 2", "legend.para": "Salto: clic en casilla amarilla punteada", "legend.nodice": "(sin dados)",
       "legend.placed": "Puestos", "legend.equiptip": "Arma en la mochila → clic en tu carta para equipar", "legend.noweapon": "Sin arma", "legend.gun": "🔫", "legend.melee": "🗡",
       "banner.acting": "{name} (IA) está pensando…", "banner.endTurn": "{name} termina el turno",
-      "speed.slow": "🐢 Lento", "speed.med": "🐇 Normal", "speed.fast": "⚡ Rápido",
+      "speed.slow": "🐢 Lento", "speed.med": "🐇 Normal", "speed.fast": "⚡ Rápido", "speed.skip": "⏩ Saltar",
+      "setup.resume": "▶ Reanudar partida (ronda {n})",
       "cb.atk": "ATQ", "cb.def": "DEF", "cb.roll": "tirando…", "cb.compare": "comparar ▶",
       "cb.skullA": "ATQ +{n}", "cb.skullD": "DEF +{n}", "cb.skullTie": "empate",
       "cb.hit": "¡Impacto! {n} de daño", "cb.nohit": "Sin daño", "cb.reload": "💥 ¡{name} forzado a RELOAD!",
@@ -195,6 +199,8 @@
   }
   const SFX = (n) => { try { if (RL.sfx && RL.sfx[n]) RL.sfx[n](); } catch (e) { } };   // play a procedural sound (no-op if muted / unavailable)
   function shake(px) {   // brief screen-shake on the board (impact feedback)
+    if (REDUCED) return;                                     // accessibility: never shake under prefers-reduced-motion
+    if (aiRunning && !humanFacing && AI_SPEEDS[aiSpeedIdx] && AI_SPEEDS[aiSpeedIdx].mult === 0) return;   // ⏩ skip: suppress AI-stretch shakes only — the human's own impacts still land
     const el = $("board-wrap"); if (!el) return;
     const t0 = performance.now(), dur = 280;
     (function step(t) { const k = (t - t0) / dur; if (k >= 1) { el.style.transform = ""; return; } const a = px * (1 - k); el.style.transform = `translate(${(Math.random() * 2 - 1) * a}px,${(Math.random() * 2 - 1) * a}px)`; requestAnimationFrame(step); })(performance.now());
@@ -204,7 +210,23 @@
     f.style.background = color || "rgba(255,90,60,.28)"; f.style.transition = "none"; f.style.opacity = "0.85"; void f.offsetWidth; f.style.transition = "opacity .4s"; f.style.opacity = "0";
   }
 
-  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+  // ---- pacing layer: EVERY awaited delay/tween flows through paceMs(). The 🐢/🐇/⚡/⏩ speed
+  // dial and the click-to-fast-forward flag scale AI-turn stretches ONLY (the button says
+  // "AI turn speed" — the human's own turn and human-facing reveals always play at 1×);
+  // the OS prefers-reduced-motion setting halves everything, everywhere. ----
+  const REDUCED = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let ffwd = false;                        // fast-forward the current AI stretch; cleared when the human regains control
+  let humanFacing = 0;                     // >0: a human-relevant reveal (their combat / their mine) is playing inside an AI stretch — exempt from skip/ffwd
+  async function withHumanPace(fn) { humanFacing++; try { return await fn(); } finally { humanFacing--; } }
+  function paceMs(ms) {
+    const sp = AI_SPEEDS[aiSpeedIdx] || {};
+    const scaled = aiRunning && !humanFacing;             // only AI-turn stretches obey the dial / fast-forward
+    let m = scaled ? ms * (sp.mult != null ? sp.mult : 1) : ms;
+    if (REDUCED) m *= 0.5;                                // accessibility: everything at half length (tier ordering preserved)
+    if (ffwd && scaled) m = Math.min(m, 40);
+    return m;
+  }
+  const sleep = (ms) => new Promise(r => setTimeout(r, paceMs(ms)));
   function svgEl(tag, attrs) {
     const e = document.createElementNS(SVGNS, tag);
     for (const k in attrs) e.setAttribute(k, attrs[k]);
@@ -769,7 +791,7 @@
       `<button id="ov-again">${T("over.rematch")}</button></div></div>`;
     ov.style.display = "flex";
     ov.querySelector("#ov-close").addEventListener("click", closeOver);
-    ov.querySelector("#ov-setup").addEventListener("click", () => { closeOver(); $("game-screen").classList.add("hidden"); $("setup-screen").classList.remove("hidden"); });
+    ov.querySelector("#ov-setup").addEventListener("click", () => { closeOver(); $("game-screen").classList.add("hidden"); $("setup-screen").classList.remove("hidden"); refreshResumeBtn(); });
     ov.querySelector("#ov-again").addEventListener("click", () => { closeOver(); startGame(); });   // rematch: same settings + same human character
     // count 0->total when rAF is live; a setTimeout backstop guarantees the final number even if rAF is throttled
     const countEl = ov.querySelector(".ov-count");
@@ -820,6 +842,7 @@
       const me = G.players.find(p => p.human);
       const meWon = me && (G.isTeam ? G.winnerTeam === me.team : G.winner === me.idx);
       SFX(me && !meWon ? "lose" : "win");   // don't play the victory fanfare when the human just lost
+      saveGame();                           // gameOver -> wipes the autosave (nothing left to resume)
     } else if (G && !G.gameOver) _overSfx = false;
     renderGameOver();
   }
@@ -941,10 +964,16 @@
   }
 
   // ---- AI turn visualization: telegraph who's acting, animate the move, surface combat ----
+  // Speed tiers scale BOTH the between-turn pause (ms) and every animation duration (mult, via paceMs).
+  // ⏩ Skip collapses AI turns to end states only. The chosen tier persists across sessions.
   let aiDelay = 650;                                   // ms pause between AI turns (cycled by #btn-speed)
-  let aiSpeedIdx = 1;
-  const AI_SPEEDS = [{ ms: 1100, key: "speed.slow" }, { ms: 650, key: "speed.med" }, { ms: 240, key: "speed.fast" }];
-  function applySpeed() { aiDelay = AI_SPEEDS[aiSpeedIdx].ms; const sb = $("btn-speed"); if (sb) sb.textContent = T(AI_SPEEDS[aiSpeedIdx].key); }
+  const AI_SPEEDS = [{ ms: 1100, key: "speed.slow", mult: 1.25 }, { ms: 650, key: "speed.med", mult: 1 }, { ms: 240, key: "speed.fast", mult: 0.5 }, { ms: 0, key: "speed.skip", mult: 0 }];
+  let aiSpeedIdx = (() => { try { const v = parseInt(localStorage.getItem("rl-speed"), 10); return v >= 0 && v < AI_SPEEDS.length ? v : 1; } catch (e) { return 1; } })();
+  function applySpeed() {
+    aiDelay = AI_SPEEDS[aiSpeedIdx].ms;
+    try { localStorage.setItem("rl-speed", String(aiSpeedIdx)); } catch (e) { }
+    const sb = $("btn-speed"); if (sb) sb.textContent = T(AI_SPEEDS[aiSpeedIdx].key);
+  }
   // fill all static-chrome strings (setup screen, toolbar, options) for the current language
   function applyStaticI18n() { document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = T(el.getAttribute("data-i18n")); }); }
   function ensureAiBanner() {
@@ -1063,7 +1092,7 @@
       if (G !== myGame) return;                // restart landed during the think-delay — don't act on the new game
 
       RL.ai.takeTurn(G);
-      render();
+      render(); saveGame();
       if (G !== myGame) return;                // restart during takeTurn/render — don't animate over the new game
 
       const afterPos = p.pos ? { q: p.pos.q, r: p.pos.r } : null;
@@ -1079,20 +1108,22 @@
 
       if (G.lastCombat && G.lastCombat !== beforeCombat) {                    // a fight happened this turn
         const rep = G.lastCombat, human = G.players[rep.a].human || G.players[rep.t].human;
-        if (human) {                                                         // player involved → full dice overlay
-          if (rep.type === "ranged" && p.pos) await vfxGunshot(E.hexKey(p.pos.q, p.pos.r), G.players[rep.t].pos ? E.hexKey(G.players[rep.t].pos.q, G.players[rep.t].pos.r) : null);
-          await animateCombat(rep);
+        if (human) {                                                         // player involved → full dice overlay, at 1× even on ⏩/fast-forward
+          await withHumanPace(async () => {
+            if (rep.type === "ranged" && p.pos) await vfxGunshot(E.hexKey(p.pos.q, p.pos.r), G.players[rep.t].pos ? E.hexKey(G.players[rep.t].pos.q, G.players[rep.t].pos.r) : null);
+            await animateCombat(rep);
+          });
         } else await combatToast(rep);                                        // AI vs AI → compact toast
       } else aiBanner(summarizeTurn(p, G.log.slice(0, Math.max(0, G.log.length - beforeLen))), p.color);
       if (G !== myGame) return;                // restart during the combat animation
 
-      if ((G._trapSeq || 0) > seq && G.lastTrap && G.players[G.lastTrap.owner].human) await animateTrap(G.lastTrap); // your mine triggered
+      if ((G._trapSeq || 0) > seq && G.lastTrap && G.players[G.lastTrap.owner].human) await withHumanPace(() => animateTrap(G.lastTrap)); // your mine triggered — always readable
       if ((G.eventsResolved || 0) > evSeen && G.lastEvent) { await revealEvent(G.lastEvent, { quick: true, hold: Math.min(440, Math.max(180, aiDelay)) }); if (G.lastEventFx) await animateEventFx(G.lastEventFx); }   // flip the event card, then flash what it changed
       for (const r of (G.pendingReloads || []).splice(0)) if (r.by == null) await animateReload(r);   // drain + animate EVERY environmental knockout this turn (earthquake can reload several)
       if (G !== myGame) return;
       await sleep(aiDelay);
     }
-    aiRunning = false;
+    aiRunning = false; ffwd = false;                     // the human is back in control — drop any fast-forward
     clearAiBanner(); render();
     if (!G.gameOver && E.curP(G).human) yourTurnCue();   // hand control back with a chime + banner
   }
@@ -1106,10 +1137,51 @@
   async function _endTurn() {
     barrierMode = false; clearAiBanner();   // never carry edge-select mode across turns
     const evSeen = G.eventsResolved || 0;
-    E.endTurn(G); render();
+    E.endTurn(G); render(); saveGame();
     if ((G.eventsResolved || 0) > evSeen && G.lastEvent) { await revealEvent(G.lastEvent); if (G.lastEventFx) await animateEventFx(G.lastEventFx); }   // flip the event card, then flash what it changed
     for (const r of (G.pendingReloads || []).splice(0)) if (r.by == null) await animateReload(r);   // your toxin/quake knockout(s)
     if (!G.gameOver && !E.curP(G).human) await runAI();
+  }
+
+  // ---- autosave: the running game persists at every turn boundary; the setup screen offers Resume.
+  // JSON.stringify drops G.rnd (a function) — resume reseeds fresh entropy, which is fair (the
+  // physical game has no committed future rolls either). Bump SAVE_KEY when the state schema changes. ----
+  const SAVE_KEY = "rl-save-v1";
+  function saveGame() {
+    if (!G || G._tutorial) return;
+    try {
+      if (G.gameOver) { localStorage.removeItem(SAVE_KEY); refreshResumeBtn(); return; }
+      if (G.log && G.log.length > 400) G.log.splice(400);   // bound save size (log is newest-first)
+      // pendingReloads is a UI animation queue drained AFTER the save point — never persist it,
+      // or Resume would re-announce knockouts that already played before the refresh
+      localStorage.setItem(SAVE_KEY, JSON.stringify(Object.assign({}, G, { pendingReloads: [] })));
+    } catch (e) { /* quota/private mode — play on without persistence */ }
+  }
+  function loadSave() { try { const s = localStorage.getItem(SAVE_KEY); return s ? JSON.parse(s) : null; } catch (e) { return null; } }
+  // the setup screen's Resume button — recomputed whenever the setup screen can be seen (boot,
+  // language change, back-to-setup after game over), so it never goes stale or dead
+  function refreshResumeBtn() {
+    const rb = $("btn-resume"); if (!rb) return;
+    const s = loadSave(), ok = s && !s.gameOver;
+    rb.classList.toggle("hidden", !ok);
+    if (ok) rb.textContent = T("setup.resume", { n: s.round || 1 });
+  }
+  async function resumeGame() {
+    const s = loadSave(); if (!s || s.gameOver) { refreshResumeBtn(); return; }
+    aiRunning = false; uiBusy = false; ffwd = false; clearAiBanner();
+    s.rnd = E.makeRng((Math.random() * 1e9) | 0);
+    s.pendingReloads = [];                                                   // sanitize saves written before the exclusion above
+    G = s; window.G = G;
+    lastAchSeq = G._achSeq || 0;                                             // don't replay old achievement toasts
+    const feed = G.actionFeed || [];
+    lastActSeq = feed.length ? feed[feed.length - 1].seq : 0;                // ...or old action-dice animations
+    momentGame = G;                                                          // pre-seed the moment trackers so past
+    momentSeen = { firstBlood: (G._reloadSeq || 0) > 0,                      // first-blood/crown toasts don't replay
+      crownBank: G._crownBankSeq || 0, leader: null, caps: G.captures ? G.captures.slice() : undefined };
+    $("setup-screen").classList.add("hidden"); $("char-select").classList.add("hidden");
+    $("game-screen").classList.remove("hidden");
+    render();
+    if (!G.gameOver && !E.isHumanTurn(G)) await runAI();
   }
 
   // ---- per-character win stats (localStorage), shown on the select cards ----
@@ -1158,7 +1230,8 @@
     const map = ($("map-select") || {}).value || "arcadia";
     const allAI = $("all-ai").checked;
     G = E.newGame({ numPlayers: n, mode, allAI, allCharacters: true, difficulty, map, humanChar: allAI ? null : chosenChar });
-    window.G = G; lastAchSeq = 0; lastActSeq = 0;
+    window.G = G; lastAchSeq = 0; lastActSeq = 0; ffwd = false;
+    saveGame();                                    // a refresh during round 1 resumes too
     $("setup-screen").classList.add("hidden");
     $("char-select").classList.add("hidden");
     $("game-screen").classList.remove("hidden");
@@ -1576,8 +1649,19 @@
   function pxOf(key) { const c = key && G.board[key]; return c ? hexToPixel(c.q, c.r) : null; }
   function vfxGroup() { const svg = $("board"); if (!svg) return null; const g = svgEl("g", { "pointer-events": "none" }); svg.appendChild(g); return g; }
   function animateRAF(dur, step) {
-    return new Promise(res => { const t0 = performance.now();
-      (function loop(t) { const k = Math.min(1, (t - t0) / dur); step(k); if (k < 1) requestAnimationFrame(loop); else res(); })(performance.now());
+    return new Promise(res => {
+      dur = paceMs(dur);
+      let done = false;
+      const finish = () => { if (done) return; done = true; try { step(1); } catch (e) { } res(); };   // always land on the exact end state
+      if (dur <= 16) return finish();                                     // instant (skip speed / fast-forward)
+      const t0 = performance.now();
+      (function loop(t) {
+        if (done) return;
+        if (ffwd && aiRunning && !humanFacing && dur > 120) return finish();   // a skip-click mid-tween snaps AI animations to their end
+        const k = Math.min(1, (t - t0) / dur);
+        if (k < 1) { step(k); requestAnimationFrame(loop); } else finish();
+      })(t0);
+      setTimeout(finish, dur + 300);   // WATCHDOG: hidden/occluded tabs throttle rAF to a crawl — snap & resolve so awaited chains never hang
     });
   }
   function vfxGunshot(fromKey, toKey) {
@@ -1738,7 +1822,8 @@
   }
   async function startTutorial() {
     G = E.newGame({ numPlayers: 2, mode: "battleRoyale", map: "imperial", difficulty: "easy", seed: 73, chars: ["betty", "echo"] });
-    window.G = G; lastAchSeq = 0; lastActSeq = 0;
+    G._tutorial = true;                     // tutorial games never autosave over a real game
+    window.G = G; lastAchSeq = 0; lastActSeq = 0; ffwd = false;
     $("setup-screen").classList.add("hidden");
     $("game-screen").classList.remove("hidden");
     render();
@@ -1752,9 +1837,20 @@
     { const cs = $("btn-cs-start"); if (cs) cs.addEventListener("click", startGame); }
     { const cb = $("btn-cs-back"); if (cb) cb.addEventListener("click", () => { $("char-select").classList.add("hidden"); $("setup-screen").classList.remove("hidden"); }); }
     { const tb = $("btn-tutorial"); if (tb) tb.addEventListener("click", startTutorial); }
-    { const mb = $("btn-mute"); if (mb) mb.addEventListener("click", () => { const m = RL.sfx ? RL.sfx.toggle() : true; mb.textContent = m ? "🔇" : "🔊"; }); }
-    { const sb = $("btn-speed"); if (sb) { applySpeed(); sb.addEventListener("click", () => { aiSpeedIdx = (aiSpeedIdx + 1) % AI_SPEEDS.length; applySpeed(); }); } }
-    { const ls = $("lang-select"); if (ls) { ls.value = lang; ls.addEventListener("change", () => { lang = ls.value; try { localStorage.setItem("rl-lang", lang); } catch (e) { } applyStaticI18n(); applySpeed(); if (G) render(); }); } }
+    { const mb = $("btn-mute"); if (mb) { mb.textContent = (RL.sfx && RL.sfx.muted) ? "🔇" : "🔊"; mb.addEventListener("click", () => { const m = RL.sfx ? RL.sfx.toggle() : true; mb.textContent = m ? "🔇" : "🔊"; }); } }
+    { const vr = $("vol-range"); if (vr && RL.sfx) { vr.value = Math.round(RL.sfx.volume * 100); vr.addEventListener("input", () => { RL.sfx.volume = vr.value / 100; if (RL.sfx.muted) { RL.sfx.muted = false; const mb = $("btn-mute"); if (mb) mb.textContent = "🔊"; } }); vr.addEventListener("change", () => SFX("dice")); } }   // adjusting volume unmutes (convention) so the confirmation blip is audible
+    { const sb = $("btn-speed"); if (sb) { applySpeed(); sb.addEventListener("click", () => { const prev = AI_SPEEDS[aiSpeedIdx].mult; aiSpeedIdx = (aiSpeedIdx + 1) % AI_SPEEDS.length; if (AI_SPEEDS[aiSpeedIdx].mult > prev) ffwd = false; applySpeed(); }); } }
+    // resume a saved game from the setup screen (visibility/label recomputed whenever setup shows)
+    { const rb = $("btn-resume"); if (rb) rb.addEventListener("click", resumeGame); refreshResumeBtn(); }
+    // clicking the BOARD/backdrop while the AI is acting fast-forwards the rest of its stretch (standard
+    // port pattern). Interactive chrome is exempt: adjusting speed/volume or inspecting a player card
+    // mid-stretch must not silently skip the remaining animations.
+    document.addEventListener("pointerdown", (e) => {
+      if (!aiRunning || !G || G.gameOver) return;
+      if (e.target.closest("button, input, select, a, #char-overlay, #log-panel, #side")) return;
+      ffwd = true;
+    }, true);
+    { const ls = $("lang-select"); if (ls) { ls.value = lang; ls.addEventListener("change", () => { lang = ls.value; try { localStorage.setItem("rl-lang", lang); } catch (e) { } applyStaticI18n(); applySpeed(); refreshResumeBtn(); if (G) render(); }); } }
     applyStaticI18n();   // render static chrome in the saved language on load
     $("btn-restart").addEventListener("click", () => location.reload());
     const modeSel = $("mode-select"), pcSel = $("player-count");
