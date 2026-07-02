@@ -199,7 +199,8 @@
   }
   const SFX = (n) => { try { if (RL.sfx && RL.sfx[n]) RL.sfx[n](); } catch (e) { } };   // play a procedural sound (no-op if muted / unavailable)
   function shake(px) {   // brief screen-shake on the board (impact feedback)
-    if (REDUCED || (AI_SPEEDS[aiSpeedIdx] && AI_SPEEDS[aiSpeedIdx].mult === 0)) return;   // reduced-motion / skip speed: no shakes
+    if (REDUCED) return;                                     // accessibility: never shake under prefers-reduced-motion
+    if (aiRunning && !humanFacing && AI_SPEEDS[aiSpeedIdx] && AI_SPEEDS[aiSpeedIdx].mult === 0) return;   // ⏩ skip: suppress AI-stretch shakes only — the human's own impacts still land
     const el = $("board-wrap"); if (!el) return;
     const t0 = performance.now(), dur = 280;
     (function step(t) { const k = (t - t0) / dur; if (k >= 1) { el.style.transform = ""; return; } const a = px * (1 - k); el.style.transform = `translate(${(Math.random() * 2 - 1) * a}px,${(Math.random() * 2 - 1) * a}px)`; requestAnimationFrame(step); })(performance.now());
