@@ -702,7 +702,7 @@
   }
   function doLoot(state, tokenIdx, interactive) {
     const p = curP(state);
-    if (p.defensePool < 1 || spacesLeft(p, "loot") < 1) return false;
+    if (state.phase !== "action" || p.defensePool < 1 || spacesLeft(p, "loot") < 1) return false;
     const cell = state.board[hexKey(p.pos.q, p.pos.r)];
     const tok = cell.tokens.filter(isLootable)[tokenIdx];   // tokenIdx indexes the lootable list (matches lootOptions)
     if (!tok) return false;
@@ -730,7 +730,7 @@
   }
   function doDroneLoot(state, key, tokenIdx) {
     const p = curP(state);
-    if (p.character !== "codybuzz" || p.defensePool < 1 || spacesLeft(p, "loot") < 1 || !p.pos || p._droneUsed) return false;   // drone: once per turn
+    if (state.phase !== "action" || p.character !== "codybuzz" || p.defensePool < 1 || spacesLeft(p, "loot") < 1 || !p.pos || p._droneUsed) return false;   // drone: once per turn
     const here = hexKey(p.pos.q, p.pos.r);
     if (key !== here && !neighbors(state, p.pos.q, p.pos.r).includes(key)) return false;   // current or adjacent only
     const cell = state.board[key]; if (!cell) return false;
@@ -915,8 +915,8 @@
     let die = p._lastAssigned;
     if (p.character === "emmet" && die !== "skull") {
       die = rollDie(state.rnd);
-      p.assignedDice[p.assignedDice.length - 1] = die;                          // the re-rolled value is what sits on the space
-      const act = p.actionsThisTurn[p.actionsThisTurn.length - 1]; if (act && !act.boost) act.die = die;
+      const act = p.actionsThisTurn[p.actionsThisTurn.length - 1];
+      if (act && !act.boost) { p.assignedDice[p.assignedDice.length - 1] = die; act.die = die; }   // only a REAL heal die sits on the space (a boost-paid heal never entered assignedDice)
     }
     const base = target === p ? 1 : 2;                                          // healing a teammate restores 2 (rules p.7)
     const heal = Math.min(target.injuries, base + (die === "skull" ? 1 : 0));   // skull +1
@@ -1173,7 +1173,7 @@
       p.defensePool = Math.min(p.actionDice, p.defensePool + 1);
     }
     if (p.character === "kaiser" && p.injuries > 0) {      // Kaiser — Regeneration: heal 1 injury at End Phase
-      p.injuries -= 1; p.actionDice = START_ACTION_DICE - p.injuries;
+      p.injuries -= 1; p.actionDice = START_ACTION_DICE - p.injuries; p.defensePool += 1;   // the healed die returns to the pool (p.7)
     }
     // End phase Auto-Heal board side: Battle Royale AND 2v2v2 use it (every OTHER player not in toxin
     // with >=2 injuries heals 1). 2v2 / 3v3 Team Royale use the non-Auto-Heal side, so skip it. (rules p.4 + 18:11)
@@ -1181,12 +1181,12 @@
       if (o === p || o.injuries < 2 || !o.pos) continue;
       const oc = state.board[hexKey(o.pos.q, o.pos.r)];
       if (oc && (oc.toxin || oc.toxinIcon) && !hasFriendlyHideout(state, o)) continue;   // not while standing in toxin
-      o.injuries -= 1; o.actionDice = START_ACTION_DICE - o.injuries;
+      o.injuries -= 1; o.actionDice = START_ACTION_DICE - o.injuries; o.defensePool += 1;   // the healed die returns to the pool (p.7)
     }
     // End phase toxin (inert until events add toxin tokens): toxin hex & not safe -> 1 injury
     if (p.pos) {
       const cell = state.board[hexKey(p.pos.q, p.pos.r)], safe = hasFriendlyHideout(state, p) || equipFlag(p, "toxinImmune");  // Healing Armor immunity
-      if ((cell.toxin || cell.toxinIcon) && !safe) { log(state, `${p.name} 处于毒气区，受到 1 点伤害`, "toxinDamage", { name: p.name }); if (takeInjuries(state, p, 1, { hierarchy: false })) reloadPlayer(state, p, null); }   // End Phase: dice already on the line, so skip the hierarchy (avoids ensureDice fabricating phantom dice)
+      if ((cell.toxin || cell.toxinIcon) && !safe) { log(state, `${p.name} 处于毒气区，受到 1 点伤害`, "toxinDamage", { name: p.name }); if (takeInjuries(state, p, 1)) reloadPlayer(state, p, null); }   // normal hierarchy: the injury die comes off the just-built line, then the pool (rulebook order)
     }
     state._turnsTaken++;
     const isLastInRound = state.activePlayer === (state.firstPlayer + state.numPlayers - 1) % state.numPlayers;
@@ -1508,6 +1508,8 @@
     }
     if (!reload) {
       T.combatLine = sortCombatLine(def.line.filter(x => x != null));
+      const maxLine = Math.max(0, START_ACTION_DICE - T.injuries);
+      if (T.combatLine.length > maxLine) T.combatLine.length = maxLine;   // bonus injuries can outrun the pool — the excess comes off the LOWEST line dice (conservation)
       T.defensePool = Math.max(0, (START_ACTION_DICE - T.injuries) - T.combatLine.length);   // dice = line + injury zone + pool
     }
     if (reload) { reloadPlayer(state, T, A); awardNextAchievement(state, A, "rangedReload"); }  // MARKSMAN
