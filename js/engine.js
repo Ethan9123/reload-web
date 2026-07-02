@@ -9,7 +9,7 @@
 (function (root) {
   "use strict";
   const DATA = (typeof RL !== "undefined" && RL.data) ? RL.data : require("./data.js");
-  const { ARCADIA, TERRAIN, HEX_DIRS, CHARACTERS, FAME, EQUIPMENT, START_ACTION_DICE, SETUP } = DATA;
+  const { ARCADIA, TERRAIN, HEX_DIRS, CHARACTERS, FAME, EQUIPMENT, START_ACTION_DICE, SETUP, ACTION_SPACES, CHAR_SPACES, WEAPON_SPACES, HEAVY_WEAPONS } = DATA;
 
   // ---- seeded RNG (mulberry32) for reproducible games/tests ----
   function makeRng(seed) {
@@ -101,7 +101,7 @@
       equipped: { head: null, torso: null, hand: [] },
       backpack: [],                    // equipment ids (facedown)
       carryingBeacons: 0,
-      dice: [],                        // rolled, un-placed action dice this turn (roll-then-place); defensePool stays its synced count
+      dice: [],                        // legacy (rolled-dice model) — always empty; the pool is a count of valueless dice
       actionsThisTurn: [],             // {kind,die} placed on action spaces this turn (for the board's dice-placement view)
       hideout: null,                   // hex key of own hideout, or null
       barriersUsed: 0, trapsUsed: 0,   // placed counts (max 6 each)
@@ -484,16 +484,19 @@
   function beginTurn(state) {
     const p = curP(state);
     p.actionDice = START_ACTION_DICE - p.injuries;       // injuries reduce available dice
-    p.dice = []; for (let i = 0; i < p.actionDice; i++) p.dice.push(rollDie(state.rnd));   // ROLL the action dice (roll-then-place)
+    // Start Phase (p.6): ALL dice not in the injury zone go to the defense pool, UNASSIGNED and
+    // UNROLLED (dice have no values until placed on an action space) — the standing line clears.
+    p.defensePool = p.actionDice;
+    p.dice = [];                                         // legacy field (rolled-dice model) — always empty now
     p.assigned = 0; p.assignedDice = []; p.boost = false; p.boostDice = 0; p.combatLine = []; p.actionsThisTurn = [];
-    p.defensePool = p.dice.length;                       // synced count of unplaced rolled dice
-    p._closeEndedTurn = false; p._noMove = false; p.hasActed = false; p._gaveThisTurn = false; p._runBonus = false; p._runBonusUsed = false;
+    p.spacesUsed = {}; p.cardSpacesUsed = {}; p._lineBuilt = false;
+    p._closeEndedTurn = false; p._noMove = false; p.hasActed = false; p._gaveThisTurn = false;
     p._freeBuildUsed = false; p._revealed = false; p._droneUsed = false; p._wallCombo = 0;   // Betty free-build / Echo cloak / Cody drone / wall-combo reset each turn
     for (const x of state.players) x._injFameTurn = 0;   // DOUBLE TROUBLE counts injury fame within a single turn
     state.lastAchievement = null;
     autoEquip(p);                                        // MVP: auto-equip best weapon/armor (no equip UI yet)
     // Solar Array terrain: starting your turn on it grants +1 boost die (energy — non-combat, like Energy Drink).
-    if (p.pos) { const _c = state.board[hexKey(p.pos.q, p.pos.r)]; if (_c && TERRAIN[_c.terrain].energy) { p.boostDice += 1; p.actionDice = Math.max(p.actionDice, p.dice.length + p.boostDice); syncPool(p); log(state, `☀ ${p.name} 在太阳能阵列充能 +1 行动骰`, "solarCharge", { name: p.name }); } }
+    if (p.pos) { const _c = state.board[hexKey(p.pos.q, p.pos.r)]; if (_c && TERRAIN[_c.terrain].energy) { p.boostDice += 1; p.defensePool += 1; log(state, `☀ ${p.name} 在太阳能阵列充能 +1 行动骰`, "solarCharge", { name: p.name }); } }
     // Hunter's Crown: holding it into the start of your turn banks it as permanent fame (out of circulation).
     if (p.carryingCrown && state.crown) {
       p.carryingCrown = false; state.crown = { at: null, carrier: null };
@@ -557,18 +560,18 @@
     return TERRAIN[state.board[toKey].terrain].moveCost || 1;  // mountain & maze cost 2; everything else 1
   }
 
-  // Blitz — Fastest There Is: a bonus follow-up step is available only after a die-paid Run this turn
-  function blitzBonusStep(p) { return p.character === "blitz" && p._runBonus && !p._runBonusUsed; }
   function legalRuns(state, p) {
     if (!p.pos || state.phase !== "action" || p._noMove) return [];
-    const budget = blitzBonusStep(p) ? Infinity : p.defensePool;   // the bonus step ignores the dice budget
+    // budget = dice in the pool AND free Run spaces (rulebook: the Run column has 3 spaces —
+    // 4/3/2; Blitz's board is 4/4/2 plus his character-action Run space). Mountains need 2 of each.
+    const budget = Math.min(p.defensePool, spacesLeft(p, "run"));
     const ignoreWalls = p.character === "sora";                     // Sora ignores barrier movement limits
     const cur = hexKey(p.pos.q, p.pos.r), out = [];
     for (const nk of neighbors(state, p.pos.q, p.pos.r)) {
       if (!ignoreWalls && wallBetween(state, cur, nk, p.idx)) continue;
       if (runCost(state, nk, p) <= budget) out.push(nk);
     }
-    if (state.board[cur].portal && (blitzBonusStep(p) || p.defensePool >= 1))
+    if (state.board[cur].portal && budget >= 1)
       for (const k in state.board) if (k !== cur && state.board[k].portal) out.push(k);
     return out;
   }
@@ -576,54 +579,92 @@
   function sortCombatLine(line) { return line.filter(isNumericDie).sort((a, b) => b - a); }
   // dice available for COMBAT/injury = pool minus the Energy Drink boost dice (which can't be used in combat / as injury)
   function combatDice(p) { return p.defensePool - (p.boostDice || 0); }
-  // roll-then-place model: p.dice is the source of truth for UN-PLACED rolled action dice; defensePool is a
-  // synced count (= unplaced rolled dice + boost dice). Keep them in lockstep via syncPool after any mutation.
-  function syncPool(p) { p.defensePool = (p.dice ? p.dice.length : 0) + (p.boostDice || 0); }
-  // reconcile p.dice to the real-dice count implied by defensePool/boostDice. A no-op in real play (the
-  // invariant defensePool === p.dice.length + boostDice always holds); it only fixes states built without
-  // beginTurn (tests set defensePool/boostDice directly), filling any gap with neutral 3s.
-  function ensureDice(p) {
-    if (!p.dice) p.dice = [];
-    const real = Math.max(0, (p.defensePool || 0) - (p.boostDice || 0));
-    if (p.dice.length > real) p.dice.length = real;
-    while (p.dice.length < real) p.dice.push(3);
+  // ============================================================
+  // TRUE dice model (rulebook p.6): action dice are NOT rolled. The defense pool is a count of
+  // valueless, unassigned dice. Placing a die on an action space SETS its value to the space's
+  // printed value; each column has finitely many spaces (per-turn action caps). At End Phase the
+  // ASSIGNED numeric dice become the standing combat line (your defense until your next turn);
+  // when attacked you roll only the unassigned pool and blend it into that line.
+  // ============================================================
+  function spaceColumn(p, kind) {
+    const cs = CHAR_SPACES[p.character];
+    if (cs && cs[kind]) return cs[kind];
+    return ACTION_SPACES[kind] || [];
   }
-  // which rolled die to place on an action: an exact preferred value if present, else the LOWEST numeric die
-  // (keeps the high dice for the combat line), else a skull. Deterministic (no RNG) so rollouts stay reproducible.
-  function pickDieIndex(dice, preferValue) {
-    if (typeof preferValue === "number") { const i = dice.indexOf(preferValue); if (i >= 0) return i; }
-    let idx = -1, lo = 7;
-    for (let i = 0; i < dice.length; i++) { const d = dice[i]; if (typeof d === "number" && d < lo) { lo = d; idx = i; } }
-    return idx >= 0 ? idx : 0;
+  // number of Run-column spaces currently usable (an equipped Heavy weapon blocks the LAST one)
+  function runColumnLen(p) {
+    let n = spaceColumn(p, "run").length;
+    if ((p.equipped && p.equipped.hand || []).some(id => HEAVY_WEAPONS.includes(id))) n -= 1;
+    return Math.max(0, n);
   }
-  // spend n action dice on an action. The 4th arg is a PREFERRED value to place (null = auto-pick lowest).
-  function spendDice(state, p, n, preferValue, kind) {
-    ensureDice(p);
+  // the effective column for an action: Run composes the board column (minus a Heavy-blocked last
+  // space) with Blitz's character-action Run space; other kinds are the printed column as-is.
+  function displayColumn(p, kind) {
+    if (kind === "run") {
+      const col = spaceColumn(p, "run").slice(0, runColumnLen(p));
+      const extra = CHAR_SPACES[p.character] && CHAR_SPACES[p.character].charRun || [];
+      return [...col, ...extra];
+    }
+    return spaceColumn(p, kind);
+  }
+  // remaining spaces for an action kind
+  function spacesLeft(p, kind) {
+    const used = (p.spacesUsed && p.spacesUsed[kind]) || 0;
+    return Math.max(0, displayColumn(p, kind).length - used);
+  }
+  // the value of the NEXT free space in a column (columns fill left-to-right, high value first —
+  // strictly best for the combat line since the values are printed descending)
+  function nextSpaceValue(p, kind) {
+    const used = (p.spacesUsed && p.spacesUsed[kind]) || 0;
+    const col = displayColumn(p, kind);
+    return used < col.length ? col[used] : null;
+  }
+  // assign n dice from the pool onto the next free spaces of `kind` (rulebook: die value := space
+  // value; the Heal space rolls its die; the Close space sets a skull). Ranged spaces live on the
+  // weapon CARD — the caller passes the card's space value via opts.value + opts.card.
+  // Consumes real dice first, then Energy-Drink boost dice (boost never enters line/injury zone).
+  function spendDice(state, p, n, kind, opts) {
+    opts = opts || {};
+    if (!p.spacesUsed) p.spacesUsed = {};
+    if (!p.cardSpacesUsed) p.cardSpacesUsed = {};
+    const col = opts.column || kind;                                   // e.g. trap/hideout/barrier all fill the Build column
     for (let i = 0; i < n; i++) {
       if (p.defensePool <= 0) break;
-      if (p.dice && p.dice.length > 0) {                      // place a real rolled die; its value is consumed off the pool
-        const v = p.dice.splice(pickDieIndex(p.dice, preferValue), 1)[0];
-        p.assignedDice.push(v);                               // log of placed values (for the UI/feed; the combat line is the UNSPENT dice)
-        if (kind) (p.actionsThisTurn || (p.actionsThisTurn = [])).push({ kind, die: v });
-      } else {                                                // no real die left -> consume a boost die (Energy Drink/solar)
-        p.boostDice = Math.max(0, (p.boostDice || 0) - 1);    // never enters the combat line / injury zone
-        if (kind) (p.actionsThisTurn || (p.actionsThisTurn = [])).push({ kind, die: "⚡", boost: true });
+      let v;
+      if (opts.card) { v = opts.value; p.cardSpacesUsed[opts.card] = (p.cardSpacesUsed[opts.card] || 0) + 1; }
+      else {
+        const sv = nextSpaceValue(p, col);
+        v = sv == null ? (opts.value != null ? opts.value : 3) : sv;   // column overrun shouldn't happen (callers gate on spacesLeft); keep a sane value if it does
+        if (sv === "roll") v = rollDie(state.rnd);                     // Heal: the placed die IS rolled (p.7)
+        else if (sv === "skull") v = "skull";                          // Close Combat: die set to skull (p.10)
+        p.spacesUsed[col] = ((p.spacesUsed[col]) || 0) + 1;
       }
-      syncPool(p);
+      if (combatDice(p) > 0) {                                  // place a real die, set to the space value
+        p.assignedDice.push(v);
+        if (kind) (p.actionsThisTurn || (p.actionsThisTurn = [])).push({ kind, die: v });
+        p.defensePool -= 1;
+      } else {                                                  // only boost dice left -> consume one
+        p.boostDice = Math.max(0, (p.boostDice || 0) - 1);
+        if (kind) (p.actionsThisTurn || (p.actionsThisTurn = [])).push({ kind, die: "⚡", boost: true });
+        p.defensePool -= 1;
+      }
+      p._lastAssigned = v;                                      // the value just placed (heal roll / Duke bonus matching)
     }
     p.assigned = p.assignedDice.length;
-    p.hasActed = true;                                        // locks equipment for the rest of the turn (survives injury die-pops)
-    p._wallCombo = 0;                                         // spending a die on any action ends a pending free 2nd-wall
+    p.hasActed = true;                                          // locks equipment for the rest of the turn (survives injury die-pops)
+    p._wallCombo = 0;                                           // spending a die on any action ends a pending free 2nd-wall
   }
+  // End Phase steps 2-3 (p.11): assigned NUMERIC dice -> combat line (highest first); everything
+  // else (unassigned pool, skull-valued close/heal dice, returned boost) -> defense pool.
+  // A close combat this turn already built the line (assigned + blended pool roll, p.10) — keep it.
   function moveAssignedDiceToCombatLine(p) {
     p.actionDice = START_ACTION_DICE - p.injuries;
-    // the UNSPENT rolled dice (never placed on an action) form the combat line; placed dice are consumed.
-    // sortCombatLine filters non-numeric, so any unspent skull is dropped (a skull can't defend).
-    let line = sortCombatLine([...(p.combatLine || []), ...(p.dice || [])]);
+    let line = p._lineBuilt ? sortCombatLine(p.combatLine || []) : sortCombatLine([...(p.assignedDice || [])]);
     if (line.length > p.actionDice) line = line.slice(0, p.actionDice);
     p.combatLine = line;
-    p.dice = []; p.assignedDice = []; p.assigned = 0; p.boostDice = 0; p.actionsThisTurn = [];   // dice now on the combat line
-    p.defensePool = Math.max(0, p.actionDice - p.combatLine.length);   // End-Phase derived count (p.dice is empty here)
+    p.assignedDice = []; p.assigned = 0; p.boostDice = 0; p.actionsThisTurn = []; p._lineBuilt = false;
+    p.spacesUsed = {}; p.cardSpacesUsed = {};
+    p.defensePool = Math.max(0, p.actionDice - p.combatLine.length);
   }
   function hasFriendlyHideout(state, p) {
     if (!p.pos) return false;
@@ -639,8 +680,6 @@
   }
   function syncDiceCounts(p) {
     p.actionDice = START_ACTION_DICE - p.injuries;
-    if (p.dice && p.dice.length > p.actionDice) p.dice.length = p.actionDice;   // injuries cut capacity -> shrink the pool
-    syncPool(p);
     p.assigned = p.assignedDice ? p.assignedDice.length : 0;
   }
   function doRun(state, toKey) {
@@ -648,10 +687,9 @@
     if (!legalRuns(state, p).includes(toKey)) return false;
     const cur = hexKey(p.pos.q, p.pos.r);
     const portalJump = state.board[cur].portal && state.board[toKey].portal && dirIndex(p.pos, state.board[toKey]) < 0;
-    if (blitzBonusStep(p)) { p._runBonus = false; p._runBonusUsed = true; p.hasActed = true; log(state, `⚡ ${p.name} 疾速：追加一步`, "blitzStep", { name: p.name }); }  // free bonus hex
-    else { spendDice(state, p, portalJump ? 1 : runCost(state, toKey, p), 1, portalJump ? "portal" : "run"); if (p.character === "blitz" && !p._runBonusUsed) p._runBonus = true; } // a paid Run unlocks the bonus step
+    spendDice(state, p, portalJump ? 1 : runCost(state, toKey, p), "run");   // mountains assign 2 Run spaces (p.12)
     const c = state.board[toKey]; p.pos = { q: c.q, r: c.r };
-    recordAction(state, p, portalJump ? "portal" : "run", 1);
+    recordAction(state, p, portalJump ? "portal" : "run", p._lastAssigned);
     log(state, `${p.name} ${portalJump ? "穿越传送门到" : "移动到"} ${c.terrain}`, portalJump ? "portal" : "move", { name: p.name, terrain: c.terrain });
     if (c.trap != null && c.trap !== p.idx) resolveTrap(state, p, c.trap, toKey); // step on enemy trap
     return true;
@@ -659,16 +697,16 @@
 
   const isLootable = t => t.kind !== "flag";   // CTF flags are grabbed (grabFlag), never picked up by a generic Loot
   function lootOptions(state, p) {
-    if (!p.pos || state.phase !== "action" || p.defensePool < 1) return [];
+    if (!p.pos || state.phase !== "action" || p.defensePool < 1 || spacesLeft(p, "loot") < 1) return [];
     return state.board[hexKey(p.pos.q, p.pos.r)].tokens.filter(isLootable);
   }
   function doLoot(state, tokenIdx, interactive) {
     const p = curP(state);
-    if (p.defensePool < 1) return false;
+    if (state.phase !== "action" || p.defensePool < 1 || spacesLeft(p, "loot") < 1) return false;
     const cell = state.board[hexKey(p.pos.q, p.pos.r)];
     const tok = cell.tokens.filter(isLootable)[tokenIdx];   // tokenIdx indexes the lootable list (matches lootOptions)
     if (!tok) return false;
-    spendDice(state, p, 1, 1, "loot"); recordAction(state, p, "loot", 1, { tok: tok.kind }); cell.tokens.splice(cell.tokens.indexOf(tok), 1);
+    spendDice(state, p, 1, "loot"); recordAction(state, p, "loot", p._lastAssigned, { tok: tok.kind }); cell.tokens.splice(cell.tokens.indexOf(tok), 1);
     if (tok.kind === "beacon") { p.carryingBeacons += 1; log(state, `${p.name} 拾取信标（需带到中央塔上缴）`, "lootBeacon", { name: p.name }); }
     else if (tok.kind === "crown") { grabCrown(state, p); }
     else if (tok.kind === "supply") {
@@ -685,19 +723,19 @@
 
   // Cody & Buzz — Drone Buzz: spend an action die to Loot a token on the current OR an adjacent hex.
   function droneLootOptions(state, p) {
-    if (!p || p.character !== "codybuzz" || !p.pos || state.phase !== "action" || p.defensePool < 1 || p._droneUsed) return [];   // drone: once per turn
+    if (!p || p.character !== "codybuzz" || !p.pos || state.phase !== "action" || p.defensePool < 1 || spacesLeft(p, "loot") < 1 || p._droneUsed) return [];   // drone: once per turn
     const out = [], here = hexKey(p.pos.q, p.pos.r), cells = [here, ...neighbors(state, p.pos.q, p.pos.r)];
     for (const k of cells) state.board[k].tokens.forEach((tok, i) => { if (isLootable(tok)) out.push({ key: k, tokenIdx: i, kind: tok.kind, star: tok.star }); });   // CTF flags are not drone-lootable
     return out;
   }
   function doDroneLoot(state, key, tokenIdx) {
     const p = curP(state);
-    if (p.character !== "codybuzz" || p.defensePool < 1 || !p.pos || p._droneUsed) return false;   // drone: once per turn
+    if (state.phase !== "action" || p.character !== "codybuzz" || p.defensePool < 1 || spacesLeft(p, "loot") < 1 || !p.pos || p._droneUsed) return false;   // drone: once per turn
     const here = hexKey(p.pos.q, p.pos.r);
     if (key !== here && !neighbors(state, p.pos.q, p.pos.r).includes(key)) return false;   // current or adjacent only
     const cell = state.board[key]; if (!cell) return false;
     const tok = cell.tokens[tokenIdx]; if (!tok || !isLootable(tok)) return false;   // never drone-loot a CTF flag
-    spendDice(state, p, 1, 1, "loot"); recordAction(state, p, "loot", 1, { tok: tok.kind }); cell.tokens.splice(tokenIdx, 1); p._droneUsed = true;
+    spendDice(state, p, 1, "loot"); recordAction(state, p, "loot", p._lastAssigned, { tok: tok.kind }); cell.tokens.splice(tokenIdx, 1); p._droneUsed = true;
     if (tok.kind === "beacon") { p.carryingBeacons += 1; log(state, `🤖 ${p.name} 的无人机巴兹拾取信标`, "droneBeacon", { name: p.name }); }
     else if (tok.kind === "crown") { grabCrown(state, p); }   // Hunter's Crown is grabbable by the drone too
     else if (tok.kind === "supply") {
@@ -715,7 +753,7 @@
   //  • Village: draw 3 from the 1★ deck, keep 2 (repeatable equipment source).
   function onTower(state, p) { return p.pos && state.board[hexKey(p.pos.q, p.pos.r)].hasTower; }
   function terrainOf(state, p) { return p.pos ? state.board[hexKey(p.pos.q, p.pos.r)].terrain : null; }
-  function canUpload(state, p) { return state.phase === "action" && p.defensePool >= 1 && onTower(state, p) && p.carryingBeacons > 0; }
+  function canUpload(state, p) { return state.phase === "action" && p.defensePool >= 1 && spacesLeft(p, "activate") >= 1 && onTower(state, p) && p.carryingBeacons > 0; }
   // draw one equipment card of a star tier, reshuffling its discard pile in when the deck runs dry (rulebook).
   function drawEquipCard(state, star) {
     const dk = "equip" + star, xk = "discard" + star;
@@ -726,20 +764,20 @@
   // coarse keep-priority for an auto draw (weapons > armor > specials), consistent with autoEquip's preferences
   function equipScore(id) { const e = byId(id); if (!e) return 0; return e.combat === "ranged" ? 6 + (e.dice || 0) : e.combat === "close" ? 5 : (e.slot === "head" || e.slot === "torso") ? 4 : 2; }
   // Village draw needs cards to actually be obtainable (deck or its reshuffleable discard), else don't offer it.
-  function canVillageDraw(state, p) { return state.phase === "action" && p.defensePool >= 1 && terrainOf(state, p) === "village" && equipAvailable(state, 1); }
+  function canVillageDraw(state, p) { return state.phase === "action" && p.defensePool >= 1 && spacesLeft(p, "activate") >= 1 && terrainOf(state, p) === "village" && equipAvailable(state, 1); }
   // is ANY Activate ability available on the player's current hex?
   function canActivateHex(state, p) { return canUpload(state, p) || canVillageDraw(state, p); }
   function doActivate(state, interactive) {
     const p = curP(state);
     if (canUpload(state, p)) {
       const n = p.carryingBeacons, fame = n * FAME.beacon.value;
-      spendDice(state, p, 1, 1, "activate"); recordAction(state, p, "activate", 1, { up: n });
+      spendDice(state, p, 1, "activate"); recordAction(state, p, "activate", p._lastAssigned, { up: n });
       log(state, `${p.name} 在中央塔上传 ${n} 个信标 → +${fame} 名望`, "upload", { name: p.name, n, fame });
       gainFame(state, p, "beacon", n); p.carryingBeacons = 0;
       return true;
     }
     if (canVillageDraw(state, p)) {     // Village: draw 3 from the 1★ deck, keep 2 (player chooses; AI keeps best)
-      spendDice(state, p, 1, 1, "activate"); recordAction(state, p, "activate", 1);
+      spendDice(state, p, 1, "activate"); recordAction(state, p, "activate", p._lastAssigned);
       const got = []; for (let i = 0; i < 3; i++) { const c = drawEquipCard(state, 1); if (c) got.push(c); }
       const keep = Math.min(2, got.length);
       log(state, `${p.name} 在村庄搜刮装备：抽 ${got.length} 留 ${keep}`, "villageDraw", { name: p.name, drew: got.length, kept: keep });
@@ -756,7 +794,7 @@
   function onOwnBase(state, p) { return p.pos && state.board[hexKey(p.pos.q, p.pos.r)].base === p.team; }
   // grab the enemy flag while standing on the enemy base (it must be home there, and you're empty-handed)
   function canGrabFlag(state, p) {
-    if (!state.flags || state.phase !== "action" || p.defensePool < 1 || p.carryingFlag != null || !p.pos) return false;
+    if (!state.flags || state.phase !== "action" || p.defensePool < 1 || spacesLeft(p, "loot") < 1 || p.carryingFlag != null || !p.pos) return false;
     const et = enemyTeamOf(p), key = hexKey(p.pos.q, p.pos.r);
     return state.board[key].base === et && state.flags[et].at === key;
   }
@@ -764,7 +802,7 @@
     const p = curP(state); if (!canGrabFlag(state, p)) return false;
     const et = enemyTeamOf(p), cell = state.board[hexKey(p.pos.q, p.pos.r)];
     const i = cell.tokens.findIndex(t => t.kind === "flag" && t.team === et); if (i < 0) return false;
-    spendDice(state, p, 1, 1, "loot"); recordAction(state, p, "loot", 1, { tok: "flag" });
+    spendDice(state, p, 1, "loot"); recordAction(state, p, "loot", p._lastAssigned, { tok: "flag" });
     cell.tokens.splice(i, 1); p.carryingFlag = et; state.flags[et].carrier = p.idx; state.flags[et].at = null;
     log(state, `🚩 ${p.name} 夺取了队伍${et + 1}的旗帜！`, "grabFlag", { name: p.name, team: et + 1 });
     return true;
@@ -776,11 +814,11 @@
     f.at = f.home; f.carrier = null;
   }
   // submit a carried enemy flag at your own base -> flag fame + capture
-  function canScoreFlag(state, p) { return !!state.flags && state.phase === "action" && p.defensePool >= 1 && p.carryingFlag != null && onOwnBase(state, p); }
+  function canScoreFlag(state, p) { return !!state.flags && state.phase === "action" && p.defensePool >= 1 && spacesLeft(p, "activate") >= 1 && p.carryingFlag != null && onOwnBase(state, p); }
   function scoreFlag(state) {
     const p = curP(state); if (!canScoreFlag(state, p)) return false;
     const t = p.carryingFlag;
-    spendDice(state, p, 1, 1, "activate"); recordAction(state, p, "activate", 1);
+    spendDice(state, p, 1, "activate"); recordAction(state, p, "activate", p._lastAssigned);
     p.carryingFlag = null; returnFlagHome(state, t); state.captures[p.team] = (state.captures[p.team] || 0) + 1;
     log(state, `🏁 ${p.name} 将旗帜带回基地，夺旗成功！ +${FAME.flag.value} 名望`, "scoreFlag", { name: p.name, n: FAME.flag.value });
     gainFame(state, p, "flag", 1);   // one Flag fame token (worth FAME.flag.value on the track)
@@ -860,7 +898,7 @@
   function enemyOnHex(state, p) { return !!(p.pos && playersOnHex(state, p.pos.q, p.pos.r).some(x => x !== p && !sameTeam(x, p))); }
   // who the active player can heal right now: self (if injured) + injured teammates on the same hex
   function healTargets(state, p) {
-    if (state.phase !== "action" || p.defensePool < 1 || !p.pos || (enemyOnHex(state, p) && p.character !== "emmet")) return [];   // Emmet — Field Medic: heal even under threat
+    if (state.phase !== "action" || p.defensePool < 1 || spacesLeft(p, "heal") < 1 || !p.pos || (enemyOnHex(state, p) && p.character !== "emmet")) return [];   // ONE Heal space per turn; Emmet — Field Medic: heal even under threat
     const out = [];
     if (p.injuries > 0) out.push(p.idx);
     for (const t of playersOnHex(state, p.pos.q, p.pos.r)) if (t !== p && sameTeam(t, p) && t.injuries > 0) out.push(t.idx);
@@ -871,15 +909,23 @@
     const p = curP(state);
     const targets = healTargets(state, p); if (!targets.length) return false;
     let target = (targetIdx != null && targets.includes(targetIdx)) ? state.players[targetIdx] : state.players[targets[0]];
-    let die = rollDie(state.rnd);
-    if (p.character === "emmet" && die !== "skull") die = rollDie(state.rnd);   // Emmet — Field Medic: re-roll the heal die (skull = +1)
-    const base = target === p ? 1 : 2;                                          // healing a teammate restores 2 (rules p.8)
+    // p.7: the assigned die IS rolled on the Heal space (spendDice handles the roll — a numeric result
+    // joins the combat line at End Phase; a skull won't). Emmet — Field Medic: re-roll a non-skull.
+    spendDice(state, p, 1, "heal");
+    let die = p._lastAssigned;
+    if (p.character === "emmet" && die !== "skull") {
+      die = rollDie(state.rnd);
+      const act = p.actionsThisTurn[p.actionsThisTurn.length - 1];
+      if (act && !act.boost) { p.assignedDice[p.assignedDice.length - 1] = die; act.die = die; }   // only a REAL heal die sits on the space (a boost-paid heal never entered assignedDice)
+    }
+    const base = target === p ? 1 : 2;                                          // healing a teammate restores 2 (rules p.7)
     const heal = Math.min(target.injuries, base + (die === "skull" ? 1 : 0));   // skull +1
-    spendDice(state, p, 1, null, "heal"); recordAction(state, p, "heal", die);   // spend the lowest die; the heal ROLL (die) is separate
+    recordAction(state, p, "heal", die);
     target.injuries -= heal; target.actionDice = START_ACTION_DICE - target.injuries;
-    if (target === p) { for (let i = 0; i < heal; i++) (p.dice || (p.dice = [])).push(rollDie(state.rnd)); syncPool(p); }   // recovered dice are rolled and usable this turn
-    // off-turn teammate: the heal is fully captured by the injury reduction above — they re-roll at their own
-    // beginTurn, so do NOT bump defensePool here (that would break the defensePool === dice.length + boostDice invariant)
+    // p.7: healed dice move from the injury zone to the DEFENSE POOL, "immediately available" — for the
+    // active player that's usable dice this turn; for an off-turn teammate it strengthens their defense
+    // rolls until their next turn (their standing combat line is unaffected by healing).
+    target.defensePool += heal;
     if (target !== p) { log(state, `${p.name} 治疗队友 ${target.name}：掷${die === "skull" ? "骷髅" : die}，恢复 ${heal} 点（+1 团队精神）`, "healMate", { name: p.name, mate: target.name, heal }); gainFame(state, p, "teamSpirit", 1); }
     else log(state, `${p.name} 治疗：掷${die === "skull" ? "骷髅(+2)" : die}，恢复 ${heal} 点伤`, "healSelf", { name: p.name, heal });
     state.lastRoll = { kind: "heal", by: p.idx, target: target.idx, value: die, healed: heal };
@@ -900,11 +946,11 @@
   const SETUP_WALLS = SETUP.walls, SETUP_TRAPS = SETUP.traps;
   function noEnemyHere(state, p) { return !!p.pos && !enemyOnHex(state, p); }   // teammates sharing the hex don't restrict
   function bettyFreeBuild(p) { return p.character === "betty" && !p._freeBuildUsed; }   // Betty — Demolitions: one free Build per turn
-  function payBuild(state, p, kind) {                                                    // a Build action: free for Betty's first, else 1 action die
-    if (bettyFreeBuild(p)) { p._freeBuildUsed = true; p.hasActed = true; }
-    else spendDice(state, p, 1, 1, kind || "barrier");
+  function payBuild(state, p, kind) {                                                    // a Build action: free for Betty's first, else 1 action die on a Build space
+    if (bettyFreeBuild(p)) { p._freeBuildUsed = true; p.hasActed = true; p._lastAssigned = null; }
+    else spendDice(state, p, 1, kind || "barrier", { column: "build" });                 // trap/hideout/barrier/demolish all fill the Build column (2 spaces/turn)
   }
-  function canBuild(state, p) { return state.phase === "action" && (p.defensePool >= 1 || bettyFreeBuild(p)) && noEnemyHere(state, p); }
+  function canBuild(state, p) { return state.phase === "action" && ((p.defensePool >= 1 && spacesLeft(p, "build") >= 1) || bettyFreeBuild(p)) && noEnemyHere(state, p); }
   function emptyEdges(state, p) {
     if (!p.pos) return [];
     const cell = state.board[hexKey(p.pos.q, p.pos.r)], out = [];
@@ -925,7 +971,7 @@
     if (!combo) payBuild(state, p, "barrier");   // the free 2nd wall spends no die, so it adds no placement
     state.board[hexKey(p.pos.q, p.pos.r)].walls[edge] = p.idx; p.barriersUsed++;
     p._wallCombo = combo ? 0 : 1;                  // a paid 1st wall opens a free 2nd; the 2nd closes it
-    if (!combo) recordAction(state, p, "barrier", 1);
+    if (!combo) recordAction(state, p, "barrier", p._lastAssigned);
     log(state, `${p.name} 建造屏障`, "buildBarrier", { name: p.name }); return true;
   }
   function doDemolish(state, edge) {
@@ -934,7 +980,7 @@
     if (cell.walls[edge] == null) return false;
     const owner = cell.walls[edge]; delete cell.walls[edge];
     if (typeof owner === "number" && state.players[owner]) state.players[owner].barriersUsed = Math.max(0, state.players[owner].barriersUsed - 1);
-    payBuild(state, p, "demolish"); recordAction(state, p, "demolish", 1); log(state, `${p.name} 拆除屏障`, "demolishBarrier", { name: p.name }); return true;
+    payBuild(state, p, "demolish"); recordAction(state, p, "demolish", p._lastAssigned); log(state, `${p.name} 拆除屏障`, "demolishBarrier", { name: p.name }); return true;
   }
   function doBuildHideout(state) {
     const p = curP(state); if (!canBuild(state, p)) return false;
@@ -942,7 +988,7 @@
     if (state.board[k].hideouts.length) return false;
     if (p.hideout && state.board[p.hideout]) state.board[p.hideout].hideouts = state.board[p.hideout].hideouts.filter(h => h !== p.idx);
     payBuild(state, p, "hideout"); state.board[k].hideouts.push(p.idx); p.hideout = k;
-    recordAction(state, p, "hideout", 1);
+    recordAction(state, p, "hideout", p._lastAssigned);
     log(state, `${p.name} 设置藏身处`, "buildHideout", { name: p.name }); return true;
   }
   function doDemolishHideout(state, ownerIdx) {
@@ -953,14 +999,14 @@
     if (idx < 0) return false;
     const owner = cell.hideouts.splice(idx, 1)[0];
     if (state.players[owner]) state.players[owner].hideout = null;
-    payBuild(state, p, "demolish"); recordAction(state, p, "demolish", 1); log(state, `${p.name} 拆除藏身处`, "demolishHideout", { name: p.name }); return true;
+    payBuild(state, p, "demolish"); recordAction(state, p, "demolish", p._lastAssigned); log(state, `${p.name} 拆除藏身处`, "demolishHideout", { name: p.name }); return true;
   }
   function doBuildTrap(state) {
     const p = curP(state); if (!canBuild(state, p) || p.trapsUsed >= SETUP_TRAPS) return false;
     const cell = state.board[hexKey(p.pos.q, p.pos.r)];
     if (cell.trap != null) return false;
     payBuild(state, p, "trap"); cell.trap = p.idx; p.trapsUsed++;
-    recordAction(state, p, "trap", 1);
+    recordAction(state, p, "trap", p._lastAssigned);
     log(state, `${p.name} 埋设陷阱`, "buildTrap", { name: p.name });
     // Team Spirit: building a trap in the same hex as a teammate scores +1 (rules 002 modules)
     if (playersOnHex(state, p.pos.q, p.pos.r).some(x => x !== p && sameTeam(x, p))) {
@@ -1018,16 +1064,14 @@
   function useSpecialItem(state, itemId, target) {
     const p = curP(state), e = byId(itemId);
     if (!e || !hasSpecial(p, itemId)) return false;
-    ensureDice(p);   // reconcile p.dice to the pool before mutating it (no-op in real play)
     if (itemId === "pain_killer") {
       if (p.injuries <= 0) return false;
-      p.injuries -= 1; p.actionDice = START_ACTION_DICE - p.injuries; p.dice.push(rollDie(state.rnd)); syncPool(p);   // recover a (rolled) action die
+      p.injuries -= 1; p.actionDice = START_ACTION_DICE - p.injuries; p.defensePool += 1;   // the healed die returns to the (valueless) pool
       log(state, `💊 ${p.name} 使用止痛药，恢复 1 点伤`, "usePainkiller", { name: p.name });
     } else if (itemId === "energy_drink" || itemId === "adrenaline_mask") {
       if (state.phase !== "action") return false;
-      p.boostDice = (p.boostDice || 0) + 1;   // boost die: spendable on actions, not combat / injury (kept out of p.dice)
-      p.actionDice = Math.max(p.actionDice, (p.dice ? p.dice.length : 0) + p.boostDice);   // allow the extra die beyond the injury-reduced base
-      syncPool(p);
+      p.boostDice = (p.boostDice || 0) + 1;   // boost die: spendable on actions, not combat / injury / the line
+      p.defensePool += 1;
       log(state, `🥤 ${p.name} 使用 ${e.name}，本回合 +1 行动骰（不可用于战斗/承伤）`, "useEnergy", { name: p.name });
     } else if (itemId === "tactical_explosive") {
       if (state.phase !== "action" || !target) return false;
@@ -1129,7 +1173,7 @@
       p.defensePool = Math.min(p.actionDice, p.defensePool + 1);
     }
     if (p.character === "kaiser" && p.injuries > 0) {      // Kaiser — Regeneration: heal 1 injury at End Phase
-      p.injuries -= 1; p.actionDice = START_ACTION_DICE - p.injuries;
+      p.injuries -= 1; p.actionDice = START_ACTION_DICE - p.injuries; p.defensePool += 1;   // the healed die returns to the pool (p.7)
     }
     // End phase Auto-Heal board side: Battle Royale AND 2v2v2 use it (every OTHER player not in toxin
     // with >=2 injuries heals 1). 2v2 / 3v3 Team Royale use the non-Auto-Heal side, so skip it. (rules p.4 + 18:11)
@@ -1137,12 +1181,12 @@
       if (o === p || o.injuries < 2 || !o.pos) continue;
       const oc = state.board[hexKey(o.pos.q, o.pos.r)];
       if (oc && (oc.toxin || oc.toxinIcon) && !hasFriendlyHideout(state, o)) continue;   // not while standing in toxin
-      o.injuries -= 1; o.actionDice = START_ACTION_DICE - o.injuries;
+      o.injuries -= 1; o.actionDice = START_ACTION_DICE - o.injuries; o.defensePool += 1;   // the healed die returns to the pool (p.7)
     }
     // End phase toxin (inert until events add toxin tokens): toxin hex & not safe -> 1 injury
     if (p.pos) {
       const cell = state.board[hexKey(p.pos.q, p.pos.r)], safe = hasFriendlyHideout(state, p) || equipFlag(p, "toxinImmune");  // Healing Armor immunity
-      if ((cell.toxin || cell.toxinIcon) && !safe) { log(state, `${p.name} 处于毒气区，受到 1 点伤害`, "toxinDamage", { name: p.name }); if (takeInjuries(state, p, 1, { hierarchy: false })) reloadPlayer(state, p, null); }   // End Phase: dice already on the line, so skip the hierarchy (avoids ensureDice fabricating phantom dice)
+      if ((cell.toxin || cell.toxinIcon) && !safe) { log(state, `${p.name} 处于毒气区，受到 1 点伤害`, "toxinDamage", { name: p.name }); if (takeInjuries(state, p, 1)) reloadPlayer(state, p, null); }   // normal hierarchy: the injury die comes off the just-built line, then the pool (rulebook order)
     }
     state._turnsTaken++;
     const isLastInRound = state.activePlayer === (state.firstPlayer + state.numPlayers - 1) % state.numPlayers;
@@ -1312,9 +1356,13 @@
     }
     return true;
   }
+  // action spaces printed on a ranged weapon card (shots/turn limit — rulebook p.8 "equipped with
+  // an available action space"); values fill left-to-right like the board columns
+  function weaponSpaces(w) { return (w && WEAPON_SPACES[w.id]) || [3]; }
+  function weaponSpacesLeft(p, w) { return w ? Math.max(0, weaponSpaces(w).length - ((p.cardSpacesUsed && p.cardSpacesUsed[w.id]) || 0)) : 0; }
   function rangedTargets(state, A) {
     const w = equippedRanged(A);
-    if (!w || !A.pos || combatDice(A) < 1 || state.phase !== "action") return [];   // boost die can't be used in combat
+    if (!w || !A.pos || combatDice(A) < 1 || weaponSpacesLeft(A, w) < 1 || state.phase !== "action") return [];   // boost die can't be used in combat; the card's spaces cap shots/turn
     const out = [], r = w.range || [0, 0];
     const maxR = r[1] + equipSum(A, "rangeBonus") + (A.character === "diana" ? 1 : 0);   // Jet Pack/Tactical Helmet + Diana (Huntress)
     const seesThroughStealth = equipFlag(A, "cancelsStealth");   // Tactical Helmet
@@ -1329,18 +1377,15 @@
     return out;
   }
   function closeTargets(state, A) {
-    if (!A.pos || combatDice(A) < 1 || state.phase !== "action") return [];   // boost die can't be used in combat
+    if (!A.pos || combatDice(A) < 1 || spacesLeft(A, "close") < 1 || state.phase !== "action") return [];   // one Close space; boost die can't be used in combat
     return state.players.filter(t => t !== A && t.pos && !t.reloadZone && !sameTeam(A, t) && t.pos.q === A.pos.q && t.pos.r === A.pos.r).map(t => t.idx);
   }
 
   function takeInjuryDieByHierarchy(p) {
     p.combatLine = sortCombatLine(p.combatLine || []);
     if (p.combatLine.length) { p.combatLine.pop(); return "combatLine"; }
-    if (combatDice(p) > 0 && p.dice && p.dice.length) {   // pop the lowest UNPLACED rolled die (boost dice can't be taken as injury)
-      let idx = -1, lo = 7; for (let i = 0; i < p.dice.length; i++) { const d = p.dice[i]; if (typeof d === "number" && d < lo) { lo = d; idx = i; } }
-      if (idx < 0) idx = p.dice.findIndex(d => d === "skull");   // only skulls left
-      if (idx >= 0) p.dice.splice(idx, 1);
-      syncPool(p); return "defensePool";
+    if (combatDice(p) > 0) {                              // any unassigned pool die (they're valueless; boost dice can't be taken as injury)
+      p.defensePool -= 1; return "defensePool";
     }
     if (p.assignedDice && p.assignedDice.length) { p.assignedDice.pop(); if (p.actionsThisTurn) { for (let i = p.actionsThisTurn.length - 1; i >= 0; i--) if (!p.actionsThisTurn[i].boost) { p.actionsThisTurn.splice(i, 1); break; } } p.assigned = p.assignedDice.length; return "assigned"; }   // drop the matching REAL placement (boost dice can't be injured)
     return "none";
@@ -1348,7 +1393,7 @@
   function takeInjuries(state, p, n, opts) {
     if (n <= 0) return false;
     const useHierarchy = !opts || opts.hierarchy !== false;
-    if (useHierarchy) { ensureDice(p); for (let i = 0; i < n; i++) takeInjuryDieByHierarchy(p); }
+    if (useHierarchy) { for (let i = 0; i < n; i++) takeInjuryDieByHierarchy(p); }
     p.injuries = Math.min(INJURY_ZONE, p.injuries + n);
     syncDiceCounts(p);
     return p.injuries >= INJURY_ZONE;
@@ -1401,7 +1446,8 @@
     const a = state.decks.equip2.pop(), b = state.decks.equip2.pop();
     if (a) p.backpack.push(a); if (b) state.decks.discard2.push(b);
     p.injuries = 0; p.actionDice = START_ACTION_DICE; p.dice = []; p.boostDice = 0; p.defensePool = 0; p.assigned = 0; p.assignedDice = []; p.actionsThisTurn = [];
-    p.pos = null; p.reloadZone = true; p.combatLine = []; p._runBonus = false; p._runBonusUsed = true; p._noMove = false;
+    p.pos = null; p.reloadZone = true; p.combatLine = []; p._noMove = false;
+    p.spacesUsed = {}; p.cardSpacesUsed = {}; p._lineBuilt = false;
     log(state, `💥 ${p.name} 被迫 RELOAD！丢弃装备，回到跳伞区`, "reloadForced", { name: p.name });
     if (attacker) {
       gainFame(state, attacker, "reload", 1); log(state, `${attacker.name} +1 RELOAD 名望`, "reloadFame", { name: attacker.name });
@@ -1414,22 +1460,33 @@
     if (!rangedTargets(state, A).includes(targetIdx)) return false;
     if (hasTruce(state, A.idx, T.idx)) breakTruce(state, A.idx, T.idx);   // attacking a truce partner = betrayal
     T._lastAttacker = A.idx;                                              // remember the aggressor (Vendetta persona)
-    const w = equippedRanged(A); assignValue = assignValue || 3;
+    const w = equippedRanged(A);
+    // the die goes on the weapon CARD's next free action space; its value is the space's printed value
+    const used = (A.cardSpacesUsed && A.cardSpacesUsed[w.id]) || 0;
+    assignValue = weaponSpaces(w)[used] != null ? weaponSpaces(w)[used] : 3;
     if (A.character === "echo") A._revealed = true;                        // firing reveals Echo
-    spendDice(state, A, 1, assignValue, "ranged");
+    spendDice(state, A, 1, "ranged", { card: w.id, value: assignValue });
     const shooterDice = rollDice(state.rnd, Math.min(4, (w.dice || 2) + equipSum(A, "diceBonus")));   // Sniper Helmet +1 die (max 4)
     if (A.character === "duke") bumpOneDie(shooterDice, assignValue, w);   // Duke — Sharpshooter
     if (A.character === "diana") rerollLowestDie(state, shooterDice);      // Diana — Huntress: re-roll one shooting die
-    const defRaw = rollDice(state.rnd, ownedDice(T));
-    const sh = splitRoll(shooterDice), def = splitRoll(defRaw);
+    // ROLL STEP (p.8): the target rolls ONLY the dice in their defense pool (unassigned), then blends
+    // the numeric results into their STANDING combat line (the set values of last turn's assignments).
+    const poolN = Math.max(0, combatDice(T));
+    const defRaw = rollDice(state.rnd, poolN);
+    const sh = splitRoll(shooterDice), rolled = splitRoll(defRaw);
+    const standing = sortCombatLine(T.combatLine || []);
+    const def = { skulls: rolled.skulls, line: sortCombatLine([...standing, ...rolled.line]) };
+    T.defensePool -= rolled.line.length;                                   // blended numerics are committed to the line (skull dice return at cleanup)
     const aArm = armorOf(A), tArm = armorOf(T);
     const aSk = Math.max(0, sh.skulls - tArm.skullReduce), tSk = Math.max(0, def.skulls - aArm.skullReduce);
     let dealt = 0, reload = false;
-    // skull step: excess skulls send the loser's LOWEST dice to the injury zone — they leave
-    // the combat line before the row-by-row compare (rules 11:16).
+    // SKULLS STEP (p.8): target's excess skulls make the ATTACKER return shooting dice (lowest first —
+    // the attacker takes no injuries at range); attacker's excess skulls injure the target's lowest line dice.
     if (aSk > tSk) { const ex = aSk - tSk; def.line.splice(Math.max(0, def.line.length - ex), ex); dealt += ex; reload = takeInjuries(state, T, ex, { hierarchy: false }); }
     else if (tSk > aSk) sh.line.splice(Math.max(0, sh.line.length - (tSk - aSk)), tSk - aSk);
     if (!reload) {
+      // COMBAT STEP (p.9): compare lines top-down; greater shooting die = the losing die becomes an
+      // injury; ties/less = nothing; unopposed shooting dice = small injuries.
       let smalls = 0;
       const n = Math.max(sh.line.length, def.line.length);
       for (let i = 0; i < n && !reload; i++) {
@@ -1438,20 +1495,28 @@
         else if (s != null && d == null) smalls++;
       }
       if (!reload) { const conv = applySmallInjuries(def.line, Math.max(0, smalls - tArm.smallInjuryReduce)); if (conv) { dealt += conv; reload = takeInjuries(state, T, conv, { hierarchy: false }); } }
+      // BONUS STEP (p.9): each shooting die matching the value of ANY die assigned to THIS card this
+      // turn triggers the weapon bonus once (a second shot doubles the match targets).
       if (!reload && w.bonus) {
-        const m = shooterDice.filter(d => d === assignValue).length;
+        const assignedVals = weaponSpaces(w).slice(0, (A.cardSpacesUsed && A.cardSpacesUsed[w.id]) || 0);
+        const m = shooterDice.filter(d => assignedVals.includes(d)).length;
         if (m > 0) {
           if (w.bonus.type === "injury") { dealt += m * w.bonus.amount; reload = takeInjuries(state, T, m * w.bonus.amount, { hierarchy: false }); }
           else { const c = applySmallInjuries(def.line, m * w.bonus.amount); if (c) { dealt += c; reload = takeInjuries(state, T, c, { hierarchy: false }); } }
         }
       }
     }
-    T.combatLine = def.line.filter(x => x != null);
+    if (!reload) {
+      T.combatLine = sortCombatLine(def.line.filter(x => x != null));
+      const maxLine = Math.max(0, START_ACTION_DICE - T.injuries);
+      if (T.combatLine.length > maxLine) T.combatLine.length = maxLine;   // bonus injuries can outrun the pool — the excess comes off the LOWEST line dice (conservation)
+      T.defensePool = Math.max(0, (START_ACTION_DICE - T.injuries) - T.combatLine.length);   // dice = line + injury zone + pool
+    }
     if (reload) { reloadPlayer(state, T, A); awardNextAchievement(state, A, "rangedReload"); }  // MARKSMAN
     else if (dealt > 0) { gainFame(state, A, "injury", 1); log(state, `🔫 ${A.name} 用${w.name}射击 ${T.name}，造成 ${dealt} 伤 → +1 受伤名望`, "shootHit", { a: A.name, weapon: w.name, t: T.name, dealt }); }
     else log(state, `🔫 ${A.name} 射击 ${T.name}，未造成伤害`, "shootMiss", { a: A.name, t: T.name });
     state.lastCombat = { type: "ranged", a: A.idx, t: T.idx, weapon: w.name, assignValue,
-      shooter: shooterDice.slice(), defender: defRaw.slice(), aSkulls: aSk, dSkulls: tSk, dealt, reload };
+      shooter: shooterDice.slice(), defender: defRaw.slice(), defLine: standing.slice(), aSkulls: aSk, dSkulls: tSk, dealt, reload };
     return true;
   }
 
@@ -1460,16 +1525,25 @@
     if (!closeTargets(state, A).includes(targetIdx)) return false;
     if (hasTruce(state, A.idx, T.idx)) breakTruce(state, A.idx, T.idx);   // attacking a truce partner = betrayal
     T._lastAttacker = A.idx; A._lastAttacker = T.idx;                     // close combat is mutual (Vendetta persona)
-    spendDice(state, A, 1, 1, "close");
+    spendDice(state, A, 1, "close");                                      // the Close space sets the die to a SKULL (p.10)
     if (A.character === "echo") A._revealed = true;                       // close combat reveals Echo (attacker)
     if (T.character === "echo") T._revealed = true;                       // ...or defender
-    const aRaw = rollDice(state.rnd, ownedDice(A)), tRaw = rollDice(state.rnd, ownedDice(T));
+    // ROLL STEP (p.10): both players roll their defense pool + any ASSIGNED skull-value dice (the
+    // close die itself, plus e.g. a skull heal roll). The active player's assigned NUMERIC dice move
+    // to his combat line with their set values; the defender's standing line is already in place.
+    // Rolled numerics blend into the respective lines; rolled skulls form the skull pools.
+    const aAssignedSkulls = (A.assignedDice || []).filter(v => v === "skull").length;
+    const aRaw = rollDice(state.rnd, Math.max(0, combatDice(A)) + aAssignedSkulls);
+    const tRaw = rollDice(state.rnd, Math.max(0, combatDice(T)));
     const aCW = equippedClose(A), tCW = equippedClose(T);
     if (aCW) applyCloseModify(aRaw, aCW.modify);   // close-weapon modify (Baton lowest->3, Sickle 2/3->4, Knife highest->skull...)
     if (tCW) applyCloseModify(tRaw, tCW.modify);
     if (A.character === "butcher") rerollLowestDie(state, aRaw);          // Butcher — Brawler: re-roll lowest combat-line die
     if (T.character === "butcher") rerollLowestDie(state, tRaw);          // (his dice, whether attacking or defending)
-    const aR = splitRoll(aRaw), tR = splitRoll(tRaw);
+    const aRoll = splitRoll(aRaw), tRoll = splitRoll(tRaw);
+    const aStanding = (A.assignedDice || []).filter(isNumericDie), tStanding = sortCombatLine(T.combatLine || []);   // pre-combat lines (set values), for the UI
+    const aR = { skulls: aRoll.skulls, line: sortCombatLine([...aStanding, ...aRoll.line]) };
+    const tR = { skulls: tRoll.skulls, line: sortCombatLine([...tStanding, ...tRoll.line]) };
     const NOARMOR = { skullReduce: 0, smallInjuryReduce: 0 };
     const aArm = armorOf(A), tArm = armorOf(T);
     const tArmEff = (aCW && aCW.ignoreArmor) ? NOARMOR : tArm;   // A's weapon ignores T's armor
@@ -1491,12 +1565,25 @@
     }
     const tc = applySmallInjuries(tR.line, Math.max(0, tSmall - tArmEff.smallInjuryReduce)); if (tc) { aDealt += tc; if (takeInjuries(state, T, tc, { hierarchy: false })) tReload = true; }
     const ac = applySmallInjuries(aR.line, Math.max(0, aSmall - aArmEff.smallInjuryReduce)); if (ac) { tDealt += ac; if (takeInjuries(state, A, ac, { hierarchy: false })) aReload = true; }
+    // CLEANUP (p.10): surviving line dice STAY on each combat line (the blend is committed); skull-pool
+    // dice return to the defense pools. pool = total dice − line − injury zone, an invariant we derive.
+    if (!aReload) {
+      A.combatLine = sortCombatLine(aR.line.filter(x => x != null));
+      A._lineBuilt = true;                                                 // End Phase must keep this line (assigned dice already in it)
+      A.defensePool = Math.max(0, (START_ACTION_DICE - A.injuries) - A.combatLine.length);
+    }
+    if (!tReload) {
+      T.combatLine = sortCombatLine(tR.line.filter(x => x != null));
+      T.defensePool = Math.max(0, (START_ACTION_DICE - T.injuries) - T.combatLine.length);
+    }
     if (tReload) { reloadPlayer(state, T, A); awardNextAchievement(state, A, "closeReload"); } else if (aDealt > 0) { gainFame(state, A, "injury", 1); }  // MARTIAL ARTIST
     if (aReload) { reloadPlayer(state, A, T); awardNextAchievement(state, T, "closeReload"); } else if (tDealt > 0) { gainFame(state, T, "injury", 1); }
     log(state, `🗡 近战 ${A.name} vs ${T.name}：造成 ${aDealt} / 受到 ${tDealt}`, "melee", { a: A.name, t: T.name, aDealt, tDealt });
     state.lastCombat = { type: "close", a: A.idx, t: T.idx, shooter: aRaw.slice(), defender: tRaw.slice(),
+      aLine: aStanding.slice(), dLine: tStanding.slice(),
       aSkulls: aSk, dSkulls: tSk, dealt: aDealt, taken: tDealt, reload: tReload, selfReload: aReload };
-    A.dice = []; A.boostDice = 0; A.defensePool = 0; A._closeEndedTurn = true;          // close combat ends the active player's turn (no leftover dice -> empty combat line)
+    A.boostDice = 0; A._closeEndedTurn = true;
+    if (!state.gameOver) state.phase = "closed";        // close combat is ALWAYS the last action of the turn (p.10) — every action gate requires phase === "action"
     return true;
   }
 
@@ -1521,6 +1608,8 @@
     specialItems, usableSpecials, explosiveTargets, useSpecialItem, combatDice,
     // achievements API
     mostMetric, awardNextAchievement, scoreMostAchievements, resolveAnnouncement,
+    // action-space API (TRUE dice model)
+    spaceColumn, displayColumn, spacesLeft, nextSpaceValue, weaponSpaces, weaponSpacesLeft,
     // combat API
     INJURY_ZONE, ownedDice, autoEquip, canEquip, equipItem, unequipItem, handSlotsUsed, equippedRanged, equippedClose, armorOf, hasLOS, hasStealth,
     moveAssignedDiceToCombatLine, resolveHideoutBenefit, hasFriendlyHideout,

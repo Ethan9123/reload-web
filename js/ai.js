@@ -179,7 +179,7 @@
     const closeKill = close.filter(nearDeath);
     if (closeKill.length) { E.doClose(state, pickTarget(E, state, p, closeKill)); return "stop"; }
     // 2) proactive ranged: aggressive personas always; cautious ones only when it's a (near-)kill
-    if (ranged.length && (aggr >= POL(p, "rangedAggro") || ranged.some(nearDeath))) { E.doRanged(state, pickTarget(E, state, p, ranged), 3); return "acted"; }
+    if (ranged.length && (aggr >= POL(p, "rangedAggro") || ranged.some(nearDeath))) { E.doRanged(state, pickTarget(E, state, p, ranged)); return "acted"; }
 
     // 3) upload carried beacons at the tower
     if (p.carryingBeacons > 0 && E.canUpload(state, p)) { E.doActivate(state); return "acted"; }
@@ -263,7 +263,7 @@
   function enumerateActions(E, state, p) {
     const out = [];
     for (const t of E.closeTargets(state, p)) out.push({ label: "close:" + t, apply: g => E.doClose(g, t), ends: true });
-    for (const t of E.rangedTargets(state, p)) out.push({ label: "ranged:" + t, apply: g => E.doRanged(g, t, 3), ends: false });
+    for (const t of E.rangedTargets(state, p)) out.push({ label: "ranged:" + t, apply: g => E.doRanged(g, t), ends: false });
     if (p.carryingBeacons > 0 && E.canUpload(state, p)) out.push({ label: "upload", apply: g => E.doActivate(g), ends: false });
     if (E.canVillageDraw(state, p) && p.backpack.length < 4) out.push({ label: "village", apply: g => E.doActivate(g), ends: false });
     E.lootOptions(state, p).forEach((tok, i) => out.push({ label: "loot:" + i, apply: g => E.doLoot(g, i), ends: false }));
@@ -321,7 +321,7 @@
     let guard = 0;
     // keep acting while on the map and either dice remain, or Blitz has an unspent bonus step (Fastest There Is).
     // The p.pos guard stops the loop if a mid-turn RELOAD (e.g. a trap kill on the last die) sent us off-map.
-    const canAct = () => !!p.pos && (p.defensePool > 0 || (p.character === "blitz" && p._runBonus && !p._runBonusUsed));
+    const canAct = () => !!p.pos && p.defensePool > 0;   // Blitz's 4th Run space is a real space now (no bonus-step flag)
     while (!state.gameOver && E.curP(state) === p && canAct() && guard++ < 40) {
       const r = expert ? rolloutAction(E, state, p) : chooseAction(E, state, p);
       if (r === "stop" || r === "idle") break;     // close combat ended the turn, or nothing useful left

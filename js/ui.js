@@ -623,8 +623,8 @@
     } else {
       const h = highlightSet();
       const boost = p.boostDice || 0, real = Math.max(0, p.defensePool - boost);
-      // available dice as their ROLLED faces (pips) + green boost dice
-      const rolled = (p.dice && p.dice.length) ? p.dice.map(v => dieSpan(v, "def")) : Array.from({ length: real }, () => `<span class="die def"></span>`);
+      // TRUE model: pool dice are UNROLLED/valueless (blank faces) until placed on an action space
+      const rolled = Array.from({ length: real }, () => `<span class="die def"></span>`);
       const avail = (rolled.join("") +
                      Array.from({ length: boost }, () => `<span class="die boost">⚡</span>`).join("")) ||
                     `<i class="lg-dim">${T("legend.nodice")}</i>`;
@@ -871,9 +871,8 @@
       const p = E.curP(G);
       if (o.kind === "close") { E.doClose(G, o.tgt); render(); await animateCombat(G.lastCombat); await _endTurn(); return; }   // close ends turn
       if (o.kind === "ranged") {
-        const pick = await pickActionDie(p, L("选择投入这次射击的行动骰", "Pick a die to commit to this shot"));
-        if (pick === null) return;   // cancelled the shot
-        const aKey = E.hexKey(p.pos.q, p.pos.r); E.doRanged(G, o.tgt, pick || 3); render(); await vfxGunshot(aKey, o.key); await animateCombat(G.lastCombat); return;
+        // TRUE model: the die goes on the weapon card's next action space (its printed value) — nothing to pick
+        const aKey = E.hexKey(p.pos.q, p.pos.r); E.doRanged(G, o.tgt); render(); await vfxGunshot(aKey, o.key); await animateCombat(G.lastCombat); return;
       }
       if (o.kind === "grabFlag") { E.grabFlag(G); SFX("loot"); render(); consumeActionFeed(); return; }
       if (o.kind === "scoreFlag") { E.scoreFlag(G); SFX("score"); render(); consumeActionFeed(); return; }
@@ -1146,7 +1145,7 @@
   // ---- autosave: the running game persists at every turn boundary; the setup screen offers Resume.
   // JSON.stringify drops G.rnd (a function) — resume reseeds fresh entropy, which is fair (the
   // physical game has no committed future rolls either). Bump SAVE_KEY when the state schema changes. ----
-  const SAVE_KEY = "rl-save-v1";
+  const SAVE_KEY = "rl-save-v2";   // v2: TRUE dice model (space columns; old saves are incompatible)
   function saveGame() {
     if (!G || G._tutorial) return;
     try {
@@ -1271,9 +1270,8 @@
   }
   function diceRowsHTML(p) {
     const boost = p.boostDice || 0, real = Math.max(0, p.defensePool - boost);
-    // the ROLLED, un-placed action dice (their real faces) + (Energy Drink) GREEN boost dice. Off-turn players
-    // have their dice on the combat line already, so fall back to blank placeholders off the count.
-    const rolled = (p.dice && p.dice.length) ? p.dice.map(v => dieSpan(v, "def")) : Array.from({ length: real }, () => dieSpan("", "def"));
+    // TRUE model: pool dice are valueless until assigned (blank faces) + (Energy Drink) GREEN boost dice
+    const rolled = Array.from({ length: real }, () => dieSpan("", "def"));
     const def = rolled.join("") + Array.from({ length: boost }, () => dieSpan("⚡", "boost")).join("");
     const line = (p.combatLine || []).map(v => dieSpan(v, "line")).join("");
     const inj = Array.from({ length: p.injuries }, () => dieSpan("✕", "inj")).join("");
@@ -1338,9 +1336,16 @@
         </div>
       </div>
       <div class="cb-boardmain">
-        <div class="cb-actions">${[["➤", "act.move", ["run", "portal"]], ["✋", "act.loot", ["loot"]], ["⚙", "act.activate", ["activate"]], ["🔨", "act.build", ["barrier", "trap", "hideout", "demolish"]], ["✚", "act.heal", ["heal"]], ["🔫", "act.ranged", ["ranged"]], ["🗡", "act.melee", ["close"]]].map(a => {
-          const placed = (p.actionsThisTurn || []).filter(x => a[2].includes(x.kind)).map(x => dieSpan(x.die, "used")).join("");
-          return `<div class="cb-act${placed ? " on" : ""}"><span class="cb-act-i">${a[0]}</span>${T(a[1])}${placed ? `<span class="cb-act-dice">${placed}</span>` : ""}</div>`;
+        <div class="cb-actions">${[["➤", "act.move", "run"], ["✋", "act.loot", "loot"], ["⚙", "act.activate", "activate"], ["🔨", "act.build", "build"], ["✚", "act.heal", "heal"], ["🔫", "act.ranged", "ranged"], ["🗡", "act.melee", "close"]].map(a => {
+          // the REAL action-space column (rulebook: printed die values; a die placed there is SET to
+          // the value). Filled spaces show the assigned value; free ones show the printed value dimmed.
+          const kind = a[2];
+          let col, used;
+          if (kind === "ranged") { const w = E.equippedRanged(p); col = w ? E.weaponSpaces(w) : []; used = w ? ((p.cardSpacesUsed || {})[w.id] || 0) : 0; }
+          else { col = E.displayColumn(p, kind); used = (p.spacesUsed || {})[kind] || 0; }
+          const face = (v) => v === "roll" ? "🎲" : v === "skull" ? "💀" : v;
+          const sp = col.map((v, i) => `<span class="cb-sp${i < used ? " on" : ""}">${face(v)}</span>`).join("");
+          return `<div class="cb-act${used ? " on" : ""}"><span class="cb-act-i">${a[0]}</span>${T(a[1])}<span class="cb-act-dice">${sp || '<i class="muted">—</i>'}</span></div>`;
         }).join("")}</div>
         <div class="cb-art">${emblemSVG(p, ch, 200)}</div>
         <div class="cb-side">
@@ -1499,10 +1504,16 @@
     ov.style.display = "flex";
     const aWrap = ov.querySelector("#dzA"), dWrap = ov.querySelector("#dzD"), mid = ov.querySelector("#dzMid");
     const aArr = rep.shooter || [], dArr = rep.defender || [];
-    const fill = (wrap, arr) => { wrap.innerHTML = arr.map(() => '<span class="adie rolling">?</span>').join("") || '<i class="muted">无骰</i>'; return [...wrap.querySelectorAll(".adie")]; };
+    // standing combat-line dice (set values from assigned action spaces) sit revealed next to the roll
+    const aStand = rep.type === "close" ? (rep.aLine || []) : [];
+    const dStand = (rep.type === "close" ? rep.dLine : rep.defLine) || [];
+    const fill = (wrap, standing, arr) => {
+      wrap.innerHTML = (standing.map(v => adieHTML(v)).join("") + arr.map(() => '<span class="adie rolling">?</span>').join("")) || '<i class="muted">无骰</i>';
+      return [...wrap.querySelectorAll(".adie.rolling")];
+    };
     const all = [];
-    fill(aWrap, aArr).forEach((el, i) => all.push({ el, v: aArr[i] }));
-    fill(dWrap, dArr).forEach((el, i) => all.push({ el, v: dArr[i] }));
+    fill(aWrap, aStand, aArr).forEach((el, i) => all.push({ el, v: aArr[i] }));
+    fill(dWrap, dStand, dArr).forEach((el, i) => all.push({ el, v: dArr[i] }));
     // PHASE 1 — roll (tumble -> settle), skulls marked
     const t0 = Date.now();
     await new Promise(res => { const iv = setInterval(() => { all.forEach(d => { if (!d.el.classList.contains("settled")) d.el.textContent = rollFace(); }); if (Date.now() - t0 > 600) { clearInterval(iv); res(); } }, 70); });
@@ -1513,8 +1524,9 @@
     const skTxt = aS > dS ? T("cb.skullA", { n: aS - dS }) : dS > aS ? T("cb.skullD", { n: dS - aS }) : T("cb.skullTie");
     mid.innerHTML = `💀 ${aS} : ${dS}<br><span class="dz-cap">${skTxt}</span>`;
     await sleep(950);
-    // PHASE 3 — combat line, row by row (numeric, high->low)
-    const aNum = aArr.filter(v => v !== "skull").sort((x, y) => y - x), dNum = dArr.filter(v => v !== "skull").sort((x, y) => y - x);
+    // PHASE 3 — combat line, row by row (numeric, high->low): standing line + rolled numerics
+    const aNum = [...aStand, ...aArr.filter(v => v !== "skull")].filter(v => typeof v === "number").sort((x, y) => y - x);
+    const dNum = [...dStand, ...dArr.filter(v => v !== "skull")].filter(v => typeof v === "number").sort((x, y) => y - x);
     // mirror engine skull step: the skull-loser's lowest dice leave the combat line before the
     // row-by-row compare, so drop them here too (engine trims them in doRanged/doClose).
     if (dS > aS) aNum.splice(Math.max(0, aNum.length - (dS - aS)), dS - aS);
@@ -1547,23 +1559,6 @@
       ov.innerHTML = `<div class="ch-panel"><div class="ch-title">选择治疗目标</div><div class="ch-btns">${btns}<button class="ch-btn cancel" data-i="">取消</button></div></div>`;
       ov.style.display = "flex";
       ov.querySelectorAll(".ch-btn").forEach(b => b.addEventListener("click", () => { ov.style.display = "none"; const v = b.dataset.i; resolve(v === "" ? null : +v); }));
-    });
-  }
-  // let the human pick WHICH rolled die to commit to an action (roll-then-place). Resolves the chosen value,
-  // 0 if there's no numeric die to choose (caller falls back), or null if cancelled.
-  function pickActionDie(p, prompt) {
-    const dice = (p.dice || []).filter(v => typeof v === "number" && v >= 1 && v <= 5);
-    if (!dice.length) return Promise.resolve(0);
-    if (dice.length === 1) return Promise.resolve(dice[0]);
-    return new Promise(resolve => {
-      let ov = $("choice-overlay");
-      if (!ov) { ov = document.createElement("div"); ov.id = "choice-overlay"; document.body.appendChild(ov); }
-      const lowest = Math.min(...dice);
-      const btns = dice.map(v => `<button class="ch-die${v === lowest ? " sel" : ""}" data-v="${v}">${dieSpan(v, "line")}</button>`).join("");
-      ov.innerHTML = `<div class="ch-panel"><div class="ch-title">${prompt}</div><div class="ch-dice">${btns}</div><button class="ch-btn cancel" data-cancel="1">${L("取消", "Cancel")}</button></div>`;
-      ov.style.display = "flex";
-      ov.querySelectorAll(".ch-die").forEach(b => b.addEventListener("click", () => { ov.style.display = "none"; resolve(+b.dataset.v); }));
-      ov.querySelector(".cancel").addEventListener("click", () => { ov.style.display = "none"; resolve(null); });
     });
   }
   function animateHeal(roll) {

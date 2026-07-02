@@ -130,13 +130,13 @@ const tk10 = E.towerKey(g10), tc10 = g10.board[tk10];
 const p10 = E.curP(g10), other10 = g10.players[1];
 p10.pos = { q: tc10.q, r: tc10.r }; other10.pos = null; other10.reloadZone = true; // p10 alone -> can Heal
 g10.phase = "action"; g10.activePlayer = 0;
-// roll-then-place: the real die was already PLACED on a Run (consumed; logged in assignedDice). Only a boost die remains.
+// TRUE model: a real die was already PLACED on a 1-value space (assignedDice=[1]); only a boost die remains.
 p10.injuries = 4; p10.actionDice = 2; p10.dice = []; p10.boostDice = 1; p10.assignedDice = [1]; p10.combatLine = []; p10.defensePool = 1;
 g10.rnd = () => 0.7;                                    // the recovered die rolls a 5
 A(E.doHeal(g10), "Heal succeeds using the boost die");
 A(p10.injuries === 3, "Heal reduced injuries 4 -> 3");
 A(p10.boostDice === 0, "the boost die was the one spent on Heal (no real die was available)");
-A(p10.dice.length === 1 && p10.defensePool === 1, "the recovered real die sits (rolled) in the defense pool, not the combat line");
+A(p10.defensePool === 1, "the recovered die returns to the (valueless) defense pool, not the combat line");
 E.moveAssignedDiceToCombatLine(p10);                   // End Phase
 A(p10.combatLine.length === 1, "the recovered REAL die forms the combat line; the boost die never enters it");
 
@@ -181,30 +181,34 @@ E.takeInjuries(gel, pel, 1);                                 // injury pops the 
 A(pel.assigned === 0, "precondition: injury reset assigned to 0");
 A(!E.canEquip(gel, pel), "equipment stays locked after a spent die is removed by injury");
 
-// 10f) Blitz — Fastest There Is: a paid Run unlocks one free bonus follow-up step (extra reach, not a free die)
+// 10f) Blitz — Fastest There Is: his Run column is printed 4/4/2 PLUS a character-action Run space
+// of 2 (designer-confirmed "4/4/2/2") — four die-paid Runs per turn where others get three.
 const gbl = E.newGame({ numPlayers: 2, seed: 30, allAI: true });
 const bl = gbl.players[0]; bl.character = "blitz";
 gbl.activePlayer = 0; gbl.phase = "action"; gbl.needsParachute = false;
 const tcb = gbl.board[E.towerKey(gbl)];
-bl.pos = { q: tcb.q, r: tcb.r }; bl.actionDice = 5; bl.defensePool = 5; bl._runBonus = false; bl._runBonusUsed = false; bl._noMove = false;
-const dp0 = bl.defensePool; A(E.doRun(gbl, E.legalRuns(gbl, bl)[0]) && bl.defensePool < dp0, "Blitz's first Run costs a die (not free)");
-A(bl._runBonus === true, "the paid Run unlocked Blitz's bonus step");
-const dp1 = bl.defensePool; A(E.doRun(gbl, E.legalRuns(gbl, bl)[0]) && bl.defensePool === dp1 && bl._runBonusUsed === true, "the bonus follow-up step is free (extra hex, no die)");
-const dp2 = bl.defensePool; A(E.doRun(gbl, E.legalRuns(gbl, bl)[0]) && bl.defensePool < dp2, "subsequent Runs cost a die again");
-// Blitz cannot run from 0 dice cold (the bonus requires a prior paid Run)
+bl.pos = { q: tcb.q, r: tcb.r }; bl.actionDice = 5; bl.defensePool = 5; bl.spacesUsed = {}; bl._noMove = false;
+const flat = (g, pl) => E.legalRuns(g, pl).find(k => (g.board[k].terrain !== "mountain" && g.board[k].terrain !== "maze" && g.board[k].trap == null));
+for (let i = 0; i < 4; i++) A(E.doRun(gbl, flat(gbl, bl)), "Blitz Run #" + (i + 1) + " is available");
+A(bl.defensePool === 1, "each of Blitz's four Runs cost a die");
+A(JSON.stringify(bl.assignedDice) === JSON.stringify([4, 4, 2, 2]), "Blitz's Run dice are set to 4/4/2/2");
+A(E.legalRuns(gbl, bl).length === 0, "a fifth Run is not available (Run spaces exhausted)");
+// Blitz cannot run from 0 dice (spaces need dice)
 const gbz = E.newGame({ numPlayers: 2, seed: 31, allAI: true });
 const bz = gbz.players[0]; bz.character = "blitz";
 gbz.activePlayer = 0; gbz.phase = "action"; gbz.needsParachute = false;
 const tcz = gbz.board[E.towerKey(gbz)];
-bz.pos = { q: tcz.q, r: tcz.r }; bz.actionDice = 0; bz.defensePool = 0; bz._runBonus = false; bz._runBonusUsed = false; bz._noMove = false;
-A(E.legalRuns(gbz, bz).length === 0, "Blitz cannot Run at 0 dice without a paid Run first");
+bz.pos = { q: tcz.q, r: tcz.r }; bz.actionDice = 0; bz.defensePool = 0; bz.spacesUsed = {}; bz._noMove = false;
+A(E.legalRuns(gbz, bz).length === 0, "Blitz cannot Run at 0 dice");
 // a non-Blitz Run always costs a die
 const gnb = E.newGame({ numPlayers: 2, seed: 32, allAI: true });
 const nb = gnb.players[0]; nb.character = "korat";
 gnb.activePlayer = 0; gnb.phase = "action"; gnb.needsParachute = false;
 const tcn = gnb.board[E.towerKey(gnb)];
-nb.pos = { q: tcn.q, r: tcn.r }; nb.actionDice = 5; nb.defensePool = 5; nb._noMove = false;
-A(E.doRun(gnb, E.legalRuns(gnb, nb)[0]) && nb.defensePool < 5, "non-Blitz Run costs a die");
+nb.pos = { q: tcn.q, r: tcn.r }; nb.actionDice = 5; nb.defensePool = 5; nb.spacesUsed = {}; nb._noMove = false;
+const nflat = E.legalRuns(gnb, nb).find(k => (gnb.board[k].terrain !== "mountain" && gnb.board[k].terrain !== "maze" && gnb.board[k].trap == null));
+A(E.doRun(gnb, nflat) && nb.defensePool < 5, "non-Blitz Run costs a die");
+A(nb.assignedDice[0] === 4, "a standard first Run sets the die to 4 (column 4/3/2)");
 
 // 11) regression — all-AI games with the new combat/parachute rules still complete
 let crashed = 0;

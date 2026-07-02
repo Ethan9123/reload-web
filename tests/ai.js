@@ -110,17 +110,17 @@ function prep(seed, opts) {
   const g = E.newGame({ numPlayers: 2, seed: 33, allAI: true });
   g.activePlayer = 0; g.phase = "action"; g.needsParachute = false;
   const b = g.players[0]; b.character = "blitz";
-  b.pos = null; b.reloadZone = true; b.defensePool = 0; b._runBonus = true; b._runBonusUsed = false;  // post-RELOAD state
+  b.pos = null; b.reloadZone = true; b.defensePool = 0;  // post-RELOAD state
   const spot = Object.keys(g.board).find(k => !g.board[k].hasTower); g.board[spot].tokens = [{ kind: "beacon" }]; // would trip null-pos pathing
   let crashed = false;
   try { AI.takeTurn(g); } catch (e) { crashed = true; console.error("  crash:", e.message); }
-  A(!crashed, "AI Blitz off-map (bonus flag set) does not crash — turn ends");
-  // and the engine clears the bonus flags on RELOAD so real play never reaches that state
+  A(!crashed, "AI Blitz off-map does not crash — turn ends");
+  // and RELOAD resets action-space usage so the respawned turn starts with fresh columns
   const g2 = E.newGame({ numPlayers: 2, seed: 34, allAI: true });
-  const v = g2.players[0]; v.character = "blitz"; v._runBonus = true; v._runBonusUsed = false;
+  const v = g2.players[0]; v.character = "blitz"; v.spacesUsed = { run: 3 }; v.cardSpacesUsed = { combat_shotgun: 1 };
   v.pos = { q: g2.board[E.towerKey(g2)].q, r: g2.board[E.towerKey(g2)].r };
   E.reloadPlayer(g2, v, g2.players[1]);
-  A(v._runBonus === false, "RELOAD clears Blitz's pending bonus step");
+  A(Object.keys(v.spacesUsed).length === 0 && Object.keys(v.cardSpacesUsed).length === 0, "RELOAD clears action-space usage");
 }
 
 // 8) strength/quality: all-AI games complete and the winner earns real fame from objectives

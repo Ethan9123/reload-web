@@ -60,7 +60,7 @@ A(reloaded, "close combat caused a RELOAD when target near full injuries");
 // 5) close combat ends the attacker's turn (dice zeroed)
 g = scenario(3, "survival_knife", { q: 0, r: 0 }, { q: 0, r: 0 });
 E.doClose(g, 1);
-A(g.players[0].defensePool === 0 && g.players[0]._closeEndedTurn, "close combat ends attacker turn");
+A(g.players[0]._closeEndedTurn && g.phase === "closed" && E.closeTargets(g, g.players[0]).length === 0, "close combat ends attacker turn (phase locks all further actions)");
 
 // 6) LOS export + out-of-range rejection
 g = scenario(4, "bow_arrow", { q: 2, r: 0 }, { q: 1, r: 0 }); // bow range [0,0]; dist 1 illegal
