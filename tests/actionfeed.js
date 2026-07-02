@@ -20,7 +20,7 @@ function setup(seed) {
   E.doLoot(g, 0);
   const e = g.actionFeed[g.actionFeed.length - 1];
   A(g.actionFeed.length === 1, "loot appended one feed entry");
-  A(e.by === 0 && e.kind === "loot" && e.die === 1 && e.hex === tk && typeof e.seq === "number", "feed entry has by/kind/die/hex/seq");
+  A(e.by === 0 && e.kind === "loot" && e.die === 2 && e.hex === tk && typeof e.seq === "number", "feed entry has by/kind/die/hex/seq (die = the Loot space value 2)");
 }
 
 // 2) a Run records its destination hex

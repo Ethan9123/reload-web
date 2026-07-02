@@ -40,7 +40,7 @@ A(D.MAPS.reactor.hexes.some(h => h.terrain === "solar"), "Reactor features solar
   sp.pos = { q: 1, r: 0 }; sp.injuries = 0; g.board[E.hexKey(1, 0)].terrain = "solar";
   E.beginTurn(g);
   A(sp.boostDice >= 1, "solar: occupant gains a boost die at turn start");
-  A(sp.defensePool === sp.actionDice, "solar: the boost die is part of the available pool");
+  A(sp.defensePool === sp.actionDice + sp.boostDice, "solar: the boost die joins the pool (real capacity unchanged)");
   // a normal terrain grants none
   const g2 = E.newGame({ numPlayers: 2, seed: 3, allAI: true });
   const np = g2.players[g2.activePlayer]; np.pos = { q: 1, r: 0 }; g2.board[E.hexKey(1, 0)].terrain = "plains";

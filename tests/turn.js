@@ -53,11 +53,12 @@ ep = E.curP(ev); ep.pos = { q: 0, r: 0 }; ev.needsParachute = false; ev.phase = 
 E.endTurn(ev);
 A(ev.eventsResolved === 1, "first event resolves after the last player completes turn 1");
 
-// assigned numeric dice move to the combat line during End Phase
+// assigned numeric dice move to the combat line during End Phase (TRUE model: the dice you PLACED
+// on action spaces — with the spaces' set values — become your standing defense; skulls drop)
 const dl = E.newGame({ numPlayers: 2, seed: 31, allAI: true });
 let dp = E.curP(dl);
 dp.pos = { q: 1, r: 0 }; dl.needsParachute = false; dl.phase = "action";
-dp.dice = [4, 2, "skull"];   // roll-then-place: UNSPENT rolled dice form the combat line (skull is dropped)
+dp.assignedDice = [4, 2, "skull"]; dp.defensePool = 2;   // 3 of 5 dice assigned (e.g. Run 4, Loot 2, Close skull)
 E.endTurn(dl);
 A(JSON.stringify(dp.combatLine) === JSON.stringify([4, 2]), "End Phase moves numeric assigned dice to combat line, sorted high to low");
 A(dp.defensePool === 3 && dp.assigned === 0 && dp.assignedDice.length === 0, "End Phase returns non-combat-line dice to defense pool");
@@ -67,7 +68,7 @@ const ho = E.newGame({ numPlayers: 2, seed: 32, allAI: true });
 let hp = E.curP(ho);
 hp.pos = { q: 1, r: 0 }; hp.hideout = E.hexKey(1, 0); ho.board[hp.hideout].hideouts.push(hp.idx);
 ho.needsParachute = false; ho.phase = "action";
-hp.dice = [5, 3, 1];   // unspent rolled dice -> combat line, then the hideout returns the lowest
+hp.assignedDice = [5, 3, 1]; hp.defensePool = 2;   // assigned dice -> combat line, then the hideout returns the lowest
 E.endTurn(ho);
 A(JSON.stringify(hp.combatLine) === JSON.stringify([5, 3]), "hideout returns the lowest combat-line die");
 A(hp.defensePool === 3, "hideout benefit increases defense pool by 1");

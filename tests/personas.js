@@ -38,9 +38,11 @@ function rangedScenario(seed, personaId) {
 {
   const gr = rangedScenario(2, "rusher"); A(!!gr, "set up the ranged scenario (rusher)");
   AI.takeTurn(gr);
-  A(gr.lastCombat && gr.lastCombat.type === "ranged" && gr.lastCombat.a === 0, "Rusher (high aggression) opens fire");
+  // the shot may be followed by a melee finish (which overwrites lastCombat) — check the log for the gunshot
+  const shot = gr.log.some(l => l.k === "shootHit" || l.k === "shootMiss");
+  A(shot && gr.lastCombat && gr.lastCombat.a === 0, "Rusher (high aggression) opens fire");
   const gb = rangedScenario(2, "bushmaster"); AI.takeTurn(gb);
-  A(!(gb.lastCombat && gb.lastCombat.a === 0 && gb.lastCombat.type === "ranged"), "Bush Master (low aggression) holds fire on a healthy foe");
+  A(!gb.log.some(l => l.k === "shootHit" || l.k === "shootMiss"), "Bush Master (low aggression) holds fire on a healthy foe");
 }
 
 // 4) vendetta: targets the player who last attacked, even if another is easier to kill

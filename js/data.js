@@ -15,6 +15,23 @@
   };
   const START_ACTION_DICE = 5; // per player, reduced by injuries
 
+  // ---- Action-space columns (rulebook p.6: "Dice are NOT rolled, they are assigned to action
+  // spaces with the die value set to match the value of the space"). Values pip-counted off the
+  // actual character-board art (all four boards verified individually). Each entry = one space;
+  // a column exhausts when every space holds a die (per-turn action caps: 3 Runs, 2 Activates,
+  // 3 Loots, 2 Builds, 1 Heal, 1 Close). "roll" = the Heal space (p.7: the placed die IS rolled);
+  // "skull" = the Close Combat space (p.10: the die is set to a skull and rolled in combat).
+  const ACTION_SPACES = {
+    run: [4, 3, 2], activate: [3, 1], loot: [2, 2, 1], build: [3, 2],
+    heal: ["roll"], close: ["skull"],
+  };
+  // Per-character board differences. Blitz — Fastest There Is: his Run column is printed 4/4/2 and a
+  // separate character-action Run space (value 2) sits by his name = the designer's "4/4/2/2"
+  // (BGG thread 2854288, François Rouzé). The other base abilities are printed passives (no space).
+  const CHAR_SPACES = {
+    blitz: { run: [4, 4, 2], charRun: [2] },
+  };
+
   // ---- Terrain types (Arcadia uses these 5) ----
   // color = fallback fill until real tile art is wired in.
   const TERRAIN = {
@@ -441,6 +458,27 @@
   ];
 
   // ---- Actions ----
+  // ---- Ranged-weapon card action spaces (die values, computationally pip-counted from the real
+  // card faces + visually spot-checked; combat_shotgun [2] matches the rulebook p.8/9 example
+  // exactly). The card limits shots per turn — rulebook p.8: a Ranged Combat action needs a weapon
+  // "equipped with an available action space". Melee weapons have NO card spaces (Close Combat
+  // uses the character board's skull space). Single-shot heavies leave a LOW die on your combat
+  // line (sniping costs defense); spray guns give two mid spaces (two shots/turn).
+  const WEAPON_SPACES = {
+    bow_arrow: [2],
+    assault_rifle: [3, 2], crossbow: [3], semi_auto_pistol: [3, 2], precision_rifle: [2, 1],
+    sniper_rifle: [1], hand_cannon: [3, 3], rocket_launcher: [1], combat_shotgun: [2],
+    pump_shotgun: [2, 2], machine_gun: [3, 2], sub_machine_gun: [3, 2],
+    ex103_repulsor: [3, 2], ex02_neutralizer: [3], plasma_gun: [3, 2], quadri_launcher: [2],
+    ex04_translocator: [3, 2], jonhys_bullhorn: [5], sniper_disintegrator: [2], v_cannon: [3, 2],
+    ex01_sniper_rifle: [2],
+    // fan-v2.0 guns with no official card art — two-space default pending a real source (verify)
+    ex05_plasma_thrower: [3, 2], repulse_visor: [3, 2], vaporizer: [3, 2],
+  };
+  // Heavy weapons block the LAST space of the Run column while equipped (designer, BGG 2854288:
+  // "Rocket Launcher blocks the LAST run slot" — which hurts Blitz less: he keeps his char space).
+  const HEAVY_WEAPONS = ["rocket_launcher", "v_cannon"];
+
   const ACTIONS = {
     run:      { name: "Run",      restricted: false, desc: "Move to an adjacent hex (or portal-to-portal)." },
     loot:     { name: "Loot",     restricted: false, desc: "Open a supply box OR pick up a fame token here." },
@@ -611,7 +649,7 @@
   };
 
   const DATA = {
-    DIE_FACES, DICE, START_ACTION_DICE, TERRAIN, ARCADIA, MAPS, HEX_DIRS,
+    DIE_FACES, DICE, START_ACTION_DICE, ACTION_SPACES, CHAR_SPACES, WEAPON_SPACES, HEAVY_WEAPONS, TERRAIN, ARCADIA, MAPS, HEX_DIRS,
     CHARACTERS, FAME, SLOTS, EQUIPMENT, ACTIONS, SETUP, TOKEN_ART, HIDEOUT_ART, TILE_ART, EVENTS, ACHIEVEMENTS, CHATTER, PERSONAS, DIFFICULTY,
     EQUIP_BY_ID: Object.fromEntries(EQUIPMENT.map(e => [e.id, e])),
     ACHIEVEMENT_BY_ID: Object.fromEntries(ACHIEVEMENTS.map(a => [a.id, a])),
