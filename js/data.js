@@ -475,9 +475,11 @@
     // fan-v2.0 guns with no official card art — two-space default pending a real source (verify)
     ex05_plasma_thrower: [3, 2], repulse_visor: [3, 2], vaporizer: [3, 2],
   };
-  // Heavy weapons block the LAST space of the Run column while equipped (designer, BGG 2854288:
-  // "Rocket Launcher blocks the LAST run slot" — which hurts Blitz less: he keeps his char space).
-  const HEAVY_WEAPONS = ["rocket_launcher", "v_cannon"];
+  // Heavy weapons block the LAST space of the Run column while equipped ("place a heavy token on
+  // the right most run action space"). Sourced: rocket_launcher = designer, BGG 2854288 ("Rocket
+  // Launcher blocks the LAST run slot" — which hurts Blitz less: he keeps his char space);
+  // quadri_launcher = its own card text + the 2.0 compendium. No other card carries the heavy text.
+  const HEAVY_WEAPONS = ["rocket_launcher", "quadri_launcher"];
 
   const ACTIONS = {
     run:      { name: "Run",      restricted: false, desc: "Move to an adjacent hex (or portal-to-portal)." },
