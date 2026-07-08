@@ -870,7 +870,7 @@
       if (skulls > 0) {
         log(state, `🌐 地震：${p.name} 掷出 ${skulls} 个骷髅，受到 ${skulls} 点伤`, "quakeHit", { name: p.name, n: skulls });
         // the skull dice already left the combat line above, so don't pull additional dice via the hierarchy
-        if (takeInjuries(state, p, skulls, { hierarchy: false })) reloadPlayer(state, p, null);
+        if (takeInjuries(state, p, skulls, { hierarchy: false })) { state._cause = "quake"; reloadPlayer(state, p, null); }
       }
     }
   }
@@ -1023,7 +1023,7 @@
     let outcome;
     if (w === t) { outcome = "tie"; gainFame(state, owner, "trap", 1); walker._noMove = true; log(state, `陷阱：${walker.name} 与 ${owner.name} 的陷阱平手（${owner.name} +1陷阱名望，停止移动）`, "trapTie", { walker: walker.name, owner: owner.name }); }
     else if (wins(w, t)) { outcome = "dodge"; gainFame(state, walker, "trap", 1); log(state, `陷阱：${walker.name} 闪过 ${owner.name} 的陷阱（+1陷阱名望）`, "trapDodge", { walker: walker.name, owner: owner.name }); }
-    else { outcome = "hit"; gainFame(state, owner, "trap", 1); const rl = takeInjuries(state, walker, 1); if (rl) reloadPlayer(state, walker, owner); else gainFame(state, owner, "injury", 1); log(state, `陷阱：${walker.name} 踩中 ${owner.name} 的陷阱受伤`, "trapHit", { walker: walker.name, owner: owner.name }); }
+    else { outcome = "hit"; gainFame(state, owner, "trap", 1); const rl = takeInjuries(state, walker, 1); if (rl) { state._cause = "trap"; reloadPlayer(state, walker, owner); } else gainFame(state, owner, "injury", 1); log(state, `陷阱：${walker.name} 踩中 ${owner.name} 的陷阱受伤`, "trapHit", { walker: walker.name, owner: owner.name }); }
     // expose the RPS reveal for the UI mine close-up (w/t: 0=rock,1=paper,2=scissor)
     state.lastTrap = { walker: walker.idx, owner: ownerIdx, w, t, outcome, key };
     state._trapSeq = (state._trapSeq || 0) + 1;
@@ -1186,7 +1186,7 @@
     // End phase toxin (inert until events add toxin tokens): toxin hex & not safe -> 1 injury
     if (p.pos) {
       const cell = state.board[hexKey(p.pos.q, p.pos.r)], safe = hasFriendlyHideout(state, p) || equipFlag(p, "toxinImmune");  // Healing Armor immunity
-      if ((cell.toxin || cell.toxinIcon) && !safe) { log(state, `${p.name} 处于毒气区，受到 1 点伤害`, "toxinDamage", { name: p.name }); if (takeInjuries(state, p, 1)) reloadPlayer(state, p, null); }   // normal hierarchy: the injury die comes off the just-built line, then the pool (rulebook order)
+      if ((cell.toxin || cell.toxinIcon) && !safe) { log(state, `${p.name} 处于毒气区，受到 1 点伤害`, "toxinDamage", { name: p.name }); if (takeInjuries(state, p, 1)) { state._cause = "toxin"; reloadPlayer(state, p, null); } }   // normal hierarchy: the injury die comes off the just-built line, then the pool (rulebook order)
     }
     state._turnsTaken++;
     const isLastInRound = state.activePlayer === (state.firstPlayer + state.numPlayers - 1) % state.numPlayers;
@@ -1429,6 +1429,10 @@
     state.lastReload = reloadSig;
     (state.pendingReloads || (state.pendingReloads = [])).push(reloadSig);   // every reload this turn (earthquake/toxin can hit several) — UI drains + animates the environmental ones
     state._reloadSeq = (state._reloadSeq || 0) + 1;
+    // kill feed (battle-royale broadcast): who took whom down, and how. The caller hints the
+    // cause via state._cause right before calling (ranged/close/trap/toxin/quake).
+    const cause = state._cause || (attacker ? "combat" : "env"); state._cause = null;
+    (state.killFeed || (state.killFeed = [])).push({ by: attacker ? attacker.idx : null, victim: p.idx, cause, seq: state._reloadSeq, round: state.round });
     // Team Spirit: RELOADing an opponent in the same hex as a teammate (the victim's hex) scores +1
     const coopTeamSpirit = attacker && state.isTeam && p.pos &&
       state.players.some(x => x !== attacker && sameTeam(x, attacker) && x.pos && x.pos.q === p.pos.q && x.pos.r === p.pos.r);
@@ -1512,7 +1516,7 @@
       if (T.combatLine.length > maxLine) T.combatLine.length = maxLine;   // bonus injuries can outrun the pool — the excess comes off the LOWEST line dice (conservation)
       T.defensePool = Math.max(0, (START_ACTION_DICE - T.injuries) - T.combatLine.length);   // dice = line + injury zone + pool
     }
-    if (reload) { reloadPlayer(state, T, A); awardNextAchievement(state, A, "rangedReload"); }  // MARKSMAN
+    if (reload) { state._cause = "ranged"; reloadPlayer(state, T, A); awardNextAchievement(state, A, "rangedReload"); }  // MARKSMAN
     else if (dealt > 0) { gainFame(state, A, "injury", 1); log(state, `🔫 ${A.name} 用${w.name}射击 ${T.name}，造成 ${dealt} 伤 → +1 受伤名望`, "shootHit", { a: A.name, weapon: w.name, t: T.name, dealt }); }
     else log(state, `🔫 ${A.name} 射击 ${T.name}，未造成伤害`, "shootMiss", { a: A.name, t: T.name });
     state.lastCombat = { type: "ranged", a: A.idx, t: T.idx, weapon: w.name, assignValue,
@@ -1576,8 +1580,8 @@
       T.combatLine = sortCombatLine(tR.line.filter(x => x != null));
       T.defensePool = Math.max(0, (START_ACTION_DICE - T.injuries) - T.combatLine.length);
     }
-    if (tReload) { reloadPlayer(state, T, A); awardNextAchievement(state, A, "closeReload"); } else if (aDealt > 0) { gainFame(state, A, "injury", 1); }  // MARTIAL ARTIST
-    if (aReload) { reloadPlayer(state, A, T); awardNextAchievement(state, T, "closeReload"); } else if (tDealt > 0) { gainFame(state, T, "injury", 1); }
+    if (tReload) { state._cause = "close"; reloadPlayer(state, T, A); awardNextAchievement(state, A, "closeReload"); } else if (aDealt > 0) { gainFame(state, A, "injury", 1); }  // MARTIAL ARTIST
+    if (aReload) { state._cause = "close"; reloadPlayer(state, A, T); awardNextAchievement(state, T, "closeReload"); } else if (tDealt > 0) { gainFame(state, T, "injury", 1); }
     log(state, `🗡 近战 ${A.name} vs ${T.name}：造成 ${aDealt} / 受到 ${tDealt}`, "melee", { a: A.name, t: T.name, aDealt, tDealt });
     state.lastCombat = { type: "close", a: A.idx, t: T.idx, shooter: aRaw.slice(), defender: tRaw.slice(),
       aLine: aStanding.slice(), dLine: tStanding.slice(),

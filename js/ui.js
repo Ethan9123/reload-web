@@ -23,6 +23,7 @@
       "legend.placed": "已放", "legend.equiptip": "背包有武器 → 点你的角色卡装备", "legend.noweapon": "未装备武器", "legend.gun": "🔫", "legend.melee": "🗡",
       "banner.acting": "{name}（AI）行动中…", "banner.endTurn": "{name} 结束回合",
       "speed.slow": "🐢 慢速", "speed.med": "🐇 中速", "speed.fast": "⚡ 快速", "speed.skip": "⏩ 跳过",
+      "bf.danger": "☣ 你在毒圈里！回合结束将受 1 伤", "bf.zone": "☣ 毒圈", "bf.env.toxin": "☣ 毒圈", "bf.env.quake": "🌋 地震", "bf.threat": "敌方火力覆盖范围（红色阴影 = 可被射击/近战的格子）", "bf.ssnear": "距超级明星只差 {n} 名望！",
       "setup.resume": "▶ 继续上局（第 {n} 回合）",
       "cb.atk": "攻", "cb.def": "守", "cb.roll": "掷骰…", "cb.compare": "逐列比对 ▶",
       "cb.skullA": "攻方多 {n}", "cb.skullD": "守方多 {n}", "cb.skullTie": "持平",
@@ -47,7 +48,7 @@
       "tip.heal": "治疗：消耗 1 行动骰掷骰，恢复 1 点伤（骷髅+1）。同格有敌人时不可用。", "tip.barrier": "屏障：消耗 1 行动骰，在当前格空边放置自己的屏障（挡移动/视线，自己可穿）。同格有敌人时不可用。", "tip.hideout": "藏身处：消耗 1 行动骰，在当前格放藏身处（回合在此结束有好处、免疫毒气）。", "tip.trap": "陷阱：消耗 1 行动骰，在当前格埋隐藏陷阱，敌人踩入需猜拳。", "tip.end": "结束回合：已用骰子进战斗列，进入结束阶段并轮到下一位。", "tip.restart": "重新开始游戏。",
       "tut.title": "📖 新手教学", "tut.prev": "上一步", "tut.next": "下一步 ▶", "tut.done": "完成 ✓", "tut.exit": "结束教学",
       "ach.next": "⚡即时", "ach.most": "🏆比拼", "ach.instantTip": "⚡ 即时：下一位达成者立即获得卡片及其名望", "ach.contestTip": "🏆 比拼：游戏结束结算 · 当前领先：{leader}", "ach.unlocked": "⚡ 达成成就", "ach.famefx": "成就名望",
-      "eq.ranged": "远程", "eq.range": "射程", "eq.dice": "白骰", "eq.twohand": "双手", "eq.hitbonus": "命中bonus", "eq.injury": "伤", "eq.light": "轻伤", "eq.close": "近战", "eq.armor": "护甲", "eq.skull": "骷髅", "eq.equip": "＋装备", "eq.unequip": "－卸下",
+      "eq.heavy": "🏋 重型·封锁最右跑动格", "eq.ranged": "远程", "eq.range": "射程", "eq.dice": "白骰", "eq.twohand": "双手", "eq.hitbonus": "命中bonus", "eq.injury": "伤", "eq.light": "轻伤", "eq.close": "近战", "eq.armor": "护甲", "eq.skull": "骷髅", "eq.equip": "＋装备", "eq.unequip": "－卸下",
       "slotcn.head": "头部", "slotcn.torso": "躯干", "slotcn.hand": "手持", "slotcn.special": "道具",
       "terr.tower": "中央塔", "terr.jungle": "丛林", "terr.plains": "平原", "terr.mountain": "山地", "terr.village": "村庄", "terr.maze": "迷宫", "terr.solar": "太阳能阵列",
       "cs.title": "选择你的角色", "cs.subtitle": "挑一个你喜欢的角色参战 · 出场顺位随机", "cs.back": "返回", "cs.start": "开始游戏", "cs.record": "战绩",
@@ -59,6 +60,7 @@
       "legend.placed": "Placed", "legend.equiptip": "Weapon in bag → click your card to equip", "legend.noweapon": "No weapon", "legend.gun": "🔫", "legend.melee": "🗡",
       "banner.acting": "{name} (AI) is thinking…", "banner.endTurn": "{name} ends turn",
       "speed.slow": "🐢 Slow", "speed.med": "🐇 Normal", "speed.fast": "⚡ Fast", "speed.skip": "⏩ Skip",
+      "bf.danger": "☣ You are in the toxin zone! 1 injury at End Phase", "bf.zone": "☣ Zone", "bf.env.toxin": "☣ Toxin", "bf.env.quake": "🌋 Quake", "bf.threat": "Enemy fire coverage (red hatch = hexes they can shoot/melee)", "bf.ssnear": "is {n} fame from SUPERSTAR!",
       "setup.resume": "▶ Resume game (round {n})",
       "cb.atk": "ATK", "cb.def": "DEF", "cb.roll": "rolling…", "cb.compare": "compare ▶",
       "cb.skullA": "ATK +{n}", "cb.skullD": "DEF +{n}", "cb.skullTie": "tie",
@@ -83,7 +85,7 @@
       "tip.heal": "Heal: spend 1 action die to roll and recover 1 damage (skull +1). Unavailable with an enemy on your hex.", "tip.barrier": "Barrier: spend 1 action die to place your barrier on an empty edge (blocks move/LOS, you may pass). Not with an enemy here.", "tip.hideout": "Hideout: spend 1 action die to place a hideout on your hex (ending your turn here has perks; immune to toxin).", "tip.trap": "Trap: spend 1 action die to bury a hidden trap; an enemy stepping in plays rock-paper-scissors.", "tip.end": "End turn: unused dice join your combat line, then the End Phase resolves and play passes on.", "tip.restart": "Restart the game.",
       "tut.title": "📖 Tutorial", "tut.prev": "Back", "tut.next": "Next ▶", "tut.done": "Done ✓", "tut.exit": "Exit tutorial",
       "ach.next": "⚡ Instant", "ach.most": "🏆 Contest", "ach.instantTip": "⚡ Instant: the next player to unlock it immediately gains the card and its fame", "ach.contestTip": "🏆 Contest: scored at game end · leader: {leader}", "ach.unlocked": "⚡ Achievement unlocked", "ach.famefx": "achievement fame",
-      "eq.ranged": "Ranged", "eq.range": "Rng ", "eq.dice": " white", "eq.twohand": "2-handed", "eq.hitbonus": "hit bonus", "eq.injury": "injury", "eq.light": "light", "eq.close": "Melee", "eq.armor": "Armor", "eq.skull": "skull", "eq.equip": "＋Equip", "eq.unequip": "－Unequip",
+      "eq.heavy": "🏋 Heavy · blocks last Run space", "eq.ranged": "Ranged", "eq.range": "Rng ", "eq.dice": " white", "eq.twohand": "2-handed", "eq.hitbonus": "hit bonus", "eq.injury": "injury", "eq.light": "light", "eq.close": "Melee", "eq.armor": "Armor", "eq.skull": "skull", "eq.equip": "＋Equip", "eq.unequip": "－Unequip",
       "slotcn.head": "Head", "slotcn.torso": "Torso", "slotcn.hand": "Hand", "slotcn.special": "Item",
       "terr.tower": "Tower", "terr.jungle": "Jungle", "terr.plains": "Plains", "terr.mountain": "Mountain", "terr.village": "Village", "terr.maze": "Maze", "terr.solar": "Solar Array",
       "cs.title": "Choose your character", "cs.subtitle": "Pick a character you like — turn order is random", "cs.back": "Back", "cs.start": "Start game", "cs.record": "Record",
@@ -95,6 +97,7 @@
       "legend.placed": "Placés", "legend.equiptip": "Arme dans le sac → cliquez votre carte pour l'équiper", "legend.noweapon": "Sans arme", "legend.gun": "🔫", "legend.melee": "🗡",
       "banner.acting": "{name} (IA) réfléchit…", "banner.endTurn": "{name} termine son tour",
       "speed.slow": "🐢 Lent", "speed.med": "🐇 Normal", "speed.fast": "⚡ Rapide", "speed.skip": "⏩ Passer",
+      "bf.danger": "☣ Zone toxique ! 1 blessure en fin de tour", "bf.zone": "☣ Zone", "bf.env.toxin": "☣ Toxine", "bf.env.quake": "🌋 Séisme", "bf.threat": "Couverture de tir ennemie", "bf.ssnear": "est à {n} de SUPERSTAR !",
       "setup.resume": "▶ Reprendre la partie (manche {n})",
       "cb.atk": "ATT", "cb.def": "DÉF", "cb.roll": "lancer…", "cb.compare": "comparer ▶",
       "cb.skullA": "ATT +{n}", "cb.skullD": "DÉF +{n}", "cb.skullTie": "égalité",
@@ -119,7 +122,7 @@
       "tip.heal": "Soigner : dépensez 1 dé d'action pour lancer et récupérer 1 dégât (crâne +1). Indisponible si un ennemi est sur votre case.", "tip.barrier": "Barrière : dépensez 1 dé d'action pour poser votre barrière sur un bord vide (bloque déplacement/vue, vous passez). Pas si un ennemi est là.", "tip.hideout": "Cachette : dépensez 1 dé d'action pour poser une cachette sur votre case (avantages en y finissant ; immunisé au gaz).", "tip.trap": "Piège : dépensez 1 dé d'action pour enterrer un piège ; un ennemi qui marche dessus joue à pierre-feuille-ciseaux.", "tip.end": "Fin du tour : les dés inutilisés rejoignent la ligne de combat, puis la phase de fin se résout.", "tip.restart": "Recommencer la partie.",
       "tut.title": "📖 Tutoriel", "tut.prev": "Précédent", "tut.next": "Suivant ▶", "tut.done": "Terminé ✓", "tut.exit": "Quitter",
       "ach.next": "⚡ Immédiat", "ach.most": "🏆 Concours", "ach.instantTip": "⚡ Immédiat : le prochain joueur qui le réussit gagne aussitôt la carte et sa renommée", "ach.contestTip": "🏆 Concours : décompté en fin de partie · en tête : {leader}", "ach.unlocked": "⚡ Succès débloqué", "ach.famefx": "renommée de succès",
-      "eq.ranged": "Distance", "eq.range": "Port. ", "eq.dice": " dés", "eq.twohand": "2 mains", "eq.hitbonus": "bonus", "eq.injury": "blessure", "eq.light": "légère", "eq.close": "Mêlée", "eq.armor": "Armure", "eq.skull": "crâne", "eq.equip": "＋Équiper", "eq.unequip": "－Retirer",
+      "eq.heavy": "🏋 Lourd · bloque la dernière case Course", "eq.ranged": "Distance", "eq.range": "Port. ", "eq.dice": " dés", "eq.twohand": "2 mains", "eq.hitbonus": "bonus", "eq.injury": "blessure", "eq.light": "légère", "eq.close": "Mêlée", "eq.armor": "Armure", "eq.skull": "crâne", "eq.equip": "＋Équiper", "eq.unequip": "－Retirer",
       "slotcn.head": "Tête", "slotcn.torso": "Torse", "slotcn.hand": "Main", "slotcn.special": "Objet",
       "terr.tower": "Tour", "terr.jungle": "Jungle", "terr.plains": "Plaine", "terr.mountain": "Montagne", "terr.village": "Village", "terr.maze": "Labyrinthe", "terr.solar": "Panneaux solaires",
       "cs.title": "Choisissez votre personnage", "cs.subtitle": "Choisissez un personnage qui vous plaît — l'ordre de jeu est aléatoire", "cs.back": "Retour", "cs.start": "Démarrer", "cs.record": "Bilan",
@@ -131,6 +134,7 @@
       "legend.placed": "Puestos", "legend.equiptip": "Arma en la mochila → clic en tu carta para equipar", "legend.noweapon": "Sin arma", "legend.gun": "🔫", "legend.melee": "🗡",
       "banner.acting": "{name} (IA) está pensando…", "banner.endTurn": "{name} termina el turno",
       "speed.slow": "🐢 Lento", "speed.med": "🐇 Normal", "speed.fast": "⚡ Rápido", "speed.skip": "⏩ Saltar",
+      "bf.danger": "☣ ¡Zona tóxica! 1 herida al final del turno", "bf.zone": "☣ Zona", "bf.env.toxin": "☣ Toxina", "bf.env.quake": "🌋 Sismo", "bf.threat": "Cobertura de fuego enemiga", "bf.ssnear": "está a {n} de SUPERSTAR!",
       "setup.resume": "▶ Reanudar partida (ronda {n})",
       "cb.atk": "ATQ", "cb.def": "DEF", "cb.roll": "tirando…", "cb.compare": "comparar ▶",
       "cb.skullA": "ATQ +{n}", "cb.skullD": "DEF +{n}", "cb.skullTie": "empate",
@@ -155,7 +159,7 @@
       "tip.heal": "Curar: gasta 1 dado de acción para tirar y recuperar 1 de daño (calavera +1). No disponible con un enemigo en tu casilla.", "tip.barrier": "Barrera: gasta 1 dado de acción para colocar tu barrera en un borde vacío (bloquea movimiento/visión, tú pasas). No con un enemigo aquí.", "tip.hideout": "Refugio: gasta 1 dado de acción para colocar un refugio en tu casilla (ventajas al terminar aquí; inmune al gas).", "tip.trap": "Trampa: gasta 1 dado de acción para enterrar una trampa oculta; un enemigo que entre juega piedra-papel-tijera.", "tip.end": "Terminar turno: los dados sin usar se unen a tu línea de combate y se resuelve la fase final.", "tip.restart": "Reiniciar el juego.",
       "tut.title": "📖 Tutorial", "tut.prev": "Atrás", "tut.next": "Siguiente ▶", "tut.done": "Listo ✓", "tut.exit": "Salir",
       "ach.next": "⚡ Instantáneo", "ach.most": "🏆 Concurso", "ach.instantTip": "⚡ Instantáneo: el próximo jugador que lo logre obtiene al instante la carta y su fama", "ach.contestTip": "🏆 Concurso: se calcula al final · líder: {leader}", "ach.unlocked": "⚡ Logro desbloqueado", "ach.famefx": "fama de logro",
-      "eq.ranged": "Distancia", "eq.range": "Alc. ", "eq.dice": " dados", "eq.twohand": "2 manos", "eq.hitbonus": "bono", "eq.injury": "daño", "eq.light": "leve", "eq.close": "Cuerpo", "eq.armor": "Armadura", "eq.skull": "calavera", "eq.equip": "＋Equipar", "eq.unequip": "－Quitar",
+      "eq.heavy": "🏋 Pesada · bloquea la última casilla de Correr", "eq.ranged": "Distancia", "eq.range": "Alc. ", "eq.dice": " dados", "eq.twohand": "2 manos", "eq.hitbonus": "bono", "eq.injury": "daño", "eq.light": "leve", "eq.close": "Cuerpo", "eq.armor": "Armadura", "eq.skull": "calavera", "eq.equip": "＋Equipar", "eq.unequip": "－Quitar",
       "slotcn.head": "Cabeza", "slotcn.torso": "Torso", "slotcn.hand": "Mano", "slotcn.special": "Objeto",
       "terr.tower": "Torre", "terr.jungle": "Jungla", "terr.plains": "Llanura", "terr.mountain": "Montaña", "terr.village": "Pueblo", "terr.maze": "Laberinto", "terr.solar": "Panel solar",
       "cs.title": "Elige tu personaje", "cs.subtitle": "Elige un personaje que te guste — el orden de turno es aleatorio", "cs.back": "Atrás", "cs.start": "Empezar", "cs.record": "Récord",
@@ -258,6 +262,10 @@
     const fil = svgEl("filter", { id: "pieceShadow", x: "-40%", y: "-30%", width: "180%", height: "175%" });
     fil.innerHTML = `<feDropShadow dx="0" dy="1.3" stdDeviation="1.2" flood-color="#000" flood-opacity="0.5"/>`;
     defs.appendChild(fil);
+    // diagonal red hatch for the ⚠ enemy fire-coverage overlay (pattern, not hue-only — colorblind-safe)
+    const hatch = svgEl("pattern", { id: "threatHatch", width: 8, height: 8, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" });
+    hatch.innerHTML = `<rect width="8" height="8" fill="#e3424b" fill-opacity="0.10"/><line x1="0" y1="0" x2="0" y2="8" stroke="#e3424b" stroke-width="2.6" stroke-opacity="0.55"/>`;
+    defs.appendChild(hatch);
   }
   function svgImg(href, x, y, w, h, opacity, fit) {
     const im = svgEl("image", { x, y, width: w, height: h, preserveAspectRatio: fit || "xMidYMid meet", "pointer-events": "none" });
@@ -495,7 +503,7 @@
       bindTip(poly, () => hexTip(c));
       svg.appendChild(poly);
       // map tokens — drawn procedurally (no image assets): toxin tint, portal rings, dome, beacon, supply box
-      if (c.toxin) { svg.appendChild(svgEl("polygon", { points: pts, fill: "#6a4f8a", opacity: 0.30, "pointer-events": "none" })); svg.appendChild(svgText(x + HEX * 0.5, y - HEX * 0.42, "☣", 15, "#caa6ff", 0.95)); }
+      if (c.toxin) { svg.appendChild(svgEl("polygon", { points: pts, fill: "#6a4f8a", opacity: 0.30, "pointer-events": "none", "class": "zone-pulse" })); svg.appendChild(svgText(x + HEX * 0.5, y - HEX * 0.42, "☣", 15, "#caa6ff", 0.95)); }
       if (c.portal) for (let r = 8; r <= 20; r += 6) svg.appendChild(svgEl("circle", { cx: x, cy: y, r, fill: "none", stroke: "#5fd0e0", "stroke-width": 2.5, opacity: 0.85, "pointer-events": "none" }));
       if (c.dome) svg.appendChild(svgEl("path", { d: `M ${x - 26} ${y + 6} A 26 26 0 0 1 ${x + 26} ${y + 6} Z`, fill: "#7fd0ff", "fill-opacity": 0.16, stroke: "#7fd0ff", "stroke-width": 1.5, "pointer-events": "none" }));
       if (c.tokens.some(k => k.kind === "beacon")) { svg.appendChild(svgEl("polygon", { points: `${x},${y - 21} ${x + 8},${y - 12} ${x},${y - 3} ${x - 8},${y - 12}`, fill: "#f4d03f", stroke: "#7a5c00", "stroke-width": 1.5, filter: "url(#pieceShadow)", "pointer-events": "none" })); svg.appendChild(svgEl("circle", { cx: x, cy: y - 12, r: 2.4, fill: "#fff7cf", "pointer-events": "none" })); }
@@ -535,6 +543,36 @@
           hit.addEventListener("click", (ev) => { ev.stopPropagation(); placeBarrierEdge(e); });
           svg.appendChild(hit);
         }
+      }
+    }
+    // enemy fire coverage (Into-the-Breach-style threat telegraphing, toggled by ⚠). All inputs are
+    // public tabletop information: enemy positions, equipped weapons, dice pools.
+    if (showThreat && !G.gameOver) {
+      const me = G.players.find(p => p.human);
+      const threat = {};
+      for (const t of G.players) {
+        if (!t.pos || t.reloadZone) continue;
+        if (me && (t === me || E.sameTeam(t, me))) continue;   // in all-AI spectate, every gun shows
+        if (E.combatDice(t) < 1) continue;                      // no real combat dice = no threat (boost dice can't fight)
+        const own = E.hexKey(t.pos.q, t.pos.r);
+        threat[own] = (threat[own] || 0) + 1;                   // close-combat threat on their own hex
+        const w = E.equippedRanged(t);
+        if (w) {
+          let maxR = (w.range && w.range[1]) || 0;
+          for (const id of [t.equipped.head, t.equipped.torso, ...t.equipped.hand]) { const e = EQ[id]; if (e && e.rangeBonus) maxR += e.rangeBonus; }
+          if (t.character === "diana") maxR += 1;
+          for (const k in G.board) {
+            if (k === own) continue;
+            const c2 = G.board[k], d = E.hexDistance(t.pos, c2);
+            if (d < 1 || d > maxR) continue;
+            if (!E.hasLOS(G, t.pos, { q: c2.q, r: c2.r }, t.idx)) continue;
+            threat[k] = (threat[k] || 0) + 1;
+          }
+        }
+      }
+      for (const k in threat) {
+        const c2 = G.board[k], px2 = hexToPixel(c2.q, c2.r);
+        svg.appendChild(svgEl("polygon", { points: hexCorners(px2.x, px2.y), fill: "url(#threatHatch)", opacity: Math.min(0.6, 0.3 + threat[k] * 0.12), "pointer-events": "none" }));
       }
     }
     // minis — original colored game-piece standees with per-character emblem (no art files)
@@ -596,7 +634,8 @@
     if (G.isTeam) { const ts = [...new Set(G.players.map(p => p.team))].sort((a, b) => a - b); modeLabel = T("mode.team") + " " + ts.map(t => `${t + 1}:${E.teamFame(G, t)}`).join(" / "); }
     if (G.flags && G.captures) modeLabel += ` · 🏁 ${G.captures.map((c, t) => `${t + 1}:${c}`).join(" / ")}`;
     modeLabel += ` · ${diffCN}`;
-    $("game-info").textContent = `${G.map} · ${G.numPlayers}${T("meta.players")} · ${modeLabel} · ${T("meta.round")} ${G.round} · ${T("meta.events")} ${G.eventsResolved}/${G.eventTotal}${le} — ${hint}`;
+    const toxN = Object.keys(G.board).filter(k => G.board[k].toxin || G.board[k].toxinIcon).length;
+    $("game-info").textContent = `${G.map} · ${G.numPlayers}${T("meta.players")} · ${modeLabel} · ${T("meta.round")} ${G.round} · ${T("meta.events")} ${G.eventsResolved}/${G.eventTotal}${toxN ? ` · ${T("bf.zone")} ${toxN}` : ""}${le} — ${hint}`;
     const human = !G.gameOver && p.human, showAct = human && !G.needsParachute;
     // keep the action buttons visible-but-disabled (don't hide) so the toolbar stays stable AND their
     // localized tooltips stay reachable; stash a short reason (data-why) the button tooltip appends.
@@ -817,9 +856,40 @@
     for (const p of G.players) { const f = E.totalFame(p); if (f > best) { second = best; best = f; bi = p.idx; } else if (f > second) second = f; }
     return best > 0 && best > second ? bi : null;
   }
+  const KF_ICON = { ranged: "🔫", close: "🗡", trap: "💣", toxin: "☣", quake: "🌋", combat: "⚔", env: "💀" };
+  function addKillRow(k) {   // battle-royale kill broadcast: "[icon] killer ▶ victim", fades out on its own
+    let feed = $("kill-feed");
+    if (!feed) { feed = document.createElement("div"); feed.id = "kill-feed"; ($("board-wrap") || document.body).appendChild(feed); }
+    const killer = k.by != null ? G.players[k.by] : null, victim = G.players[k.victim];
+    if (!victim) return;
+    const who = killer ? `<b style="color:${killer.color}">${killer.name}</b>` : `<b>${T("bf.env." + k.cause) || KF_ICON[k.cause] || "💀"}</b>`;
+    const row = document.createElement("div");
+    row.className = "kf-row";
+    row.innerHTML = `${who} <span class="kf-x">${KF_ICON[k.cause] || "⚔"}</span> <b style="color:${victim.color}">${victim.name}</b>`;
+    feed.prepend(row);
+    while (feed.children.length > 5) feed.lastChild.remove();
+    setTimeout(() => { row.classList.add("out"); setTimeout(() => row.remove(), 700); }, 6500);
+  }
   function surfaceMoments() {   // fires from render() on a fresh signal; trackers reset per game (keyed on G)
-    if (momentGame !== G) { momentGame = G; momentSeen = { firstBlood: false, crownBank: 0, leader: null }; }
-    if (!G || G.gameOver) return;
+    if (momentGame !== G) { momentGame = G; momentSeen = { firstBlood: false, crownBank: 0, leader: null, kill: 0, ssWarn: {} }; }
+    if (!G) return;
+    // kill feed FIRST, even on game-over renders — a Superstar-triggering RELOAD ends the game
+    // before the next render, and that final kill must still broadcast
+    if (momentSeen.kill == null) momentSeen.kill = 0;
+    for (const k of (G.killFeed || [])) if (k.seq > momentSeen.kill) { momentSeen.kill = k.seq; addKillRow(k); }
+    if (G.gameOver) return;
+    // Superstar clock: someone is within 2 fame tokens of ending the game — sound the alarm once
+    if (!G.isTeam) {
+      const th = E.superstarThreshold(G);
+      if (!momentSeen.ssWarn) momentSeen.ssWarn = {};
+      for (const p of G.players) {
+        const f = E.totalFame(p);
+        if (f >= th - 6 && f < th && !momentSeen.ssWarn[p.idx]) {
+          momentSeen.ssWarn[p.idx] = true;
+          momentToast(`⚡ ${p.name} ${T("bf.ssnear", { n: th - f })}`, p.color); SFX("score");
+        }
+      }
+    }
     if (!momentSeen.firstBlood && (G._reloadSeq || 0) > 0) { momentSeen.firstBlood = true; momentToast("⚔ " + L("第一滴血！", "First blood!"), "#e3424b"); }
     if ((G._crownBankSeq || 0) > momentSeen.crownBank) {
       momentSeen.crownBank = G._crownBankSeq;
@@ -833,9 +903,24 @@
       else { for (let t = 0; t < G.captures.length; t++) if (G.captures[t] > (momentSeen.caps[t] || 0)) momentToast(`🏁 ${T("pc.team", { n: t + 1 })} ${L("夺旗得分！", "captures the flag!")}`, (TEAM_COLOR[t] || "#f4d03f")); momentSeen.caps = G.captures.slice(); }
     }
   }
+  function renderDangerChip() {   // "you are standing in the storm" warning while it's the human's turn
+    let chip = $("danger-chip");
+    if (!chip) { chip = document.createElement("div"); chip.id = "danger-chip"; ($("board-wrap") || document.body).appendChild(chip); }
+    let danger = false;
+    if (G && !G.gameOver && !G.needsParachute && E.isHumanTurn(G)) {
+      const p = E.curP(G);
+      if (p.pos) {
+        const c = G.board[E.hexKey(p.pos.q, p.pos.r)];
+        const immune = [p.equipped.head, p.equipped.torso, ...p.equipped.hand].some(id => { const e = EQ[id]; return e && e.toxinImmune; });
+        danger = !!(c && (c.toxin || c.toxinIcon) && !E.hasFriendlyHideout(G, p) && !immune);
+      }
+    }
+    chip.textContent = T("bf.danger");
+    chip.classList.toggle("show", danger);
+  }
   function render() {
     renderBoard(); renderPlayers(); renderTop(); renderLog(); renderAchievements(); renderDiplomacy();
-    surfaceMoments();
+    surfaceMoments(); renderDangerChip();
     if (G && (G._achSeq || 0) > lastAchSeq) { lastAchSeq = G._achSeq; if (G.lastAchievement) { flashAchievement(G.lastAchievement); SFX("achievement"); } }
     if (G && G.gameOver && !_overSfx) {
       _overSfx = true;
@@ -968,6 +1053,7 @@
   let aiDelay = 650;                                   // ms pause between AI turns (cycled by #btn-speed)
   const AI_SPEEDS = [{ ms: 1100, key: "speed.slow", mult: 1.25 }, { ms: 650, key: "speed.med", mult: 1 }, { ms: 240, key: "speed.fast", mult: 0.5 }, { ms: 0, key: "speed.skip", mult: 0 }];
   let aiSpeedIdx = (() => { try { const v = parseInt(localStorage.getItem("rl-speed"), 10); return v >= 0 && v < AI_SPEEDS.length ? v : 1; } catch (e) { return 1; } })();
+  let showThreat = (() => { try { return localStorage.getItem("rl-threat") === "1"; } catch (e) { return false; } })();   // ⚠ enemy fire-coverage overlay
   function applySpeed() {
     aiDelay = AI_SPEEDS[aiSpeedIdx].ms;
     try { localStorage.setItem("rl-speed", String(aiSpeedIdx)); } catch (e) { }
@@ -1117,7 +1203,7 @@
       if (G !== myGame) return;                // restart during the combat animation
 
       if ((G._trapSeq || 0) > seq && G.lastTrap && G.players[G.lastTrap.owner].human) await withHumanPace(() => animateTrap(G.lastTrap)); // your mine triggered — always readable
-      if ((G.eventsResolved || 0) > evSeen && G.lastEvent) { await revealEvent(G.lastEvent, { quick: true, hold: Math.min(440, Math.max(180, aiDelay)) }); if (G.lastEventFx) await animateEventFx(G.lastEventFx); }   // flip the event card, then flash what it changed
+      if ((G.eventsResolved || 0) > evSeen && G.lastEvent) { await revealEvent(G.lastEvent, { quick: true, hold: Math.min(440, Math.max(180, aiDelay)) }); if (G.lastEventFx) { if (G.lastEventFx.kind === "drop") await animateAirdrop(G.lastEventFx); else await animateEventFx(G.lastEventFx); } }   // flip the event card, then flash what it changed
       for (const r of (G.pendingReloads || []).splice(0)) if (r.by == null) await animateReload(r);   // drain + animate EVERY environmental knockout this turn (earthquake can reload several)
       if (G !== myGame) return;
       await sleep(aiDelay);
@@ -1137,7 +1223,7 @@
     barrierMode = false; clearAiBanner();   // never carry edge-select mode across turns
     const evSeen = G.eventsResolved || 0;
     E.endTurn(G); render(); saveGame();
-    if ((G.eventsResolved || 0) > evSeen && G.lastEvent) { await revealEvent(G.lastEvent); if (G.lastEventFx) await animateEventFx(G.lastEventFx); }   // flip the event card, then flash what it changed
+    if ((G.eventsResolved || 0) > evSeen && G.lastEvent) { await revealEvent(G.lastEvent); if (G.lastEventFx) { if (G.lastEventFx.kind === "drop") await animateAirdrop(G.lastEventFx); else await animateEventFx(G.lastEventFx); } }   // flip the event card, then flash what it changed
     for (const r of (G.pendingReloads || []).splice(0)) if (r.by == null) await animateReload(r);   // your toxin/quake knockout(s)
     if (!G.gameOver && !E.curP(G).human) await runAI();
   }
@@ -1175,8 +1261,10 @@
     const feed = G.actionFeed || [];
     lastActSeq = feed.length ? feed[feed.length - 1].seq : 0;                // ...or old action-dice animations
     momentGame = G;                                                          // pre-seed the moment trackers so past
-    momentSeen = { firstBlood: (G._reloadSeq || 0) > 0,                      // first-blood/crown toasts don't replay
-      crownBank: G._crownBankSeq || 0, leader: null, caps: G.captures ? G.captures.slice() : undefined };
+    momentSeen = { firstBlood: (G._reloadSeq || 0) > 0,                      // first-blood/crown/kill toasts don't replay
+      crownBank: G._crownBankSeq || 0, leader: null, caps: G.captures ? G.captures.slice() : undefined,
+      kill: G._reloadSeq || 0,
+      ssWarn: Object.fromEntries(G.players.filter(x => !G.isTeam && E.totalFame(x) >= E.superstarThreshold(G) - 6).map(x => [x.idx, true])) };
     $("setup-screen").classList.add("hidden"); $("char-select").classList.add("hidden");
     $("game-screen").classList.remove("hidden");
     render();
@@ -1250,7 +1338,7 @@
     if (!e) return "";
     const sc = STAR_COLOR[e.star] || "#888";
     let stats = "";
-    if (e.combat === "ranged") stats = `${T("eq.ranged")} · ${T("eq.range")}${e.range[0]}-${e.range[1]} · ${e.dice}${T("eq.dice")}` + (e.hands === 2 ? ` · ${T("eq.twohand")}` : "") + (e.bonus ? ` · ${T("eq.hitbonus")}:${e.bonus.amount}${e.bonus.type === "injury" ? T("eq.injury") : T("eq.light")}` : "");
+    if (e.combat === "ranged") stats = `${T("eq.ranged")} · ${T("eq.range")}${e.range[0]}-${e.range[1]} · ${e.dice}${T("eq.dice")}` + (e.hands === 2 ? ` · ${T("eq.twohand")}` : "") + (e.bonus ? ` · ${T("eq.hitbonus")}:${e.bonus.amount}${e.bonus.type === "injury" ? T("eq.injury") : T("eq.light")}` : "") + (D.HEAVY_WEAPONS.includes(e.id) ? ` · ${T("eq.heavy")}` : "");
     else if (e.combat === "close") stats = T("eq.close") + (e.hands === 2 ? ` · ${T("eq.twohand")}` : "");
     else if (e.armor) stats = T("eq.armor") + (e.armor.skullReduce ? ` ${T("eq.skull")}-${e.armor.skullReduce}` : "") + (e.armor.smallInjuryReduce ? ` ${T("eq.light")}-${e.armor.smallInjuryReduce}` : "");
     const clk = action ? ` ecard-clk" data-eq="${e.id}" data-act="${action}` : "";
@@ -1467,6 +1555,33 @@
       });
     }).then(() => g.remove());
   }
+  // supply-drop airdrop: crates parachute onto the refilled hexes (the battle-royale moment)
+  function animateAirdrop(fx) {
+    const hexes = (fx && fx.hexes) || [];
+    if (!hexes.length) return Promise.resolve();
+    SFX("airdrop");
+    const g = vfxGroup(); if (!g) return Promise.resolve();
+    const drops = hexes.map((k, i) => ({ p: pxOf(k), delay: i * 0.14 })).filter(d => d.p);
+    const els = drops.map(d => {
+      const chute = Object.assign(svgEl("text", { "text-anchor": "middle", "font-size": 20, "pointer-events": "none", opacity: 0 }), { textContent: "🪂" });
+      const crate = Object.assign(svgEl("text", { "text-anchor": "middle", "font-size": 16, "pointer-events": "none", opacity: 0 }), { textContent: "📦" });
+      g.appendChild(chute); g.appendChild(crate); return { chute, crate };
+    });
+    const H = HEX * 3;
+    return animateRAF(900, k => {
+      drops.forEach((d, i) => {
+        const kk = Math.max(0, Math.min(1, (k - d.delay) / (1 - d.delay || 1)));
+        const e = 1 - (1 - kk) * (1 - kk), sway = Math.sin(kk * Math.PI * 2.5) * 4 * (1 - kk);
+        const y = d.p.y - H * (1 - e);
+        els[i].chute.setAttribute("x", (d.p.x + sway).toFixed(1)); els[i].chute.setAttribute("y", (y - 14).toFixed(1));
+        els[i].crate.setAttribute("x", (d.p.x + sway).toFixed(1)); els[i].crate.setAttribute("y", y.toFixed(1));
+        const op = kk <= 0 ? 0 : (kk > 0.9 ? (1 - (kk - 0.9) * 6) : 1);   // chute fades as the crate lands
+        els[i].chute.setAttribute("opacity", Math.max(0, op).toFixed(2)); els[i].crate.setAttribute("opacity", kk > 0 ? 1 : 0);
+      });
+    }).then(() => animateRAF(240, k => els.forEach(el => el.crate.setAttribute("opacity", (1 - k).toFixed(2)))))
+      .then(() => g.remove());
+  }
+
   // knockout VFX for an environmental RELOAD (toxin/quake) — combat reloads already get the dice overlay.
   // A ring implodes onto the hex the piece fell on + a 💥 floats up; shake + reload sting + a banner.
   function animateReload(rep) {
@@ -1835,6 +1950,7 @@
     { const mb = $("btn-mute"); if (mb) { mb.textContent = (RL.sfx && RL.sfx.muted) ? "🔇" : "🔊"; mb.addEventListener("click", () => { const m = RL.sfx ? RL.sfx.toggle() : true; mb.textContent = m ? "🔇" : "🔊"; }); } }
     { const vr = $("vol-range"); if (vr && RL.sfx) { vr.value = Math.round(RL.sfx.volume * 100); vr.addEventListener("input", () => { RL.sfx.volume = vr.value / 100; if (RL.sfx.muted) { RL.sfx.muted = false; const mb = $("btn-mute"); if (mb) mb.textContent = "🔊"; } }); vr.addEventListener("change", () => SFX("dice")); } }   // adjusting volume unmutes (convention) so the confirmation blip is audible
     { const sb = $("btn-speed"); if (sb) { applySpeed(); sb.addEventListener("click", () => { const prev = AI_SPEEDS[aiSpeedIdx].mult; aiSpeedIdx = (aiSpeedIdx + 1) % AI_SPEEDS.length; if (AI_SPEEDS[aiSpeedIdx].mult > prev) ffwd = false; applySpeed(); }); } }
+    { const tb = $("btn-threat"); if (tb) { tb.classList.toggle("on", showThreat); tb.title = T("bf.threat"); tb.addEventListener("click", () => { showThreat = !showThreat; try { localStorage.setItem("rl-threat", showThreat ? "1" : "0"); } catch (e) { } tb.classList.toggle("on", showThreat); if (G) render(); }); } }
     // resume a saved game from the setup screen (visibility/label recomputed whenever setup shows)
     { const rb = $("btn-resume"); if (rb) rb.addEventListener("click", resumeGame); refreshResumeBtn(); }
     // clicking the BOARD/backdrop while the AI is acting fast-forwards the rest of its stretch (standard

@@ -94,11 +94,12 @@
     achievement() { play(t => { [784, 1047, 1319].forEach((f, i) => tone(t + i * 0.07, 0.16, { type: "triangle", f0: f, peak: 0.34, dec: 0.15 })); tone(t + 0.21, 0.3, { type: "sine", f0: 1568, peak: 0.22, atk: 0.005, dec: 0.28 }); }); },  // bright unlock bell + sparkle
     event()     { play(t => { burst(t, 0.18, { type: "highpass", f0: 1900, peak: 0.4, atk: 0.004, dec: 0.16 }); tone(t + 0.08, 0.2, { type: "triangle", f0: 392, f1: 587, slide: "lin", peak: 0.3, dec: 0.18 }); }); }, // card-flip whoosh + reveal
     score()     { play(t => [988, 1319].forEach((f, i) => tone(t + i * 0.09, 0.13, { type: "square", f0: f, peak: 0.3, dec: 0.12 }))); },           // coin-drop "you banked points"
+    airdrop()   { play(t => { tone(t, 0.5, { type: "sawtooth", f0: 180, f1: 140, peak: 0.4, dec: 0.5 }); tone(t + 0.18, 0.55, { type: "sawtooth", f0: 240, f1: 175, peak: 0.34, dec: 0.5 }); burst(t + 0.5, 0.5, { type: "bandpass", f0: 450, f1: 1200, q: 1.2, peak: 0.42, atk: 0.14, dec: 0.36 }); }); },   // supply-drop horn + chute whoosh
   };
 
   // rate-limit identical sounds (fast-forwarded AI turns fire loot/move/dice in machine-gun bursts).
   // Impact/moment sounds keep a longer window than ticks; win/lose/turn are once-a-moment anyway.
-  const THROTTLE_MS = { dice: 45, move: 60, loot: 80, build: 80, heal: 80, mine: 80, shoot: 70, melee: 70, event: 120, score: 100, upload: 150, achievement: 200, reload: 120, explosion: 100, buzz: 120, parachute: 150, throwItem: 100, turn: 250, win: 400, lose: 400 };
+  const THROTTLE_MS = { airdrop: 400, dice: 45, move: 60, loot: 80, build: 80, heal: 80, mine: 80, shoot: 70, melee: 70, event: 120, score: 100, upload: 150, achievement: 200, reload: 120, explosion: 100, buzz: 120, parachute: 150, throwItem: 100, turn: 250, win: 400, lose: 400 };
   const lastAt = {};
   for (const k of Object.keys(THROTTLE_MS)) {
     const orig = SFX[k].bind(SFX), lim = THROTTLE_MS[k];
