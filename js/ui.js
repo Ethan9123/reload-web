@@ -23,6 +23,7 @@
       "legend.placed": "已放", "legend.equiptip": "背包有武器 → 点你的角色卡装备", "legend.noweapon": "未装备武器", "legend.gun": "🔫", "legend.melee": "🗡",
       "banner.acting": "{name}（AI）行动中…", "banner.endTurn": "{name} 结束回合",
       "speed.slow": "🐢 慢速", "speed.med": "🐇 中速", "speed.fast": "⚡ 快速", "speed.skip": "⏩ 跳过",
+      "bf.danger": "☣ 你在毒圈里！回合结束将受 1 伤", "bf.zone": "☣ 毒圈", "bf.env.toxin": "☣ 毒圈", "bf.env.quake": "🌋 地震", "bf.threat": "敌方火力覆盖范围（红色阴影 = 可被射击/近战的格子）", "bf.ssnear": "距超级明星只差 {n} 名望！",
       "setup.resume": "▶ 继续上局（第 {n} 回合）",
       "cb.atk": "攻", "cb.def": "守", "cb.roll": "掷骰…", "cb.compare": "逐列比对 ▶",
       "cb.skullA": "攻方多 {n}", "cb.skullD": "守方多 {n}", "cb.skullTie": "持平",
@@ -59,6 +60,7 @@
       "legend.placed": "Placed", "legend.equiptip": "Weapon in bag → click your card to equip", "legend.noweapon": "No weapon", "legend.gun": "🔫", "legend.melee": "🗡",
       "banner.acting": "{name} (AI) is thinking…", "banner.endTurn": "{name} ends turn",
       "speed.slow": "🐢 Slow", "speed.med": "🐇 Normal", "speed.fast": "⚡ Fast", "speed.skip": "⏩ Skip",
+      "bf.danger": "☣ You are in the toxin zone! 1 injury at End Phase", "bf.zone": "☣ Zone", "bf.env.toxin": "☣ Toxin", "bf.env.quake": "🌋 Quake", "bf.threat": "Enemy fire coverage (red hatch = hexes they can shoot/melee)", "bf.ssnear": "is {n} fame from SUPERSTAR!",
       "setup.resume": "▶ Resume game (round {n})",
       "cb.atk": "ATK", "cb.def": "DEF", "cb.roll": "rolling…", "cb.compare": "compare ▶",
       "cb.skullA": "ATK +{n}", "cb.skullD": "DEF +{n}", "cb.skullTie": "tie",
@@ -95,6 +97,7 @@
       "legend.placed": "Placés", "legend.equiptip": "Arme dans le sac → cliquez votre carte pour l'équiper", "legend.noweapon": "Sans arme", "legend.gun": "🔫", "legend.melee": "🗡",
       "banner.acting": "{name} (IA) réfléchit…", "banner.endTurn": "{name} termine son tour",
       "speed.slow": "🐢 Lent", "speed.med": "🐇 Normal", "speed.fast": "⚡ Rapide", "speed.skip": "⏩ Passer",
+      "bf.danger": "☣ Zone toxique ! 1 blessure en fin de tour", "bf.zone": "☣ Zone", "bf.env.toxin": "☣ Toxine", "bf.env.quake": "🌋 Séisme", "bf.threat": "Couverture de tir ennemie", "bf.ssnear": "est à {n} de SUPERSTAR !",
       "setup.resume": "▶ Reprendre la partie (manche {n})",
       "cb.atk": "ATT", "cb.def": "DÉF", "cb.roll": "lancer…", "cb.compare": "comparer ▶",
       "cb.skullA": "ATT +{n}", "cb.skullD": "DÉF +{n}", "cb.skullTie": "égalité",
@@ -131,6 +134,7 @@
       "legend.placed": "Puestos", "legend.equiptip": "Arma en la mochila → clic en tu carta para equipar", "legend.noweapon": "Sin arma", "legend.gun": "🔫", "legend.melee": "🗡",
       "banner.acting": "{name} (IA) está pensando…", "banner.endTurn": "{name} termina el turno",
       "speed.slow": "🐢 Lento", "speed.med": "🐇 Normal", "speed.fast": "⚡ Rápido", "speed.skip": "⏩ Saltar",
+      "bf.danger": "☣ ¡Zona tóxica! 1 herida al final del turno", "bf.zone": "☣ Zona", "bf.env.toxin": "☣ Toxina", "bf.env.quake": "🌋 Sismo", "bf.threat": "Cobertura de fuego enemiga", "bf.ssnear": "está a {n} de SUPERSTAR!",
       "setup.resume": "▶ Reanudar partida (ronda {n})",
       "cb.atk": "ATQ", "cb.def": "DEF", "cb.roll": "tirando…", "cb.compare": "comparar ▶",
       "cb.skullA": "ATQ +{n}", "cb.skullD": "DEF +{n}", "cb.skullTie": "empate",
@@ -258,6 +262,10 @@
     const fil = svgEl("filter", { id: "pieceShadow", x: "-40%", y: "-30%", width: "180%", height: "175%" });
     fil.innerHTML = `<feDropShadow dx="0" dy="1.3" stdDeviation="1.2" flood-color="#000" flood-opacity="0.5"/>`;
     defs.appendChild(fil);
+    // diagonal red hatch for the ⚠ enemy fire-coverage overlay (pattern, not hue-only — colorblind-safe)
+    const hatch = svgEl("pattern", { id: "threatHatch", width: 8, height: 8, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" });
+    hatch.innerHTML = `<rect width="8" height="8" fill="#e3424b" fill-opacity="0.10"/><line x1="0" y1="0" x2="0" y2="8" stroke="#e3424b" stroke-width="2.6" stroke-opacity="0.55"/>`;
+    defs.appendChild(hatch);
   }
   function svgImg(href, x, y, w, h, opacity, fit) {
     const im = svgEl("image", { x, y, width: w, height: h, preserveAspectRatio: fit || "xMidYMid meet", "pointer-events": "none" });
@@ -495,7 +503,7 @@
       bindTip(poly, () => hexTip(c));
       svg.appendChild(poly);
       // map tokens — drawn procedurally (no image assets): toxin tint, portal rings, dome, beacon, supply box
-      if (c.toxin) { svg.appendChild(svgEl("polygon", { points: pts, fill: "#6a4f8a", opacity: 0.30, "pointer-events": "none" })); svg.appendChild(svgText(x + HEX * 0.5, y - HEX * 0.42, "☣", 15, "#caa6ff", 0.95)); }
+      if (c.toxin) { svg.appendChild(svgEl("polygon", { points: pts, fill: "#6a4f8a", opacity: 0.30, "pointer-events": "none", "class": "zone-pulse" })); svg.appendChild(svgText(x + HEX * 0.5, y - HEX * 0.42, "☣", 15, "#caa6ff", 0.95)); }
       if (c.portal) for (let r = 8; r <= 20; r += 6) svg.appendChild(svgEl("circle", { cx: x, cy: y, r, fill: "none", stroke: "#5fd0e0", "stroke-width": 2.5, opacity: 0.85, "pointer-events": "none" }));
       if (c.dome) svg.appendChild(svgEl("path", { d: `M ${x - 26} ${y + 6} A 26 26 0 0 1 ${x + 26} ${y + 6} Z`, fill: "#7fd0ff", "fill-opacity": 0.16, stroke: "#7fd0ff", "stroke-width": 1.5, "pointer-events": "none" }));
       if (c.tokens.some(k => k.kind === "beacon")) { svg.appendChild(svgEl("polygon", { points: `${x},${y - 21} ${x + 8},${y - 12} ${x},${y - 3} ${x - 8},${y - 12}`, fill: "#f4d03f", stroke: "#7a5c00", "stroke-width": 1.5, filter: "url(#pieceShadow)", "pointer-events": "none" })); svg.appendChild(svgEl("circle", { cx: x, cy: y - 12, r: 2.4, fill: "#fff7cf", "pointer-events": "none" })); }
@@ -535,6 +543,35 @@
           hit.addEventListener("click", (ev) => { ev.stopPropagation(); placeBarrierEdge(e); });
           svg.appendChild(hit);
         }
+      }
+    }
+    // enemy fire coverage (Into-the-Breach-style threat telegraphing, toggled by ⚠). All inputs are
+    // public tabletop information: enemy positions, equipped weapons, dice pools.
+    if (showThreat && !G.gameOver) {
+      const me = G.players.find(p => p.human);
+      const threat = {};
+      for (const t of G.players) {
+        if (!t.pos || t.reloadZone) continue;
+        if (me && (t === me || E.sameTeam(t, me))) continue;   // in all-AI spectate, every gun shows
+        const own = E.hexKey(t.pos.q, t.pos.r);
+        threat[own] = (threat[own] || 0) + 1;                   // close-combat threat on their own hex
+        const w = E.equippedRanged(t);
+        if (w && E.combatDice(t) > 0) {
+          let maxR = (w.range && w.range[1]) || 0;
+          for (const id of [t.equipped.head, t.equipped.torso, ...t.equipped.hand]) { const e = EQ[id]; if (e && e.rangeBonus) maxR += e.rangeBonus; }
+          if (t.character === "diana") maxR += 1;
+          for (const k in G.board) {
+            if (k === own) continue;
+            const c2 = G.board[k], d = E.hexDistance(t.pos, c2);
+            if (d < 1 || d > maxR) continue;
+            if (!E.hasLOS(G, t.pos, { q: c2.q, r: c2.r }, t.idx)) continue;
+            threat[k] = (threat[k] || 0) + 1;
+          }
+        }
+      }
+      for (const k in threat) {
+        const c2 = G.board[k], px2 = hexToPixel(c2.q, c2.r);
+        svg.appendChild(svgEl("polygon", { points: hexCorners(px2.x, px2.y), fill: "url(#threatHatch)", opacity: Math.min(0.6, 0.3 + threat[k] * 0.12), "pointer-events": "none" }));
       }
     }
     // minis — original colored game-piece standees with per-character emblem (no art files)
@@ -596,7 +633,8 @@
     if (G.isTeam) { const ts = [...new Set(G.players.map(p => p.team))].sort((a, b) => a - b); modeLabel = T("mode.team") + " " + ts.map(t => `${t + 1}:${E.teamFame(G, t)}`).join(" / "); }
     if (G.flags && G.captures) modeLabel += ` · 🏁 ${G.captures.map((c, t) => `${t + 1}:${c}`).join(" / ")}`;
     modeLabel += ` · ${diffCN}`;
-    $("game-info").textContent = `${G.map} · ${G.numPlayers}${T("meta.players")} · ${modeLabel} · ${T("meta.round")} ${G.round} · ${T("meta.events")} ${G.eventsResolved}/${G.eventTotal}${le} — ${hint}`;
+    const toxN = Object.keys(G.board).filter(k => G.board[k].toxin || G.board[k].toxinIcon).length;
+    $("game-info").textContent = `${G.map} · ${G.numPlayers}${T("meta.players")} · ${modeLabel} · ${T("meta.round")} ${G.round} · ${T("meta.events")} ${G.eventsResolved}/${G.eventTotal}${toxN ? ` · ${T("bf.zone")} ${toxN}` : ""}${le} — ${hint}`;
     const human = !G.gameOver && p.human, showAct = human && !G.needsParachute;
     // keep the action buttons visible-but-disabled (don't hide) so the toolbar stays stable AND their
     // localized tooltips stay reachable; stash a short reason (data-why) the button tooltip appends.
@@ -817,9 +855,38 @@
     for (const p of G.players) { const f = E.totalFame(p); if (f > best) { second = best; best = f; bi = p.idx; } else if (f > second) second = f; }
     return best > 0 && best > second ? bi : null;
   }
+  const KF_ICON = { ranged: "🔫", close: "🗡", trap: "💣", toxin: "☣", quake: "🌋", combat: "⚔", env: "💀" };
+  function addKillRow(k) {   // battle-royale kill broadcast: "[icon] killer ▶ victim", fades out on its own
+    let feed = $("kill-feed");
+    if (!feed) { feed = document.createElement("div"); feed.id = "kill-feed"; ($("board-wrap") || document.body).appendChild(feed); }
+    const killer = k.by != null ? G.players[k.by] : null, victim = G.players[k.victim];
+    if (!victim) return;
+    const who = killer ? `<b style="color:${killer.color}">${killer.name}</b>` : `<b>${T("bf.env." + k.cause) || KF_ICON[k.cause] || "💀"}</b>`;
+    const row = document.createElement("div");
+    row.className = "kf-row";
+    row.innerHTML = `${who} <span class="kf-x">${KF_ICON[k.cause] || "⚔"}</span> <b style="color:${victim.color}">${victim.name}</b>`;
+    feed.prepend(row);
+    while (feed.children.length > 5) feed.lastChild.remove();
+    setTimeout(() => { row.classList.add("out"); setTimeout(() => row.remove(), 700); }, 6500);
+  }
   function surfaceMoments() {   // fires from render() on a fresh signal; trackers reset per game (keyed on G)
-    if (momentGame !== G) { momentGame = G; momentSeen = { firstBlood: false, crownBank: 0, leader: null }; }
+    if (momentGame !== G) { momentGame = G; momentSeen = { firstBlood: false, crownBank: 0, leader: null, kill: 0, ssWarn: {} }; }
     if (!G || G.gameOver) return;
+    // kill feed: broadcast every new RELOAD since the last render
+    if (momentSeen.kill == null) momentSeen.kill = 0;
+    for (const k of (G.killFeed || [])) if (k.seq > momentSeen.kill) { momentSeen.kill = k.seq; addKillRow(k); }
+    // Superstar clock: someone is within 2 fame tokens of ending the game — sound the alarm once
+    if (!G.isTeam) {
+      const th = E.superstarThreshold(G);
+      if (!momentSeen.ssWarn) momentSeen.ssWarn = {};
+      for (const p of G.players) {
+        const f = E.totalFame(p);
+        if (f >= th - 6 && f < th && !momentSeen.ssWarn[p.idx]) {
+          momentSeen.ssWarn[p.idx] = true;
+          momentToast(`⚡ ${p.name} ${T("bf.ssnear", { n: th - f })}`, p.color); SFX("score");
+        }
+      }
+    }
     if (!momentSeen.firstBlood && (G._reloadSeq || 0) > 0) { momentSeen.firstBlood = true; momentToast("⚔ " + L("第一滴血！", "First blood!"), "#e3424b"); }
     if ((G._crownBankSeq || 0) > momentSeen.crownBank) {
       momentSeen.crownBank = G._crownBankSeq;
@@ -833,9 +900,24 @@
       else { for (let t = 0; t < G.captures.length; t++) if (G.captures[t] > (momentSeen.caps[t] || 0)) momentToast(`🏁 ${T("pc.team", { n: t + 1 })} ${L("夺旗得分！", "captures the flag!")}`, (TEAM_COLOR[t] || "#f4d03f")); momentSeen.caps = G.captures.slice(); }
     }
   }
+  function renderDangerChip() {   // "you are standing in the storm" warning while it's the human's turn
+    let chip = $("danger-chip");
+    if (!chip) { chip = document.createElement("div"); chip.id = "danger-chip"; ($("board-wrap") || document.body).appendChild(chip); }
+    let danger = false;
+    if (G && !G.gameOver && !G.needsParachute && E.isHumanTurn(G)) {
+      const p = E.curP(G);
+      if (p.pos) {
+        const c = G.board[E.hexKey(p.pos.q, p.pos.r)];
+        const immune = [p.equipped.head, p.equipped.torso, ...p.equipped.hand].some(id => { const e = EQ[id]; return e && e.toxinImmune; });
+        danger = !!(c && (c.toxin || c.toxinIcon) && !E.hasFriendlyHideout(G, p) && !immune);
+      }
+    }
+    chip.textContent = T("bf.danger");
+    chip.classList.toggle("show", danger);
+  }
   function render() {
     renderBoard(); renderPlayers(); renderTop(); renderLog(); renderAchievements(); renderDiplomacy();
-    surfaceMoments();
+    surfaceMoments(); renderDangerChip();
     if (G && (G._achSeq || 0) > lastAchSeq) { lastAchSeq = G._achSeq; if (G.lastAchievement) { flashAchievement(G.lastAchievement); SFX("achievement"); } }
     if (G && G.gameOver && !_overSfx) {
       _overSfx = true;
@@ -968,6 +1050,7 @@
   let aiDelay = 650;                                   // ms pause between AI turns (cycled by #btn-speed)
   const AI_SPEEDS = [{ ms: 1100, key: "speed.slow", mult: 1.25 }, { ms: 650, key: "speed.med", mult: 1 }, { ms: 240, key: "speed.fast", mult: 0.5 }, { ms: 0, key: "speed.skip", mult: 0 }];
   let aiSpeedIdx = (() => { try { const v = parseInt(localStorage.getItem("rl-speed"), 10); return v >= 0 && v < AI_SPEEDS.length ? v : 1; } catch (e) { return 1; } })();
+  let showThreat = (() => { try { return localStorage.getItem("rl-threat") === "1"; } catch (e) { return false; } })();   // ⚠ enemy fire-coverage overlay
   function applySpeed() {
     aiDelay = AI_SPEEDS[aiSpeedIdx].ms;
     try { localStorage.setItem("rl-speed", String(aiSpeedIdx)); } catch (e) { }
@@ -1117,7 +1200,7 @@
       if (G !== myGame) return;                // restart during the combat animation
 
       if ((G._trapSeq || 0) > seq && G.lastTrap && G.players[G.lastTrap.owner].human) await withHumanPace(() => animateTrap(G.lastTrap)); // your mine triggered — always readable
-      if ((G.eventsResolved || 0) > evSeen && G.lastEvent) { await revealEvent(G.lastEvent, { quick: true, hold: Math.min(440, Math.max(180, aiDelay)) }); if (G.lastEventFx) await animateEventFx(G.lastEventFx); }   // flip the event card, then flash what it changed
+      if ((G.eventsResolved || 0) > evSeen && G.lastEvent) { await revealEvent(G.lastEvent, { quick: true, hold: Math.min(440, Math.max(180, aiDelay)) }); if (G.lastEventFx) { if (G.lastEventFx.kind === "drop") await animateAirdrop(G.lastEventFx); else await animateEventFx(G.lastEventFx); } }   // flip the event card, then flash what it changed
       for (const r of (G.pendingReloads || []).splice(0)) if (r.by == null) await animateReload(r);   // drain + animate EVERY environmental knockout this turn (earthquake can reload several)
       if (G !== myGame) return;
       await sleep(aiDelay);
@@ -1137,7 +1220,7 @@
     barrierMode = false; clearAiBanner();   // never carry edge-select mode across turns
     const evSeen = G.eventsResolved || 0;
     E.endTurn(G); render(); saveGame();
-    if ((G.eventsResolved || 0) > evSeen && G.lastEvent) { await revealEvent(G.lastEvent); if (G.lastEventFx) await animateEventFx(G.lastEventFx); }   // flip the event card, then flash what it changed
+    if ((G.eventsResolved || 0) > evSeen && G.lastEvent) { await revealEvent(G.lastEvent); if (G.lastEventFx) { if (G.lastEventFx.kind === "drop") await animateAirdrop(G.lastEventFx); else await animateEventFx(G.lastEventFx); } }   // flip the event card, then flash what it changed
     for (const r of (G.pendingReloads || []).splice(0)) if (r.by == null) await animateReload(r);   // your toxin/quake knockout(s)
     if (!G.gameOver && !E.curP(G).human) await runAI();
   }
@@ -1175,8 +1258,10 @@
     const feed = G.actionFeed || [];
     lastActSeq = feed.length ? feed[feed.length - 1].seq : 0;                // ...or old action-dice animations
     momentGame = G;                                                          // pre-seed the moment trackers so past
-    momentSeen = { firstBlood: (G._reloadSeq || 0) > 0,                      // first-blood/crown toasts don't replay
-      crownBank: G._crownBankSeq || 0, leader: null, caps: G.captures ? G.captures.slice() : undefined };
+    momentSeen = { firstBlood: (G._reloadSeq || 0) > 0,                      // first-blood/crown/kill toasts don't replay
+      crownBank: G._crownBankSeq || 0, leader: null, caps: G.captures ? G.captures.slice() : undefined,
+      kill: G._reloadSeq || 0,
+      ssWarn: Object.fromEntries(G.players.filter(x => !G.isTeam && E.totalFame(x) >= E.superstarThreshold(G) - 6).map(x => [x.idx, true])) };
     $("setup-screen").classList.add("hidden"); $("char-select").classList.add("hidden");
     $("game-screen").classList.remove("hidden");
     render();
@@ -1467,6 +1552,33 @@
       });
     }).then(() => g.remove());
   }
+  // supply-drop airdrop: crates parachute onto the refilled hexes (the battle-royale moment)
+  function animateAirdrop(fx) {
+    const hexes = (fx && fx.hexes) || [];
+    if (!hexes.length) return Promise.resolve();
+    SFX("airdrop");
+    const g = vfxGroup(); if (!g) return Promise.resolve();
+    const drops = hexes.map((k, i) => ({ p: pxOf(k), delay: i * 0.14 })).filter(d => d.p);
+    const els = drops.map(d => {
+      const chute = Object.assign(svgEl("text", { "text-anchor": "middle", "font-size": 20, "pointer-events": "none", opacity: 0 }), { textContent: "🪂" });
+      const crate = Object.assign(svgEl("text", { "text-anchor": "middle", "font-size": 16, "pointer-events": "none", opacity: 0 }), { textContent: "📦" });
+      g.appendChild(chute); g.appendChild(crate); return { chute, crate };
+    });
+    const H = HEX * 3;
+    return animateRAF(900, k => {
+      drops.forEach((d, i) => {
+        const kk = Math.max(0, Math.min(1, (k - d.delay) / (1 - d.delay || 1)));
+        const e = 1 - (1 - kk) * (1 - kk), sway = Math.sin(kk * Math.PI * 2.5) * 4 * (1 - kk);
+        const y = d.p.y - H * (1 - e);
+        els[i].chute.setAttribute("x", (d.p.x + sway).toFixed(1)); els[i].chute.setAttribute("y", (y - 14).toFixed(1));
+        els[i].crate.setAttribute("x", (d.p.x + sway).toFixed(1)); els[i].crate.setAttribute("y", y.toFixed(1));
+        const op = kk <= 0 ? 0 : (kk > 0.9 ? (1 - (kk - 0.9) * 6) : 1);   // chute fades as the crate lands
+        els[i].chute.setAttribute("opacity", Math.max(0, op).toFixed(2)); els[i].crate.setAttribute("opacity", kk > 0 ? 1 : 0);
+      });
+    }).then(() => animateRAF(240, k => els.forEach(el => el.crate.setAttribute("opacity", (1 - k).toFixed(2)))))
+      .then(() => g.remove());
+  }
+
   // knockout VFX for an environmental RELOAD (toxin/quake) — combat reloads already get the dice overlay.
   // A ring implodes onto the hex the piece fell on + a 💥 floats up; shake + reload sting + a banner.
   function animateReload(rep) {
@@ -1835,6 +1947,7 @@
     { const mb = $("btn-mute"); if (mb) { mb.textContent = (RL.sfx && RL.sfx.muted) ? "🔇" : "🔊"; mb.addEventListener("click", () => { const m = RL.sfx ? RL.sfx.toggle() : true; mb.textContent = m ? "🔇" : "🔊"; }); } }
     { const vr = $("vol-range"); if (vr && RL.sfx) { vr.value = Math.round(RL.sfx.volume * 100); vr.addEventListener("input", () => { RL.sfx.volume = vr.value / 100; if (RL.sfx.muted) { RL.sfx.muted = false; const mb = $("btn-mute"); if (mb) mb.textContent = "🔊"; } }); vr.addEventListener("change", () => SFX("dice")); } }   // adjusting volume unmutes (convention) so the confirmation blip is audible
     { const sb = $("btn-speed"); if (sb) { applySpeed(); sb.addEventListener("click", () => { const prev = AI_SPEEDS[aiSpeedIdx].mult; aiSpeedIdx = (aiSpeedIdx + 1) % AI_SPEEDS.length; if (AI_SPEEDS[aiSpeedIdx].mult > prev) ffwd = false; applySpeed(); }); } }
+    { const tb = $("btn-threat"); if (tb) { tb.classList.toggle("on", showThreat); tb.title = T("bf.threat"); tb.addEventListener("click", () => { showThreat = !showThreat; try { localStorage.setItem("rl-threat", showThreat ? "1" : "0"); } catch (e) { } tb.classList.toggle("on", showThreat); if (G) render(); }); } }
     // resume a saved game from the setup screen (visibility/label recomputed whenever setup shows)
     { const rb = $("btn-resume"); if (rb) rb.addEventListener("click", resumeGame); refreshResumeBtn(); }
     // clicking the BOARD/backdrop while the AI is acting fast-forwards the rest of its stretch (standard

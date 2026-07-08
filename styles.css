@@ -83,6 +83,27 @@ button.small { padding: 4px 10px; font-size: 13px; cursor: pointer; transition: 
 button.small:not(:disabled):hover { background: #222a38; border-color: #5a6478; }
 button.small:active:not(:disabled) { transform: translateY(1px) scale(.97); filter: brightness(.88); }
 #vol-range { width: 72px; accent-color: #f4d03f; cursor: pointer; }
+#btn-threat.on { background: #3a1f22; border-color: #e3424b; color: #ff8a8a; box-shadow: 0 0 6px rgba(227, 66, 75, .35); }
+/* ---- battle-royale layer: kill feed, storm warning, zone pulse ---- */
+#kill-feed { position: absolute; top: 12px; right: 14px; z-index: 30; display: flex; flex-direction: column; gap: 5px; align-items: flex-end; pointer-events: none; }
+.kf-row { background: rgba(12, 14, 18, .82); border: 1px solid #3a2f33; border-left: 3px solid #e3424b; border-radius: 6px;
+  padding: 4px 10px; font-size: 13px; letter-spacing: .2px; box-shadow: 0 2px 8px rgba(0, 0, 0, .45);
+  animation: kfIn .22s ease-out; transition: opacity .6s ease, transform .6s ease; }
+.kf-row .kf-x { margin: 0 5px; opacity: .9; }
+.kf-row.out { opacity: 0; transform: translateX(14px); }
+@keyframes kfIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: none; } }
+#danger-chip { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%) translateY(8px); z-index: 30;
+  background: rgba(46, 14, 46, .92); border: 1px solid #a05ad0; color: #e8c7ff; border-radius: 8px; padding: 6px 14px;
+  font-size: 14px; font-weight: 600; opacity: 0; pointer-events: none; transition: opacity .25s ease, transform .25s ease;
+  box-shadow: 0 0 14px rgba(160, 90, 208, .35); }
+#danger-chip.show { opacity: 1; transform: translateX(-50%); animation: dangerThrob 1.6s ease-in-out infinite; }
+@keyframes dangerThrob { 50% { box-shadow: 0 0 22px rgba(202, 106, 255, .6); } }
+.zone-pulse { animation: zonePulse 2.6s ease-in-out infinite; }
+@keyframes zonePulse { 50% { opacity: .44; } }
+@media (prefers-reduced-motion: reduce) {
+  .zone-pulse, #danger-chip.show { animation: none; }
+  .kf-row { animation: none; }
+}
 /* character-board action-space columns: printed die values; filled spaces light up */
 .cb-sp { display: inline-flex; align-items: center; justify-content: center; width: 17px; height: 17px; margin-left: 3px;
   border: 1px solid #5a6478; border-radius: 4px; font-size: 11px; font-weight: 700; color: #8b93a7; background: #141821; }
