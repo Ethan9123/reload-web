@@ -553,10 +553,11 @@
       for (const t of G.players) {
         if (!t.pos || t.reloadZone) continue;
         if (me && (t === me || E.sameTeam(t, me))) continue;   // in all-AI spectate, every gun shows
+        if (E.combatDice(t) < 1) continue;                      // no real combat dice = no threat (boost dice can't fight)
         const own = E.hexKey(t.pos.q, t.pos.r);
         threat[own] = (threat[own] || 0) + 1;                   // close-combat threat on their own hex
         const w = E.equippedRanged(t);
-        if (w && E.combatDice(t) > 0) {
+        if (w) {
           let maxR = (w.range && w.range[1]) || 0;
           for (const id of [t.equipped.head, t.equipped.torso, ...t.equipped.hand]) { const e = EQ[id]; if (e && e.rangeBonus) maxR += e.rangeBonus; }
           if (t.character === "diana") maxR += 1;
@@ -871,10 +872,12 @@
   }
   function surfaceMoments() {   // fires from render() on a fresh signal; trackers reset per game (keyed on G)
     if (momentGame !== G) { momentGame = G; momentSeen = { firstBlood: false, crownBank: 0, leader: null, kill: 0, ssWarn: {} }; }
-    if (!G || G.gameOver) return;
-    // kill feed: broadcast every new RELOAD since the last render
+    if (!G) return;
+    // kill feed FIRST, even on game-over renders — a Superstar-triggering RELOAD ends the game
+    // before the next render, and that final kill must still broadcast
     if (momentSeen.kill == null) momentSeen.kill = 0;
     for (const k of (G.killFeed || [])) if (k.seq > momentSeen.kill) { momentSeen.kill = k.seq; addKillRow(k); }
+    if (G.gameOver) return;
     // Superstar clock: someone is within 2 fame tokens of ending the game — sound the alarm once
     if (!G.isTeam) {
       const th = E.superstarThreshold(G);
