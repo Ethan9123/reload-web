@@ -96,8 +96,8 @@ A(closeSkullVsVest(5, "machete") === 0, "Machete's skull (no ignoreArmor) is abs
 // 8) Arachnid Pack (extraHand): allows a 3rd hand weapon
 {
   const { g, p } = rig(6);
-  p.equipped = { head: null, torso: "arachnid_pack", hand: [] }; p.backpack = ["arachnid_pack", "crossbow", "semi_auto_pistol", "survival_knife"];
-  A(E.equipItem(g, p, "crossbow") && E.equipItem(g, p, "semi_auto_pistol") && E.equipItem(g, p, "survival_knife"), "Arachnid Pack lets a 3rd hand weapon equip");
+  p.equipped = { head: null, torso: "arachnid_pack", hand: [] }; p.backpack = ["arachnid_pack", "hand_cannon", "semi_auto_pistol", "survival_knife"];
+  A(E.equipItem(g, p, "hand_cannon") && E.equipItem(g, p, "semi_auto_pistol") && E.equipItem(g, p, "survival_knife"), "Arachnid Pack lets a 3rd hand weapon equip");
   A(p.equipped.hand.length === 3, "three one-hand weapons equipped (extra slot)");
   // swapping the torso away from the Arachnid Pack must drop the now-illegal 3rd hand weapon
   p.backpack.push("military_vest");
