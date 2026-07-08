@@ -39,7 +39,7 @@ const g4 = E.newGame({ numPlayers: 2, seed: 1, allAI: true });
 const p4 = g4.players[0]; p4.backpack = ["combat_shotgun", "survival_knife"]; E.autoEquip(p4);
 A(p4.equipped.hand.length === 1 && p4.equipped.hand[0] === "combat_shotgun",
   "two-handed weapon fills both hands (no second hand weapon equipped)");
-const p4b = g4.players[1]; p4b.backpack = ["bow_arrow", "survival_knife"]; E.autoEquip(p4b);
+const p4b = g4.players[1]; p4b.backpack = ["semi_auto_pistol", "survival_knife"]; E.autoEquip(p4b);
 A(p4b.equipped.hand.length === 2, "two single-hand weapons fill both hand slots");
 
 // 5) Stealth — Active Camouflage: only rangeable from the same hex
@@ -158,14 +158,14 @@ A(g10c.board[farKey].trap === 1 && p10c.backpack.includes("tactical_explosive"),
 const geq = E.newGame({ numPlayers: 2, seed: 21, allAI: true });
 const peq = geq.players[0]; geq.activePlayer = 0; geq.phase = "action";
 peq.assigned = 0; peq.combatLine = []; peq._closeEndedTurn = false;
-peq.backpack = ["light_helmet", "survival_knife", "combat_shotgun", "bow_arrow"];
+peq.backpack = ["light_helmet", "survival_knife", "combat_shotgun", "semi_auto_pistol"];
 peq.equipped = { head: null, torso: null, hand: [] };
 A(E.canEquip(geq, peq), "can equip at turn start (no die assigned)");
 A(E.equipItem(geq, peq, "light_helmet") && peq.equipped.head === "light_helmet", "equip a head item from the backpack");
 A(E.equipItem(geq, peq, "combat_shotgun") && peq.equipped.hand.includes("combat_shotgun"), "equip a two-handed weapon");
 A(!E.equipItem(geq, peq, "survival_knife"), "two-handed weapon fills both hands — second hand item rejected");
 A(E.unequipItem(geq, peq, "combat_shotgun") && peq.equipped.hand.length === 0, "unequip frees the hand slots");
-A(E.equipItem(geq, peq, "bow_arrow") && E.equipItem(geq, peq, "survival_knife") && peq.equipped.hand.length === 2, "two single-hand weapons fit");
+A(E.equipItem(geq, peq, "semi_auto_pistol") && E.equipItem(geq, peq, "survival_knife") && peq.equipped.hand.length === 2, "two single-hand weapons fit");
 peq.assigned = 1; peq.hasActed = true;  // a die has now been spent on an action this turn
 A(!E.canEquip(geq, peq), "equipment locks once an action die is assigned");
 A(!E.equipItem(geq, peq, "light_helmet"), "equip rejected after a die is assigned");
