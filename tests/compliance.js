@@ -181,6 +181,47 @@ E.takeInjuries(gel, pel, 1);                                 // injury pops the 
 A(pel.assigned === 0, "precondition: injury reset assigned to 0");
 A(!E.canEquip(gel, pel), "equipment stays locked after a spent die is removed by injury");
 
+// 5c) JUNGLE STEALTH (rulebook 3.4 p.12): "A player in a jungle hex gains stealth. Players with
+// stealth cannot be the target of Ranged Combat actions unless the active player is in the same hex."
+// 6 of Arcadia's 19 hexes are jungle, so this is a major terrain rule — it was unimplemented until now.
+{
+  const gj = E.newGame({ numPlayers: 2, seed: 41, allAI: true });
+  const aj = gj.players[0], tj = gj.players[1];
+  gj.phase = "action"; gj.activePlayer = 0; gj.needsParachute = false;
+  for (const k in gj.board) gj.board[k].tokens = [];
+  const tk = E.towerKey(gj), tc = gj.board[tk];
+  aj.pos = { q: tc.q, r: tc.r }; aj.reloadZone = false; aj.injuries = 0; aj.defensePool = 5;
+  aj.backpack = ["combat_shotgun"]; E.autoEquip(aj);
+  aj.spacesUsed = {}; aj.cardSpacesUsed = {};
+  // find an adjacent hex with clear LOS, then compare plains-vs-jungle targetability on that SAME hex
+  let nb = null;
+  for (const nbk of E.neighbors(gj, tc.q, tc.r)) {
+    const c = gj.board[nbk];
+    tj.pos = { q: c.q, r: c.r }; tj.reloadZone = false; tj.injuries = 0; tj.defensePool = 5; tj.backpack = []; E.autoEquip(tj);
+    const was = c.terrain; c.terrain = "plains";
+    const ok = E.rangedTargets(gj, aj).includes(1);
+    c.terrain = was;
+    if (ok) { nb = c; break; }
+  }
+  A(!!nb, "found an adjacent hex with clear LOS for the jungle test");
+  nb.terrain = "plains";
+  A(E.rangedTargets(gj, aj).includes(1), "on plains the neighbour IS a ranged target (control)");
+  nb.terrain = "jungle";
+  A(E.hasStealth(tj, gj), "a player standing in jungle has stealth");
+  A(!E.hasStealth(tj), "hasStealth without state ignores terrain (gear/character check only)");
+  A(!E.rangedTargets(gj, aj).includes(1), "jungle stealth blocks ranged targeting at range 1");
+  // ...but not from the same hex
+  aj.pos = { q: nb.q, r: nb.r };
+  A(E.rangedTargets(gj, aj).includes(1), "a shooter in the SAME jungle hex can still fire");
+  // ...and not from melee
+  A(E.closeTargets(gj, aj).includes(1), "jungle stealth never blocks close combat");
+  // Tactical Helmet (cancelsStealth) sees through the canopy
+  aj.pos = { q: tc.q, r: tc.r };
+  aj.backpack = ["combat_shotgun", "tactical_helmet"]; aj.equipped = { head: null, torso: null, hand: [] }; E.autoEquip(aj);
+  aj.spacesUsed = {}; aj.cardSpacesUsed = {};
+  A(E.rangedTargets(gj, aj).includes(1), "Tactical Helmet (cancelsStealth) sees through jungle");
+}
+
 // 10f) Blitz — Fastest There Is: his Run column is printed 4/4/2 PLUS a character-action Run space
 // of 2 (designer-confirmed "4/4/2/2") — four die-paid Runs per turn where others get three.
 const gbl = E.newGame({ numPlayers: 2, seed: 30, allAI: true });

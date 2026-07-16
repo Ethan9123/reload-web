@@ -1867,6 +1867,7 @@
     if (c.terrain === "tower") lines.push("在此 <b>Activate</b> 上缴携带的信标 → 换名望");
     if (c.terrain === "village") lines.push("🏠 村庄：在此 <b>Activate</b> 从 1★ 牌库<b>抽 3 留 2</b>（可重复）");
     if (c.terrain === "mountain") lines.push("进入需要 <b>2</b> 个移动骰，并 <b>+1</b> 枪械射程");
+    if (c.terrain === "jungle") lines.push("🌴 丛林：在此获得<b>隐蔽</b>——除非敌人与你<b>同格</b>，否则无法被<b>远程</b>瞄准");
     if (c.terrain === "maze") lines.push("🌀 迷宫：进入需 <b>2</b> 移动骰，并<b>阻挡</b>穿过它的视线（无法隔着它射击）");
     if (c.terrain === "solar") lines.push("☀ 太阳能阵列：回合开始在此 <b>+1 行动骰</b>（能量，不可用于战斗/承伤）");
     if (c.tokens.some(k => k.kind === "beacon")) lines.push("🔆 信标：<b>Loot</b> 拾取，带到中央塔上缴 +1 名望");

@@ -1325,7 +1325,14 @@
     else if (mod === "twoAndThreeToSkull") { for (let k = 0; k < rolled.length; k++) if (rolled[k] === 2 || rolled[k] === 3) rolled[k] = "skull"; }                                                                                            // Sonic Cleaver
     else if (mod === "highLowTo4") { let hi = -1, hiI = -1, lo = 99, loI = -1; for (let k = 0; k < rolled.length; k++) { const v = rolled[k]; if (typeof v !== "number") continue; if (v > hi) { hi = v; hiI = k; } if (v < lo) { lo = v; loI = k; } } if (hiI >= 0) rolled[hiI] = 4; if (loI >= 0) rolled[loI] = 4; }   // Warrior Chainsaw
   }
-  function hasStealth(p) {
+  // Stealth = cannot be TARGETED by Ranged Combat unless the shooter shares your hex (rulebook p.12).
+  // Three sources: jungle terrain (p.12 "A player in a jungle hex gains stealth"), Echo's cloak, and
+  // gear. `state` is optional so the exported helper stays usable for gear/character-only checks.
+  function hasStealth(p, state) {
+    if (state && p.pos) {                                        // terrain stealth: 6 of Arcadia's 19 hexes
+      const c = state.board[hexKey(p.pos.q, p.pos.r)];
+      if (c && TERRAIN[c.terrain] && TERRAIN[c.terrain].stealth) return true;
+    }
     if (p.character === "echo" && !p._revealed) return true;     // Echo — Cloak: innate stealth until she takes part in combat
     for (const id of [p.equipped.head, p.equipped.torso, ...p.equipped.hand]) { const e = byId(id); if (e && e.stealth) return true; }
     return false;
@@ -1370,7 +1377,7 @@
       if (t === A || !t.pos || t.reloadZone || sameTeam(A, t)) continue;   // no friendly fire
       const d = hexDistance(A.pos, t.pos);
       if (d < (r[0] || 0) || d > maxR) continue;
-      if (d >= 1 && hasStealth(t) && !seesThroughStealth) continue; // stealth: only targetable by ranged from same hex
+      if (d >= 1 && hasStealth(t, state) && !seesThroughStealth) continue; // stealth (jungle/Echo/gear): only targetable by ranged from the same hex
       if (d >= 1 && !hasLOS(state, A.pos, t.pos, A.idx)) continue;
       out.push(t.idx);
     }

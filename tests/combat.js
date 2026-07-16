@@ -8,6 +8,9 @@ function scenario(seed, atkWeapon, atkPos, tgtPos, tgtInjuries, tgtBeacons) {
   const g = E.newGame({ numPlayers: 2, seed, allAI: true });
   const a = g.players[0], t = g.players[1];
   a.pos = atkPos; t.pos = tgtPos;
+  // these cases test range/LOS/damage, not terrain — park the target on open ground so jungle
+  // stealth (p.12: no ranged targeting except from the same hex) doesn't mask the thing under test
+  g.board[E.hexKey(tgtPos.q, tgtPos.r)].terrain = "plains";
   g.needsParachute = false; g.phase = "action"; g.activePlayer = 0;
   a.injuries = 0; a.actionDice = 5; a.defensePool = 5; a.backpack = [atkWeapon]; E.autoEquip(a);
   t.injuries = tgtInjuries || 0; t.actionDice = 5 - (tgtInjuries || 0); t.defensePool = t.actionDice;
