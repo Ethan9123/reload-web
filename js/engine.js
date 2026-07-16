@@ -1383,6 +1383,35 @@
     }
     return out;
   }
+  // ---- Threat: which hexes are covered by enemy guns, and how heavily.
+  // Everything here is public tabletop information (enemy positions, equipped weapons, dice pools,
+  // terrain), so neither the AI nor the UI overlay learns anything a player couldn't read off the table.
+  // One implementation, two consumers: ui.js paints it, ai.js reasons with it.
+  //
+  // threatMap(state, viewer) -> { hexKey: number of enemies that could attack someone standing there }.
+  // Jungle stealth is a property of the TARGET hex (p.12), so it's evaluated per hex, not per player.
+  function threatMap(state, viewer) {
+    const out = {};
+    for (const t of state.players) {
+      if (!t.pos || t.reloadZone || combatDice(t) < 1) continue;
+      if (viewer && (t === viewer || sameTeam(t, viewer))) continue;
+      const own = hexKey(t.pos.q, t.pos.r);
+      out[own] = (out[own] || 0) + 1;                                     // close combat, on their own hex
+      const w = equippedRanged(t);
+      if (!w || weaponSpacesLeft(t, w) < 1) continue;
+      const maxR = ((w.range || [0, 0])[1]) + equipSum(t, "rangeBonus") + (t.character === "diana" ? 1 : 0);
+      const sees = equipFlag(t, "cancelsStealth");                        // Tactical Helmet
+      for (const k in state.board) {
+        if (k === own) continue;
+        const c = state.board[k], d = hexDistance(t.pos, c);
+        if (d < 1 || d > maxR) continue;
+        if (!sees && TERRAIN[c.terrain] && TERRAIN[c.terrain].stealth) continue;   // can't be targeted in cover
+        if (!hasLOS(state, t.pos, { q: c.q, r: c.r }, t.idx)) continue;
+        out[k] = (out[k] || 0) + 1;
+      }
+    }
+    return out;
+  }
   function closeTargets(state, A) {
     if (!A.pos || combatDice(A) < 1 || spacesLeft(A, "close") < 1 || state.phase !== "action") return [];   // one Close space; boost die can't be used in combat
     return state.players.filter(t => t !== A && t.pos && !t.reloadZone && !sameTeam(A, t) && t.pos.q === A.pos.q && t.pos.r === A.pos.r).map(t => t.idx);
@@ -1625,7 +1654,7 @@
     INJURY_ZONE, ownedDice, autoEquip, canEquip, equipItem, unequipItem, handSlotsUsed, equippedRanged, equippedClose, armorOf, hasLOS, hasStealth,
     moveAssignedDiceToCombatLine, resolveHideoutBenefit, hasFriendlyHideout,
     takeInjuries, applySmallInjuries, applySmallInjuriesToPlayer,
-    rangedTargets, closeTargets, doRanged, doClose, reloadPlayer,
+    rangedTargets, closeTargets, threatMap, doRanged, doClose, reloadPlayer,
   };
   if (typeof module !== "undefined" && module.exports) module.exports = ENGINE;
   root.RL = Object.assign(root.RL || {}, { engine: ENGINE });

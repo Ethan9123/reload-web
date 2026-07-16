@@ -545,31 +545,11 @@
         }
       }
     }
-    // enemy fire coverage (Into-the-Breach-style threat telegraphing, toggled by ⚠). All inputs are
-    // public tabletop information: enemy positions, equipped weapons, dice pools.
+    // enemy fire coverage (Into-the-Breach-style threat telegraphing, toggled by ⚠). The engine owns the
+    // rules — range, LOS, weapon spaces, jungle stealth — so the overlay can never drift from what an
+    // enemy can actually do. All of it is public tabletop information.
     if (showThreat && !G.gameOver) {
-      const me = G.players.find(p => p.human);
-      const threat = {};
-      for (const t of G.players) {
-        if (!t.pos || t.reloadZone) continue;
-        if (me && (t === me || E.sameTeam(t, me))) continue;   // in all-AI spectate, every gun shows
-        if (E.combatDice(t) < 1) continue;                      // no real combat dice = no threat (boost dice can't fight)
-        const own = E.hexKey(t.pos.q, t.pos.r);
-        threat[own] = (threat[own] || 0) + 1;                   // close-combat threat on their own hex
-        const w = E.equippedRanged(t);
-        if (w) {
-          let maxR = (w.range && w.range[1]) || 0;
-          for (const id of [t.equipped.head, t.equipped.torso, ...t.equipped.hand]) { const e = EQ[id]; if (e && e.rangeBonus) maxR += e.rangeBonus; }
-          if (t.character === "diana") maxR += 1;
-          for (const k in G.board) {
-            if (k === own) continue;
-            const c2 = G.board[k], d = E.hexDistance(t.pos, c2);
-            if (d < 1 || d > maxR) continue;
-            if (!E.hasLOS(G, t.pos, { q: c2.q, r: c2.r }, t.idx)) continue;
-            threat[k] = (threat[k] || 0) + 1;
-          }
-        }
-      }
+      const threat = E.threatMap(G, G.players.find(p => p.human));   // all-AI spectate: every gun shows
       for (const k in threat) {
         const c2 = G.board[k], px2 = hexToPixel(c2.q, c2.r);
         svg.appendChild(svgEl("polygon", { points: hexCorners(px2.x, px2.y), fill: "url(#threatHatch)", opacity: Math.min(0.6, 0.3 + threat[k] * 0.12), "pointer-events": "none" }));
