@@ -42,7 +42,9 @@ function rig(seed) {
 }
 function clearLOSNeighbor(g, p, foe) {  // place foe on an adjacent hex with a clear shot; returns true if found
   for (const nbk of E.neighbors(g, p.pos.q, p.pos.r)) { const c = g.board[nbk]; foe.pos = { q: c.q, r: c.r };
-    if (E.hasLOS(g, p.pos, foe.pos, p.idx)) return true; }
+    if (!E.hasLOS(g, p.pos, foe.pos, p.idx)) continue;
+    c.terrain = "plains";   // these cases test GEAR, not terrain — keep jungle stealth (p.12) out of the way
+    return true; }
   return false;
 }
 

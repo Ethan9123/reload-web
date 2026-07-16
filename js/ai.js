@@ -42,6 +42,27 @@
     for (const i of idxs) { const inj = state.players[i].injuries; if (inj > bi) { bi = inj; best = i; } }
     return best;
   }
+  // how many enemies can shoot our hex right now (jungle cover / walls / range are all engine rules)
+  function shootersOn(E, state, p) {
+    let n = 0;
+    for (const t of state.players) {
+      if (t === p || !t.pos || t.reloadZone || E.sameTeam(t, p) || E.combatDice(t) < 1) continue;
+      if (E.rangedTargets(state, t).includes(p.idx)) n++;
+    }
+    return n;
+  }
+  // an adjacent jungle hex we can duck into: stealth means no ranged targeting except from our own hex
+  // (rulebook p.12). Only worth it when someone actually has a bead on us.
+  function coverStep(E, state, p) {
+    if (!p.pos || shootersOn(E, state, p) === 0) return null;
+    const here = E.hexKey(p.pos.q, p.pos.r);
+    if (cellOf(state, here).terrain === "jungle") return null;            // already in cover
+    for (const k of E.legalRuns(state, p)) {
+      const c = cellOf(state, k);
+      if (c && c.terrain === "jungle" && !isToxic(E, state, p, k)) return k;
+    }
+    return null;
+  }
   // nearest target hex (by hex distance) that we can actually path toward
   function nearestTarget(E, state, p, keys) {
     let best = null, bd = Infinity;
@@ -181,6 +202,14 @@
     // 2) proactive ranged: aggressive personas always; cautious ones only when it's a (near-)kill
     if (ranged.length && (aggr >= POL(p, "rangedAggro") || ranged.some(nearDeath))) { E.doRanged(state, pickTarget(E, state, p, ranged)); return "acted"; }
 
+    // 2b) take cover: under fire with nothing to shoot back at, duck into adjacent jungle — stealth
+    //     ends ranged targeting outright (p.12), which is the strongest defensive move in the game.
+    //     Cautious personas value it; brawlers would rather stand and trade.
+    if (!ranged.length && !close.length && caution >= 0.4) {
+      const cover = coverStep(E, state, p);
+      if (cover && E.doRun(state, cover)) return "acted";
+    }
+
     // 3) upload carried beacons at the tower
     if (p.carryingBeacons > 0 && E.canUpload(state, p)) { E.doActivate(state); return "acted"; }
 
@@ -241,11 +270,26 @@
   // policy improvement over the heuristic = real "thinking ahead". The rollout count is the strength
   // dial. Clones run with state._inRollout = true so the rollout policy never recurses into rollouts.
   // ============================================================
+  // Face-down piles: cloned in TRUE order by the JSON copy, so they must be re-shuffled per determinization.
+  // discard1/2/3 are deliberately absent — the engine already shuffles a discard pile with the clone's own
+  // rnd at the moment it refills an empty deck (drawEquipCard), so its cloned order never leaks.
+  const HIDDEN_PILES = ["equip1", "equip2", "equip3", "event"];
   function cloneForRollout(E, state) {
     const r = state.rnd; state.rnd = null;
     const g = JSON.parse(JSON.stringify(state));   // state is plain data apart from rnd
     state.rnd = r;
     g.rnd = E.makeRng((r() * 1e9) | 0);            // seed from the real game RNG -> expert is deterministic per game seed
+    // Determinization (Perfect-Information Monte-Carlo). Without this the rollout .pop()s the real decks in
+    // their real order, so the expert plans against cards it cannot legally know = it cheats. Re-shuffling each
+    // face-down pile with the clone's own rnd makes this one sample of a world consistent with what the searcher
+    // can actually see; evalCandidate already builds a fresh clone per rollout, so N rollouts = N independent
+    // determinizations at zero extra cost. Only card ORDER is resampled — every pile's remaining multiset is
+    // preserved, which is correct for the equip and achievement decks (fixed, public composition) and slightly
+    // generous for the event deck (its random-N subset is drawn from a larger pool at setup, so the true
+    // remaining composition is not public knowledge). Anything face-up (achievements.board, a pending loot
+    // draw already revealed to its owner) is NOT touched — it is legitimately seen.
+    for (const k of HIDDEN_PILES) if (g.decks && g.decks[k]) E.shuffle(g.decks[k], g.rnd);
+    if (g.achievements && g.achievements.deck) E.shuffle(g.achievements.deck, g.rnd);
     g._inRollout = true;
     return g;
   }

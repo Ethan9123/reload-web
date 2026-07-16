@@ -36,7 +36,7 @@
   // color = fallback fill until real tile art is wired in.
   const TERRAIN = {
     tower:    { name: "中央塔 Central Tower", color: "#3a6ea5", beacon: false, supply: false },
-    jungle:   { name: "丛林 Jungle",          color: "#1f7a3d", beacon: true,  supply: false },
+    jungle:   { name: "丛林 Jungle",          color: "#1f7a3d", beacon: true,  supply: false, stealth: true },   // p.12: a player in a jungle hex gains stealth (no ranged targeting except from the same hex)
     plains:   { name: "平原 Plains",          color: "#8aa84b", beacon: true,  supply: false },
     mountain: { name: "山地 Mountain",        color: "#6b6f76", beacon: true,  supply: false, moveCost: 2 },
     village:  { name: "村庄 Village",         color: "#b08948", beacon: false, supply: "2star" },

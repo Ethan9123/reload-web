@@ -34,6 +34,7 @@ function mk(seed) {
   const d = g.players[0]; d.character = "diana"; d.pos = { q: 2, r: 0 }; d.injuries = 0; d.actionDice = 5; d.defensePool = 5;
   d.backpack = ["bow_arrow"]; E.autoEquip(d);                       // bow range [0,0]
   const t = g.players[1]; t.character = "korat"; t.pos = { q: 1, r: 0 };  // distance 1
+  g.board[E.hexKey(1, 0)].terrain = "plains";                        // isolate the range rule from jungle stealth
   A(E.rangedTargets(g, d).includes(1), "Diana's range +1 lets a range-0 bow hit a target 1 hex away");
   d.character = "korat";
   A(!E.rangedTargets(g, d).includes(1), "without Diana, the range-0 bow cannot reach 1 hex away");

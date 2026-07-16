@@ -1325,7 +1325,14 @@
     else if (mod === "twoAndThreeToSkull") { for (let k = 0; k < rolled.length; k++) if (rolled[k] === 2 || rolled[k] === 3) rolled[k] = "skull"; }                                                                                            // Sonic Cleaver
     else if (mod === "highLowTo4") { let hi = -1, hiI = -1, lo = 99, loI = -1; for (let k = 0; k < rolled.length; k++) { const v = rolled[k]; if (typeof v !== "number") continue; if (v > hi) { hi = v; hiI = k; } if (v < lo) { lo = v; loI = k; } } if (hiI >= 0) rolled[hiI] = 4; if (loI >= 0) rolled[loI] = 4; }   // Warrior Chainsaw
   }
-  function hasStealth(p) {
+  // Stealth = cannot be TARGETED by Ranged Combat unless the shooter shares your hex (rulebook p.12).
+  // Three sources: jungle terrain (p.12 "A player in a jungle hex gains stealth"), Echo's cloak, and
+  // gear. `state` is optional so the exported helper stays usable for gear/character-only checks.
+  function hasStealth(p, state) {
+    if (state && p.pos) {                                        // terrain stealth: 6 of Arcadia's 19 hexes
+      const c = state.board[hexKey(p.pos.q, p.pos.r)];
+      if (c && TERRAIN[c.terrain] && TERRAIN[c.terrain].stealth) return true;
+    }
     if (p.character === "echo" && !p._revealed) return true;     // Echo — Cloak: innate stealth until she takes part in combat
     for (const id of [p.equipped.head, p.equipped.torso, ...p.equipped.hand]) { const e = byId(id); if (e && e.stealth) return true; }
     return false;
@@ -1370,9 +1377,38 @@
       if (t === A || !t.pos || t.reloadZone || sameTeam(A, t)) continue;   // no friendly fire
       const d = hexDistance(A.pos, t.pos);
       if (d < (r[0] || 0) || d > maxR) continue;
-      if (d >= 1 && hasStealth(t) && !seesThroughStealth) continue; // stealth: only targetable by ranged from same hex
+      if (d >= 1 && hasStealth(t, state) && !seesThroughStealth) continue; // stealth (jungle/Echo/gear): only targetable by ranged from the same hex
       if (d >= 1 && !hasLOS(state, A.pos, t.pos, A.idx)) continue;
       out.push(t.idx);
+    }
+    return out;
+  }
+  // ---- Threat: which hexes are covered by enemy guns, and how heavily.
+  // Everything here is public tabletop information (enemy positions, equipped weapons, dice pools,
+  // terrain), so neither the AI nor the UI overlay learns anything a player couldn't read off the table.
+  // One implementation, two consumers: ui.js paints it, ai.js reasons with it.
+  //
+  // threatMap(state, viewer) -> { hexKey: number of enemies that could attack someone standing there }.
+  // Jungle stealth is a property of the TARGET hex (p.12), so it's evaluated per hex, not per player.
+  function threatMap(state, viewer) {
+    const out = {};
+    for (const t of state.players) {
+      if (!t.pos || t.reloadZone || combatDice(t) < 1) continue;
+      if (viewer && (t === viewer || sameTeam(t, viewer))) continue;
+      const own = hexKey(t.pos.q, t.pos.r);
+      out[own] = (out[own] || 0) + 1;                                     // close combat, on their own hex
+      const w = equippedRanged(t);
+      if (!w || weaponSpacesLeft(t, w) < 1) continue;
+      const maxR = ((w.range || [0, 0])[1]) + equipSum(t, "rangeBonus") + (t.character === "diana" ? 1 : 0);
+      const sees = equipFlag(t, "cancelsStealth");                        // Tactical Helmet
+      for (const k in state.board) {
+        if (k === own) continue;
+        const c = state.board[k], d = hexDistance(t.pos, c);
+        if (d < 1 || d > maxR) continue;
+        if (!sees && TERRAIN[c.terrain] && TERRAIN[c.terrain].stealth) continue;   // can't be targeted in cover
+        if (!hasLOS(state, t.pos, { q: c.q, r: c.r }, t.idx)) continue;
+        out[k] = (out[k] || 0) + 1;
+      }
     }
     return out;
   }
@@ -1618,7 +1654,7 @@
     INJURY_ZONE, ownedDice, autoEquip, canEquip, equipItem, unequipItem, handSlotsUsed, equippedRanged, equippedClose, armorOf, hasLOS, hasStealth,
     moveAssignedDiceToCombatLine, resolveHideoutBenefit, hasFriendlyHideout,
     takeInjuries, applySmallInjuries, applySmallInjuriesToPlayer,
-    rangedTargets, closeTargets, doRanged, doClose, reloadPlayer,
+    rangedTargets, closeTargets, threatMap, doRanged, doClose, reloadPlayer,
   };
   if (typeof module !== "undefined" && module.exports) module.exports = ENGINE;
   root.RL = Object.assign(root.RL || {}, { engine: ENGINE });
