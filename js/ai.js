@@ -51,6 +51,30 @@
     }
     return n;
   }
+
+  // ============================================================
+  // POSTURE ECONOMY — measured, and mostly a trap for the AI. Documented here so nobody "fixes" it again.
+  //
+  // In the TRUE dice model your ASSIGNED dice become your standing combat line, so every action has a
+  // hidden defensive price: the value of the space it eats. Because the defender wins ties and shooting
+  // dice are uniform over {1..5}, a line die of value V survives with probability V/5 — line strength is
+  // exactly linear in the sum of values. Measured (20k-trial Monte-Carlo per posture through the real
+  // engine, defender shot by a combat_shotgun), as E[injuries] taken:
+  //     idle 1.150 | Run x1 1.132 | Run x2 1.223 | Run x3 1.379
+  //     Loot x1 1.335 | Loot x2 1.586 | Loot x3 1.916 | Activate x1 1.260 | Activate x2 1.471
+  // So the first Run is defensively FREE (a printed 4 beats an unspent die's E[2.5] contribution), and
+  // Loot x3 costs 3x Run x3 (its column is 2/2/1, and a 1 on the line converts straight to an injury).
+  //
+  // BUT: acting on those costs made the bot WEAKER, measured over 240-300 paired games vs this same bot:
+  //     gate melee on a strong posture ......... 0.475  (and 0.463 even when softened)
+  //     skip attacks on 2-injury targets ....... 0.475  (auto-heal decays chip damage, but shots still pay)
+  //     gate looting on threat ................. no-op  (869/869 loots passed — you rarely loot under fire)
+  // The reason is a units error that is easy to repeat: these costs are in INJURIES, and an injury is
+  // simply cheap next to fame. A beacon is 4 fame; a RELOAD is 7; the whole Run-x3 -> Loot-x3 posture
+  // swing is ~0.5 of one injury, which auto-heal then refunds. So the bot SHOULD act freely and eat the
+  // chip damage. The one place line values genuinely pay is choosing WHOM to shoot (see pickTarget).
+  // ============================================================
+  const lineStrength = (p) => (p.combatLine || []).reduce((s, v) => s + (typeof v === "number" ? v : 0), 0);
   // an adjacent jungle hex we can duck into: stealth means no ranged targeting except from our own hex
   // (rulebook p.12). Only worth it when someone actually has a bead on us.
   function coverStep(E, state, p) {
@@ -135,7 +159,18 @@
     const focus = state.diplomacy && state.diplomacy.focus;
     if (focus != null && idxs.includes(focus)) return focus;
     if (T(p, "leaderHunt") >= 0.6) { let best = null, bf = -1; for (const i of idxs) { const f = E.totalFame(state.players[i]); if (f > bf) { bf = f; best = i; } } if (best != null) return best; }
-    return pickByInjuries(state, idxs);
+    // Soft targets first: a victim's standing combat line is PUBLIC, and survival per die is V/5, so a
+    // line of [2,2,1] (they looted) eats ~36% more damage than [4,3,2] (they ran). Injuries must still
+    // DOMINATE — a target one hit from RELOAD is worth 7 fame vs 3 for an injury — so the softness term
+    // is deliberately bounded below the injury step: line <= 5 dice x 5 = 25, pool <= 5 x 0.5 = 2.5, so
+    // 27.5 < 100 keeps softness a strict tie-breaker WITHIN an injury count and never across one.
+    let best = null, bs = -Infinity;
+    for (const i of idxs) {
+      const t = state.players[i];
+      const s = t.injuries * 100 - lineStrength(t) - E.combatDice(t) * 0.5;
+      if (s > bs) { bs = s; best = i; }
+    }
+    return best != null ? best : pickByInjuries(state, idxs);
   }
   // once-per-turn table talk, scaled by the persona's diplomacy/trash traits
   function runDiplomacy(E, state, p) {
@@ -196,7 +231,9 @@
       if (p.injuries >= healAt) { E.doHeal(state, p.idx); return "acted"; }
     }
 
-    // 1) finish an opponent: close combat that likely RELOADs (ends the turn) — everyone takes the kill
+    // 1) finish an opponent: close combat that likely RELOADs (ends the turn) — everyone takes the kill.
+    //    Deliberately NOT posture-gated: measured 0.475 win-share when it was (a kill is 7 fame; the
+    //    posture cost is a fraction of one injury, which auto-heal refunds).
     const closeKill = close.filter(nearDeath);
     if (closeKill.length) { E.doClose(state, pickTarget(E, state, p, closeKill)); return "stop"; }
     // 2) proactive ranged: aggressive personas always; cautious ones only when it's a (near-)kill
@@ -213,7 +250,8 @@
     // 3) upload carried beacons at the tower
     if (p.carryingBeacons > 0 && E.canUpload(state, p)) { E.doActivate(state); return "acted"; }
 
-    // 4) loot a beacon / supply box on this hex (loot goblins also grab supplies eagerly)
+    // 4) loot a beacon / supply box on this hex (loot goblins also grab supplies eagerly). Not
+    //    posture-gated: fame beats the defensive tax, and the gate measured as a pure no-op anyway.
     const loot = E.lootOptions(state, p);
     if (loot.length) {
       const bi = loot.findIndex(t => t.kind === "beacon");
@@ -257,8 +295,18 @@
     //     but don't hoard forever (terminates the turn loop once the backpack is stocked).
     if (E.canVillageDraw(state, p) && p.backpack.length < 4) { E.doActivate(state); return "acted"; }
 
-    // 9) no objective to pursue — stop and keep the remaining dice (they become combat-line defense
-    //    dice at End Phase, which is better than wandering them away).
+    // 9) Nothing to chase. The old code idled here "to keep the dice for defense" — that is measurably
+    //    BACKWARDS: an unspent die rolls a random face (E[line contribution] 2.5, and 1/6 of the time a
+    //    skull that contributes nothing), while a die on the Run 4-space is a GUARANTEED 4 plus free
+    //    board position. Measured: idle 1.150 E[injuries] vs Run x1 1.132 — the first Run is free.
+    //    So drift toward the map's centre of gravity while the Run column is still strong, and only
+    //    idle once the remaining spaces would actually soften the line.
+    if (E.spacesLeft(p, "run") > 0 && E.nextSpaceValue(p, "run") >= 3) {
+      const tk = E.towerKey(state);
+      const drift = tokenHexes(E, state, "beacon").concat(tokenHexes(E, state, "crown"));
+      const aim = drift.length ? nearestTarget(E, state, p, drift) : tk;
+      if (aim && stepToward(E, state, p, aim)) return "acted";
+    }
     return "idle";
   }
 
@@ -270,14 +318,17 @@
   // policy improvement over the heuristic = real "thinking ahead". The rollout count is the strength
   // dial. Clones run with state._inRollout = true so the rollout policy never recurses into rollouts.
   // ============================================================
+  const EMPTY = [];   // shared stand-in for state.log while cloning (see cloneForRollout)
   // Face-down piles: cloned in TRUE order by the JSON copy, so they must be re-shuffled per determinization.
   // discard1/2/3 are deliberately absent — the engine already shuffles a discard pile with the clone's own
   // rnd at the moment it refills an empty deck (drawEquipCard), so its cloned order never leaks.
   const HIDDEN_PILES = ["equip1", "equip2", "equip3", "event"];
   function cloneForRollout(E, state) {
-    const r = state.rnd; state.rnd = null;
+    const r = state.rnd, lg = state.log; state.rnd = null; state.log = EMPTY;
+    // the log is ~38% of the serialized state (120 capped entries) and nothing in rolloutScore reads it,
+    // so swap it out across the copy: measured 1.52x faster clones, at ~3k clones/turn
     const g = JSON.parse(JSON.stringify(state));   // state is plain data apart from rnd
-    state.rnd = r;
+    state.rnd = r; state.log = lg;
     g.rnd = E.makeRng((r() * 1e9) | 0);            // seed from the real game RNG -> expert is deterministic per game seed
     // Determinization (Perfect-Information Monte-Carlo). Without this the rollout .pop()s the real decks in
     // their real order, so the expert plans against cards it cannot legally know = it cheats. Re-shuffling each

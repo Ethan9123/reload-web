@@ -64,6 +64,31 @@ function rangedScenario(seed, personaId) {
   A(g.lastCombat && g.lastCombat.a === 0 && g.lastCombat.t === 2, "Vendetta shoots the grudge target (last attacker), not the easier kill");
 }
 
+// 4b) targeting: line softness is a TIE-BREAKER, never an override (Codex P2 on PR #46).
+// pickTarget scores injuries*100 - lineStrength - pool*0.5; since a line maxes at 5x5=25 and the pool
+// term at 2.5, the 27.5 ceiling can never cross the 100-per-injury step. Codex's exact counter-example:
+// a 2-injury enemy behind [5,5,5] must still outrank a healthier 1-injury enemy with an empty line.
+{
+  const g = E.newGame({ numPlayers: 3, seed: 8, allAI: true });
+  g.activePlayer = 0; g.phase = "action"; g.needsParachute = false;
+  for (const k in g.board) g.board[k].tokens = [];
+  const p = g.players[0]; p.persona = null;                       // no vendetta/leaderHunt override
+  p.injuries = 0; p.actionDice = 5; p.defensePool = 5; p.spacesUsed = {}; p.cardSpacesUsed = {};
+  p.backpack = ["combat_shotgun"]; E.autoEquip(p);
+  const tk = E.towerKey(g), tc = g.board[tk]; p.pos = { q: tc.q, r: tc.r }; p.reloadZone = false;
+  const hurt = g.players[1], healthy = g.players[2];
+  // both share the attacker's hex so they are unambiguously both legal ranged targets (d=0)
+  hurt.pos = { q: tc.q, r: tc.r }; hurt.reloadZone = false;
+  hurt.injuries = 2; hurt.combatLine = [5, 5, 5]; hurt.defensePool = 0;      // wounded but DUG IN
+  healthy.pos = { q: tc.q, r: tc.r }; healthy.reloadZone = false;
+  healthy.injuries = 1; healthy.combatLine = []; healthy.defensePool = 4;    // softer but healthier
+  const rt = E.rangedTargets(g, p);
+  A(rt.includes(1) && rt.includes(2), "both the wounded and the healthy enemy are legal targets");
+  AI.takeTurn(g);
+  A(g.lastCombat && g.lastCombat.a === 0 && g.lastCombat.t === 1,
+    "the AI shoots the MORE INJURED enemy even though the healthier one has a softer line");
+}
+
 // 5) diplomacy trait gates truce acceptance: a Dove accepts where a Lurker (loner) refuses
 {
   const mk = (personaId) => { const g = E.newGame({ numPlayers: 3, seed: 4, allAI: true }); g.players[1].persona = byId(personaId); g.diplomacy.rep[0] = 50; g.rnd = () => 0.5; return g; };
