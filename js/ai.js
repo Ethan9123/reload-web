@@ -160,12 +160,14 @@
     if (focus != null && idxs.includes(focus)) return focus;
     if (T(p, "leaderHunt") >= 0.6) { let best = null, bf = -1; for (const i of idxs) { const f = E.totalFame(state.players[i]); if (f > bf) { bf = f; best = i; } } if (best != null) return best; }
     // Soft targets first: a victim's standing combat line is PUBLIC, and survival per die is V/5, so a
-    // line of [2,2,1] (they looted) eats ~36% more damage than [4,3,2] (they ran). Injuries still
-    // dominate — a target one hit from RELOAD is worth 7 fame — but the line breaks the ties.
+    // line of [2,2,1] (they looted) eats ~36% more damage than [4,3,2] (they ran). Injuries must still
+    // DOMINATE — a target one hit from RELOAD is worth 7 fame vs 3 for an injury — so the softness term
+    // is deliberately bounded below the injury step: line <= 5 dice x 5 = 25, pool <= 5 x 0.5 = 2.5, so
+    // 27.5 < 100 keeps softness a strict tie-breaker WITHIN an injury count and never across one.
     let best = null, bs = -Infinity;
     for (const i of idxs) {
       const t = state.players[i];
-      const s = t.injuries * 10 - lineStrength(t) - E.combatDice(t) * 0.5;
+      const s = t.injuries * 100 - lineStrength(t) - E.combatDice(t) * 0.5;
       if (s > bs) { bs = s; best = i; }
     }
     return best != null ? best : pickByInjuries(state, idxs);
